@@ -41,7 +41,7 @@ class TestRedis < Test::Unit::TestCase
     end
   end
 
-  context "Mutating" do
+  context "Updating" do
     setup do
       $redis["User:1"] = true
       $redis["User:1:email"] = "albert@example.com"
@@ -65,7 +65,7 @@ class TestRedis < Test::Unit::TestCase
     end
   end
 
-  context "creating" do
+  context "Creating" do
     should "increment the ID" do
       event1 = Event.new
       event1.create
@@ -77,7 +77,7 @@ class TestRedis < Test::Unit::TestCase
     end
   end
 
-  context "saving" do
+  context "Saving" do
     should "not save a new model" do
       assert_raise Ohm::Model::ModelIsNew do
         Event.new.save
@@ -113,7 +113,7 @@ class TestRedis < Test::Unit::TestCase
     end
   end
 
-  context "internals" do
+  context "Loading attributes" do
     setup do
       event = Event.new
       event.name = "Ruby Tuesday"
@@ -126,5 +126,11 @@ class TestRedis < Test::Unit::TestCase
       assert_nil event.send(:instance_variable_get, "@name")
       assert_equal "Ruby Tuesday", event.name
     end
+  end
+
+  context "Set attributes" do
+  end
+
+  context "List attributes" do
   end
 end
