@@ -14,6 +14,12 @@ class User < Ohm::Model
   attribute :email
 end
 
+class Post < Ohm::Model
+  attribute :body
+  set :attendees
+  list :comments
+end
+
 class TestRedis < Test::Unit::TestCase
   context "Finding an event" do
     setup do
@@ -129,8 +135,35 @@ class TestRedis < Test::Unit::TestCase
   end
 
   context "Set attributes" do
+    should "return an array" do
+      assert @event.attendees.kind_of?(Array)
+    end
   end
 
   context "List attributes" do
+    setup do
+      @post = Post.new
+      @post.body = "Hello world!"
+      @post.create
+    end
+
+    should "return an array" do
+      assert @post.comments.kind_of?(Array)
+    end
+
+    should "keep the inserting order" do
+      @post.comments << "1"
+      @post.comments << "2"
+      @post.comments << "3"
+      assert_equal ["1", "2", "3"], @post.comments
+    end
+
+    should "keep the inserting order after saving" do
+      @post.comments << "1"
+      @post.comments << "2"
+      @post.comments << "3"
+      @post.save
+      assert_equal ["1", "2", "3"], Post[@post.id].comments
+    end
   end
 end

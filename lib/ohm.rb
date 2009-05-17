@@ -2,23 +2,85 @@ require "rubygems"
 require "redis"
 
 module Ohm
+  module Attributes
+    class Value
+      attr_accessor :name
+
+      def initialize(ame)
+        self.name = name
+      end
+
+      def read(db, key)
+        db[key]
+      end
+
+      def write(db, key, value)
+        db[key] = value
+      end
+    end
+
+    class Set
+      attr_accessor :name
+
+      def initialize(ame)
+        self.name = name
+      end
+
+      def read(db, key)
+        db.set_members(key)
+      end
+
+      def write(db, key, value)
+        db.set_add(key, value)
+      end
+    end
+
+    class List
+      attr_accessor :name
+
+      def initialize(ame)
+        self.name = name
+      end
+
+      def read(db, key)
+        db.set_members(key)
+      end
+
+      def write(db, key, value)
+        db.set_add(key, value)
+      end
+    end
+  end
+
   class Model
     ModelIsNew = Class.new(StandardError)
 
-    @@attributes = Hash.new { |hash, key| hash[key] = [] }
+    @@attributes = Hash.new { |hash, key| hash[key] = {} }
 
     attr_accessor :id
 
     def self.attribute(name)
       attr_writer(name)
       attr_lazy_reader(name)
-      attributes << name
+      attributes[name] = Attributes::Value.new(name)
     end
 
-    def self.attr_lazy_reader(name)
+    def self.list(name)
+      attr_writer(name)
+      attr_lazy_reader(name)
+      attributes[name] = Attributes::List.new(name)
+    end
+
+    def self.set(name)
+      attr_writer(name)
+      attr_lazy_reader(name)
+      attributes[name] = Attributes::Set.new(name)
+    end
+
+    def self.attr_lazy_reader(name) :comments
       class_eval <<-EOS
         def #{name}
-          @#{name} ||= db[key(#{name.inspect})]
+          @#{name} ||= self.class.attributes[:#{name}].read(db, key("#{name}"))
         end
       EOS
     end
@@ -59,8 +121,9 @@ module Ohm
     def save
       verify_model_exists
 
-      self.class.attributes.each do |att|
-        db[key(att)] = send(att)
+      self.class.attributes.each do |name, attribute|
+        attribute.write(db, key(name), send(name))
+        # db[key(att)] = send(att)
       end
 
       self
