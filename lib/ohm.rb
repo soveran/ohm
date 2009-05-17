@@ -5,7 +5,7 @@ module Ohm
   class Model
     ModelIsNew = Class.new(StandardError)
 
-    @@attributes = Hash.new { |h,k| h[k] = [] }
+    @@attributes = Hash.new { |hash, key| hash[key] = [] }
 
     attr_accessor :id
 
@@ -24,7 +24,7 @@ module Ohm
     end
 
     def self.[](id)
-      if db[key(self, id)]
+      if db[key(id)]
         model = new
         model.id = id
         model
@@ -32,7 +32,7 @@ module Ohm
     end
 
     def self.all
-      db.set_members(key(self)).map do |id|
+      db.set_members(key).map do |id|
         self[id]
       end
     end
@@ -42,7 +42,7 @@ module Ohm
     end
 
     def self.next_id
-      db.incr(key(self, "id"))
+      db.incr(key("id"))
     end
 
     def new?
@@ -51,13 +51,13 @@ module Ohm
 
     def create
       self.id = self.class.next_id
-      db.set_add(self.class.key(self.class), self.id)
+      db.set_add(self.class.key, self.id)
       db[key] = true
       save
     end
 
     def save
-      ensure_model_exists
+      verify_model_exists
 
       self.class.attributes.each do |att|
         db[key(att)] = send(att)
@@ -68,16 +68,16 @@ module Ohm
 
   private
 
-    def ensure_model_exists
+    def verify_model_exists
       raise ModelIsNew if new?
     end
 
     def key(*args)
-      self.class.key([self.class, id] + args)
+      self.class.key(id, *args)
     end
 
     def self.key(*args)
-      args.join(":")
+      args.unshift(self).join(":")
     end
 
     def db
