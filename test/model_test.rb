@@ -8,6 +8,7 @@ $redis.flush_db
 
 class Event < Ohm::Model
   attribute :name
+  set :attendees
 end
 
 class User < Ohm::Model
@@ -16,11 +17,17 @@ end
 
 class Post < Ohm::Model
   attribute :body
-  set :attendees
   list :comments
 end
 
 class TestRedis < Test::Unit::TestCase
+  context "An event initialized with a hash of attributes" do
+    should "assign the passed attributes" do
+      event = Event.new(:name => "Ruby Tuesday")
+      assert_equal event.name, "Ruby Tuesday"
+    end
+  end
+
   context "Finding an event" do
     setup do
       $redis["Event:1"] = true
@@ -47,7 +54,7 @@ class TestRedis < Test::Unit::TestCase
     end
   end
 
-  context "Updating" do
+  context "Updating a user" do
     setup do
       $redis["User:1"] = true
       $redis["User:1:email"] = "albert@example.com"
@@ -55,12 +62,12 @@ class TestRedis < Test::Unit::TestCase
       @user = User[1]
     end
 
-    should "change attributes" do
+    should "change its attributes" do
       @user.email = "maria@example.com"
       assert_equal "maria@example.com", @user.email
     end
 
-    should "save attributes" do
+    should "save the new values" do
       @user.email = "maria@example.com"
       @user.save
 
@@ -71,26 +78,27 @@ class TestRedis < Test::Unit::TestCase
     end
   end
 
-  context "Creating" do
-    should "increment the ID" do
+  context "Creating a new event" do
+    should "assign a new id to the event" do
       event1 = Event.new
       event1.create
 
       event2 = Event.new
       event2.create
 
+      assert event1.id
       assert_equal event1.id + 1, event2.id
     end
   end
 
-  context "Saving" do
+  context "Saving an event" do
     should "not save a new model" do
       assert_raise Ohm::Model::ModelIsNew do
         Event.new.save
       end
     end
 
-    should "save if the model was previously created" do
+    should "save it only if it was previously created" do
       event = Event.new
       event.name = "Lorem ipsum"
       event.create
@@ -134,13 +142,33 @@ class TestRedis < Test::Unit::TestCase
     end
   end
 
-  context "Set attributes" do
-    should "return an array" do
+  context "Attributes of type Set" do
+    setup do
+      @event = Event.new
+      @event.name = "Ruby Tuesday"
+    end
+
+    should "not be available if the model is new" do
+      assert_raise Ohm::Model::ModelIsNew do
+        @event.attendees << 1
+      end
+    end
+
+    should "return an array if the model exists" do
+      @event.create
       assert @event.attendees.kind_of?(Array)
+    end
+
+    should "remove an element if sent :delete" do
+      @event.create
+      @event.attendees << "1"
+      @event.attendees << "2"
+      @event.attendees << "3"
+      assert_equal ["1", "2", "3"], @event.attendees
     end
   end
 
-  context "List attributes" do
+  context "Attributes of type List" do
     setup do
       @post = Post.new
       @post.body = "Hello world!"

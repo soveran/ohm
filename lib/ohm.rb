@@ -3,50 +3,32 @@ require "redis"
 
 module Ohm
   module Attributes
-    class Value
-      attr_accessor :name
+    class Collection < Array
+      attr_accessor :key, :db
 
-      def initialize(ame)
-        self.name = name
-      end
-
-      def read(db, key)
-        db[key]
-      end
-
-      def write(db, key, value)
-        db[key] = value
+      def initialize(db, key)
+        self.db = db
+        self.key = key
+        super(retrieve)
       end
     end
 
-    class Set
-      attr_accessor :name
-
-      def initialize(ame)
-        self.name = name
+    class List < Collection
+      def retrieve
+        db.list_range(key, 0, -1)
       end
 
-      def read(db, key)
-        db.set_members(key)
-      end
-
-      def write(db, key, value)
-        db.set_add(key, value)
+      def << value
+        db.push_tail(key, value)
       end
     end
 
-    class List
-      attr_accessor :name
-
-      def initialize(ame)
-        self.name = name
+    class Set < Collection
+      def retrieve
+        db.set_members(key).sort
       end
 
-      def read(db, key)
-        db.set_members(key)
-      end
-
-      def write(db, key, value)
+      def << value
         db.set_add(key, value)
       end
     end
@@ -55,32 +37,44 @@ module Ohm
   class Model
     ModelIsNew = Class.new(StandardError)
 
-    @@attributes = Hash.new { |hash, key| hash[key] = {} }
+    @@attributes = Hash.new { |hash, key| hash[key] = [] }
 
     attr_accessor :id
 
     def self.attribute(name)
       attr_writer(name)
-      attr_lazy_reader(name)
-      attributes[name] = Attributes::Value.new(name)
+      attr_value_reader(name)
+      attributes << name
     end
 
     def self.list(name)
-      attr_writer(name)
-      attr_lazy_reader(name)
-      attributes[name] = Attributes::List.new(name)
+      attr_list_reader(name)
     end
 
     def self.set(name)
-      attr_writer(name)
-      attr_lazy_reader(name)
-      attributes[name] = Attributes::Set.new(name)
+      attr_set_reader(name)
     end
 
-    def self.attr_lazy_reader(name) :comments
+    def self.attr_value_reader(name)
       class_eval <<-EOS
         def #{name}
-          @#{name} ||= self.class.attributes[:#{name}].read(db, key("#{name}"))
+          @#{name} ||= db[key("#{name}")]
+        end
+      EOS
+    end
+
+    def self.attr_list_reader(name)
+      class_eval <<-EOS
+        def #{name}
+          Attributes::List.new(db, key("#{name}"))
+        end
+      EOS
+    end
+
+    def self.attr_set_reader(name)
+      class_eval <<-EOS
+        def #{name}
+          Attributes::Set.new(db, key("#{name}"))
         end
       EOS
     end
@@ -103,12 +97,10 @@ module Ohm
       @@attributes[self]
     end
 
-    def self.next_id
-      db.incr(key("id"))
-    end
-
-    def new?
-      ! self.id
+    def initialize(attrs = {})
+      attrs.each do |key, value|
+        send(:"#{key}=", value)
+      end
     end
 
     def create
@@ -119,11 +111,8 @@ module Ohm
     end
 
     def save
-      verify_model_exists
-
-      self.class.attributes.each do |name, attribute|
-        attribute.write(db, key(name), send(name))
-        # db[key(att)] = send(att)
+      self.class.attributes.each do |name|
+        db[key(name)] = send(name)
       end
 
       self
@@ -131,24 +120,25 @@ module Ohm
 
   private
 
-    def verify_model_exists
-      raise ModelIsNew if new?
-    end
-
-    def key(*args)
-      self.class.key(id, *args)
+    def self.db
+      $redis
     end
 
     def self.key(*args)
       args.unshift(self).join(":")
     end
 
+    def self.next_id
+      db.incr(key("id"))
+    end
+
     def db
       self.class.db
     end
 
-    def self.db
-      $redis
+    def key(*args)
+      raise ModelIsNew unless id
+      self.class.key(id, *args)
     end
   end
 end
