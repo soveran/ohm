@@ -173,6 +173,8 @@ class TestRedis < Test::Unit::TestCase
       @event.attendees << "2"
       @event.attendees << "3"
       assert_equal ["1", "2", "3"], @event.attendees
+      @event.attendees.delete("2")
+      assert_equal ["1", "3"], Event[@event.id].attendees
     end
   end
 

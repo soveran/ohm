@@ -31,6 +31,10 @@ module Ohm
       def << value
         db.set_add(key, value)
       end
+
+      def delete(value)
+        db.set_delete(key, value)
+      end
     end
   end
 
