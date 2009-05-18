@@ -28,6 +28,14 @@ class TestRedis < Test::Unit::TestCase
     end
   end
 
+  context "An event created from a hash of attributes" do
+    should "assign an id and save the object" do
+      event1 = Event.create(:name => "Ruby Tuesday")
+      event2 = Event.create(:name => "Ruby Meetup")
+      assert_equal event1.id + 1, event2.id
+    end
+  end
+
   context "Finding an event" do
     setup do
       $redis["Event:1"] = true

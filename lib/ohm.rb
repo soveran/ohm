@@ -97,6 +97,10 @@ module Ohm
       @@attributes[self]
     end
 
+    def self.create(*args)
+      new(*args).create
+    end
+
     def initialize(attrs = {})
       attrs.each do |key, value|
         send(:"#{key}=", value)
