@@ -42,6 +42,7 @@ module Ohm
     ModelIsNew = Class.new(StandardError)
 
     @@attributes = Hash.new { |hash, key| hash[key] = [] }
+    @@collections = Hash.new { |hash, key| hash[key] = [] }
 
     attr_accessor :id
 
@@ -53,10 +54,12 @@ module Ohm
 
     def self.list(name)
       attr_list_reader(name)
+      collections << name
     end
 
     def self.set(name)
       attr_set_reader(name)
+      collections << name
     end
 
     def self.attr_value_reader(name)
@@ -101,6 +104,10 @@ module Ohm
       @@attributes[self]
     end
 
+    def self.collections
+      @@collections[self]
+    end
+
     def self.create(*args)
       new(*args).create
     end
@@ -127,17 +134,27 @@ module Ohm
     end
 
     def delete
-      db.set_delete(self.class.key, id)
-      
-      self.class.attributes.each do |name|
-        db.delete(key(name))
+      collections.each do |collection|
+        db.delete(key(collection))
       end
 
+      attributes.each do |attribute|
+        db.delete(key(attribute))
+      end
+
+      db.set_delete(self.class.key, id)
       db.delete(key)
 
-      @id = nil
-
+      self.id = nil
       self
+    end
+
+    def attributes
+      self.class.attributes
+    end
+
+    def collections
+      self.class.collections
     end
 
   private
