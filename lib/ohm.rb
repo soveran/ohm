@@ -134,6 +134,10 @@ module Ohm
       end
 
       db.delete(key)
+
+      @id = nil
+
+      self
     end
 
   private

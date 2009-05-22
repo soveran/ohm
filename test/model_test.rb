@@ -132,10 +132,20 @@ class TestRedis < Test::Unit::TestCase
 
       @model.delete
 
-      assert_nil $redis[@model.send(:key)]
-      assert_nil $redis[@model.send(:key, :name)]
+      assert_nil $redis[ModelToBeDeleted.key(id)]
+      assert_nil $redis[ModelToBeDeleted.key(id, :name)]
 
       assert ModelToBeDeleted.all.empty?
+    end
+
+    should "reset the ID on the instance" do
+      id = @model.id
+
+      @model.delete
+
+      assert_nil @model.id
+
+      assert_not_equal id, @model.create.id
     end
   end
 
