@@ -1,10 +1,4 @@
-require "rubygems"
-require "ruby-debug"
-require "contest"
-require File.dirname(__FILE__) + "/../lib/ohm"
-
-$redis = Redis.new(:port => 6381)
-$redis.flush_db
+require File.dirname(__FILE__) + '/test_helper'
 
 class Event < Ohm::Model
   attribute :name
