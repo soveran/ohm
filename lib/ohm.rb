@@ -86,17 +86,17 @@ module Ohm
       EOS
     end
 
+    def self.exists?(id)
+      db.set_member?(key, id)
+    end
+
     def self.[](id)
-      if db[key(id)]
-        model = new
-        model.id = id
-        model
-      end
+      new(:id => id) if exists?(id)
     end
 
     def self.all
       db.set_members(key).map do |id|
-        self[id]
+        new(:id => id)
       end
     end
 
@@ -121,7 +121,6 @@ module Ohm
     def create
       self.id = self.class.next_id
       db.set_add(self.class.key, self.id)
-      db[key] = true
       save
     end
 
@@ -145,7 +144,7 @@ module Ohm
       db.set_delete(self.class.key, id)
       db.delete(key)
 
-      self.id = nil
+      # self.id = nil
       self
     end
 

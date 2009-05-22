@@ -32,7 +32,7 @@ class TestRedis < Test::Unit::TestCase
 
   context "Finding an event" do
     setup do
-      $redis["Event:1"] = true
+      $redis.set_add("Event", 1)
       $redis["Event:1:name"] = "Concert"
     end
 
@@ -45,7 +45,7 @@ class TestRedis < Test::Unit::TestCase
 
   context "Finding a user" do
     setup do
-      $redis["User:1"] = true
+      $redis.set_add("User", 1)
       $redis["User:1:email"] = "albert@example.com"
     end
 
@@ -58,7 +58,7 @@ class TestRedis < Test::Unit::TestCase
 
   context "Updating a user" do
     setup do
-      $redis["User:1"] = true
+      $redis.set_add("User", 1)
       $redis["User:1:email"] = "albert@example.com"
 
       @user = User[1]
@@ -137,16 +137,6 @@ class TestRedis < Test::Unit::TestCase
       assert_equal Array.new, $redis.list_range(ModelToBeDeleted.key(id, :bars), 0, -1)
 
       assert ModelToBeDeleted.all.empty?
-    end
-
-    should "reset the ID on the instance" do
-      id = @model.id
-
-      @model.delete
-
-      assert_nil @model.id
-
-      assert_not_equal id, @model.create.id
     end
   end
 
