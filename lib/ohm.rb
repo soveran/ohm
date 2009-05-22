@@ -126,6 +126,16 @@ module Ohm
       self
     end
 
+    def delete
+      db.set_delete(self.class.key, id)
+      
+      self.class.attributes.each do |name|
+        db.delete(key(name))
+      end
+
+      db.delete(key)
+    end
+
   private
 
     def self.db

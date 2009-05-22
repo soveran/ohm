@@ -86,7 +86,7 @@ class TestRedis < Test::Unit::TestCase
     end
   end
 
-  context "Creating a new event" do
+  context "Creating a new model" do
     should "assign a new id to the event" do
       event1 = Event.new
       event1.create
@@ -99,7 +99,7 @@ class TestRedis < Test::Unit::TestCase
     end
   end
 
-  context "Saving an event" do
+  context "Saving a model" do
     should "not save a new model" do
       assert_raise Ohm::Model::ModelIsNew do
         Event.new.save
@@ -115,6 +115,27 @@ class TestRedis < Test::Unit::TestCase
       event.save
 
       assert_equal "Lorem", Event[event.id].name
+    end
+  end
+
+  context "Delete" do
+    class ModelToBeDeleted < Ohm::Model
+      attribute :name
+    end
+
+    setup do
+      @model = ModelToBeDeleted.create(:name => "Lorem")
+    end
+
+    should "delete an existing model" do
+      id = @model.id
+
+      @model.delete
+
+      assert_nil $redis[@model.send(:key)]
+      assert_nil $redis[@model.send(:key, :name)]
+
+      assert ModelToBeDeleted.all.empty?
     end
   end
 
