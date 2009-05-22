@@ -121,10 +121,15 @@ class TestRedis < Test::Unit::TestCase
   context "Delete" do
     class ModelToBeDeleted < Ohm::Model
       attribute :name
+      set :foos
+      list :bars
     end
 
     setup do
       @model = ModelToBeDeleted.create(:name => "Lorem")
+
+      @model.foos << "foo"
+      @model.bars << "bar"
     end
 
     should "delete an existing model" do
@@ -134,6 +139,8 @@ class TestRedis < Test::Unit::TestCase
 
       assert_nil $redis[ModelToBeDeleted.key(id)]
       assert_nil $redis[ModelToBeDeleted.key(id, :name)]
+      assert_nil $redis.set_members(ModelToBeDeleted.key(id, :foos))
+      assert_nil $redis.list_members(ModelToBeDeleted.key(id, :bars))
 
       assert ModelToBeDeleted.all.empty?
     end
