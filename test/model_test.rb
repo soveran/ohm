@@ -186,6 +186,12 @@ class TestRedis < Test::Unit::TestCase
       assert_nil event.send(:instance_variable_get, "@name")
       assert_equal "Ruby Tuesday", event.name
     end
+
+    should "load attributes as a strings" do
+      event = Event.create(:name => 1)
+
+      assert_equal "1", Event[event.id].name
+    end
   end
 
   context "Attributes of type Set" do
