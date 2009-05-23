@@ -2,6 +2,45 @@ require "rubygems"
 require "redis"
 
 module Ohm
+  module Validations
+    def valid?
+      errors.empty?
+    end
+
+  private
+
+    def validate
+    end
+
+    def assert_format(att, format)
+      if assert_present(att)
+        assert attribute_value(att).match(format), [att, :format]
+      end
+    end
+
+    def assert_present(att)
+      if assert_not_nil(att)
+        assert attribute_value(att).any?, [att, :empty]
+      end
+    end
+
+    def assert_not_nil(att)
+      assert attribute_value(att), [att, :nil]
+    end
+
+    def assert(value, error)
+      value or errors.push(error) && false
+    end
+
+    def errors
+      @errors ||= []
+    end
+
+    def attribute_value(att)
+      instance_variable_get("@#{att}")
+    end
+  end
+
   module Attributes
     class Collection < Array
       attr_accessor :key, :db
@@ -39,6 +78,8 @@ module Ohm
   end
 
   class Model
+    include Validations
+
     ModelIsNew = Class.new(StandardError)
 
     @@attributes = Hash.new { |hash, key| hash[key] = [] }
@@ -119,9 +160,12 @@ module Ohm
     end
 
     def create
-      self.id = self.class.next_id
-      db.set_add(self.class.key, self.id)
-      save
+      validate
+      if valid?
+        self.id = self.class.next_id
+        db.set_add(self.class.key, self.id)
+        save
+      end
     end
 
     def save
