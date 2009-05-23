@@ -9,7 +9,7 @@ class ValidationsTest < Test::Unit::TestCase
     end
   end
 
-  context "A model with validations" do
+  context "A new model with validations" do
     setup do
       @event = Event.new
     end
@@ -38,6 +38,35 @@ class ValidationsTest < Test::Unit::TestCase
           @event.create
           assert_nil @event.id
         end
+      end
+    end
+  end
+
+  context "An existing model with a valid name" do
+    setup do
+      @event = Event.create(:name => "original")
+    end
+
+    context "That has the name changed" do
+      should "not be saved if the new name is nil" do
+        @event.name = nil
+        @event.save
+        assert_equal false, @event.valid?
+        assert_equal "original", Event[@event.id].name
+      end
+
+      should "not be saved if the name assigned is empty" do
+        @event.name = ""
+        @event.save
+        assert_equal false, @event.valid?
+        assert_equal "original", Event[@event.id].name
+      end
+
+      should "be saved if the name assigned is not empty" do
+        @event.name = "hello"
+        @event.save
+        assert @event.valid?
+        assert_equal "hello", Event[@event.id].name
       end
     end
   end

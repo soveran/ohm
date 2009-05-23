@@ -4,6 +4,8 @@ require "redis"
 module Ohm
   module Validations
     def valid?
+      errors.clear
+      validate
       errors.empty?
     end
 
@@ -160,20 +162,15 @@ module Ohm
     end
 
     def create
-      validate
-      if valid?
-        self.id = self.class.next_id
-        db.set_add(self.class.key, self.id)
-        save
-      end
+      return unless valid?
+      self.id = self.class.next_id
+      db.set_add(self.class.key, self.id)
+      save!
     end
 
     def save
-      self.class.attributes.each do |name|
-        db[key(name)] = send(name)
-      end
-
-      self
+      return unless valid?
+      save!
     end
 
     def delete
@@ -188,7 +185,6 @@ module Ohm
       db.set_delete(self.class.key, id)
       db.delete(key)
 
-      # self.id = nil
       self
     end
 
@@ -221,6 +217,11 @@ module Ohm
     def key(*args)
       raise ModelIsNew unless id
       self.class.key(id, *args)
+    end
+
+    def save!
+      self.class.attributes.each { |att| db[key(att)] = send(att) }
+      self
     end
   end
 end
