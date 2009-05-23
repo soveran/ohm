@@ -16,18 +16,18 @@ module Ohm
 
     def assert_format(att, format)
       if assert_present(att)
-        assert attribute_value(att).match(format), [att, :format]
+        assert attribute(att).match(format), [att, :format]
       end
     end
 
     def assert_present(att)
       if assert_not_nil(att)
-        assert attribute_value(att).any?, [att, :empty]
+        assert attribute(att).any?, [att, :empty]
       end
     end
 
     def assert_not_nil(att)
-      assert attribute_value(att), [att, :nil]
+      assert attribute(att), [att, :nil]
     end
 
     def assert(value, error)
@@ -38,7 +38,7 @@ module Ohm
       @errors ||= []
     end
 
-    def attribute_value(att)
+    def attribute(att)
       instance_variable_get("@#{att}")
     end
   end
@@ -105,6 +105,7 @@ module Ohm
       collections << name
     end
 
+    # TODO Encapsulate access to db?
     def self.attr_value_reader(name)
       class_eval <<-EOS
         def #{name}
@@ -129,16 +130,12 @@ module Ohm
       EOS
     end
 
-    def self.exists?(id)
-      db.set_member?(key, id)
-    end
-
     def self.[](id)
       new(:id => id) if exists?(id)
     end
 
     def self.all
-      db.set_members(key).map do |id|
+      filter(:all).map do |id|
         new(:id => id)
       end
     end
@@ -163,8 +160,8 @@ module Ohm
 
     def create
       return unless valid?
-      self.id = self.class.next_id
-      db.set_add(self.class.key, self.id)
+      initialize_id
+      create_model_membership
       save!
     end
 
@@ -174,17 +171,9 @@ module Ohm
     end
 
     def delete
-      collections.each do |collection|
-        db.delete(key(collection))
-      end
-
-      attributes.each do |attribute|
-        db.delete(key(attribute))
-      end
-
-      db.set_delete(self.class.key, id)
-      db.delete(key)
-
+      delete_attributes(collections)
+      delete_attributes(attributes)
+      delete_model_membership
       self
     end
 
@@ -206,8 +195,16 @@ module Ohm
       args.unshift(self).join(":")
     end
 
-    def self.next_id
-      db.incr(key("id"))
+    def self.filter(name)
+      db.set_members(key(name))
+    end
+
+    def self.exists?(id)
+      db.set_member?(key(:all), id)
+    end
+
+    def initialize_id
+      self.id = db.incr(self.class.key("id"))
     end
 
     def db
@@ -217,6 +214,20 @@ module Ohm
     def key(*args)
       raise ModelIsNew unless id
       self.class.key(id, *args)
+    end
+
+    def delete_attributes(atts)
+      atts.each do |att|
+        db.delete(key(att))
+      end
+    end
+
+    def create_model_membership
+      db.set_add(self.class.key(:all), id)
+    end
+
+    def delete_model_membership
+      db.set_delete(self.class.key(:all), id)
     end
 
     def save!

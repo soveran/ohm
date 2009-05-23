@@ -45,7 +45,7 @@ class TestRedis < Test::Unit::TestCase
 
   context "Finding a user" do
     setup do
-      $redis.set_add("User", 1)
+      $redis.set_add("User:all", 1)
       $redis["User:1:email"] = "albert@example.com"
     end
 
@@ -58,7 +58,7 @@ class TestRedis < Test::Unit::TestCase
 
   context "Updating a user" do
     setup do
-      $redis.set_add("User", 1)
+      $redis.set_add("User:all", 1)
       $redis["User:1:email"] = "albert@example.com"
 
       @user = User[1]
