@@ -61,6 +61,7 @@ module Ohm
 
       def << value
         db.push_tail(key, value)
+        super(value)
       end
     end
 
@@ -71,10 +72,12 @@ module Ohm
 
       def << value
         db.set_add(key, value)
+        super(value)
       end
 
       def delete(value)
         db.set_delete(key, value)
+        super(value)
       end
     end
   end
@@ -117,7 +120,7 @@ module Ohm
     def self.attr_list_reader(name)
       class_eval <<-EOS
         def #{name}
-          Attributes::List.new(db, key("#{name}"))
+          @#{name} ||= Attributes::List.new(db, key("#{name}"))
         end
       EOS
     end
@@ -125,7 +128,7 @@ module Ohm
     def self.attr_set_reader(name)
       class_eval <<-EOS
         def #{name}
-          Attributes::Set.new(db, key("#{name}"))
+          @#{name} ||= Attributes::Set.new(db, key("#{name}"))
         end
       EOS
     end
