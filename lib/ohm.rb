@@ -220,7 +220,7 @@ module Ohm
     end
 
     def save!
-      self.class.attributes.each { |att| db[key(att)] = send(att) }
+      attributes.each { |att| db[key(att)] = send(att) }
       self
     end
   end
