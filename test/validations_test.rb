@@ -70,4 +70,83 @@ class ValidationsTest < Test::Unit::TestCase
       end
     end
   end
+
+  context "Validations module" do
+    class Validatable
+      attr_accessor :name
+
+      include Ohm::Validations
+    end
+    
+    setup do
+      @target = Validatable.new
+    end
+
+    context "assert" do
+      should "add errors to a collection" do
+        def @target.validate
+          assert(false, "Something bad")
+        end
+
+        @target.validate
+
+        assert_equal ["Something bad"], @target.errors
+      end
+
+      should "allow for nested validations" do
+        def @target.validate
+          if assert(true, "No error")
+            assert(false, "Chained error")
+          end
+
+          if assert(false, "Parent error")
+            assert(false, "No chained error")
+          end
+        end
+
+        @target.validate
+
+        assert_equal ["Chained error", "Parent error"], @target.errors
+      end
+    end
+
+    context "assert_present" do
+      setup do
+        def @target.validate
+          assert_present(:name)
+        end
+      end
+
+      should "fail when the attribute is nil" do
+        @target.validate
+
+        assert_equal [[:name, :nil]], @target.errors
+      end
+      
+      should "fail when the attribute is empty" do
+        @target.name = ""
+        @target.validate
+
+        assert_equal [[:name, :empty]], @target.errors
+      end
+    end
+    
+    context "assert_not_nil" do
+      should "fail when the attribute is nil" do
+        def @target.validate
+          assert_not_nil(:name)
+        end
+
+        @target.validate
+
+        assert_equal [[:name, :nil]], @target.errors
+        
+        @target.errors.clear
+        @target.name = ""
+        @target.validate
+
+        assert_equal [], @target.errors
+      end
+    end
+  end
 end

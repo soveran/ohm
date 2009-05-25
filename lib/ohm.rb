@@ -9,10 +9,14 @@ module Ohm
       errors.empty?
     end
 
-  private
-
     def validate
     end
+
+    def errors
+      @errors ||= []
+    end
+
+  private
 
     def assert_format(att, format)
       if assert_present(att)
@@ -32,10 +36,6 @@ module Ohm
 
     def assert(value, error)
       value or errors.push(error) && false
-    end
-
-    def errors
-      @errors ||= []
     end
 
     def attribute(att)
