@@ -60,8 +60,7 @@ module Ohm
       end
 
       def << value
-        db.push_tail(key, value)
-        super(value)
+        super(value) if db.push_tail(key, value)
       end
     end
 
@@ -71,13 +70,15 @@ module Ohm
       end
 
       def << value
-        db.set_add(key, value)
-        super(value)
+        super(value) if db.set_add(key, value)
       end
 
       def delete(value)
-        db.set_delete(key, value)
-        super(value)
+        super(value) if db.set_delete(key, value)
+      end
+
+      def include?(value)
+        db.set_member?(key, value)
       end
     end
   end

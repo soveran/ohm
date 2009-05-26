@@ -204,6 +204,15 @@ class TestRedis < Test::Unit::TestCase
       @event.attendees.delete("2")
       assert_equal ["1", "3"], Event[@event.id].attendees
     end
+
+    should "return true if the set includes some member" do
+      @event.create
+      @event.attendees << "1"
+      @event.attendees << "2"
+      @event.attendees << "3"
+      assert @event.attendees.include?("2")
+      assert_equal false, @event.attendees.include?("4")
+    end
   end
 
   context "Attributes of type List" do
