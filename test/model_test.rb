@@ -241,4 +241,21 @@ class TestRedis < Test::Unit::TestCase
       assert_equal ["1", "2", "3"], Post[@post.id].comments
     end
   end
+
+  context "Comparison" do
+    setup do
+      @user = User.create(:email => "foo")
+    end
+
+    should "be comparable to other instances" do
+      assert_equal @user, User[@user.id]
+
+      assert_not_equal @user, User.create
+      assert_not_equal User.new, User.new
+    end
+
+    should "not be comparable to instances of other models" do
+      assert_not_equal @user, Event.create(:name => "Ruby Tuesday")
+    end
+  end
 end

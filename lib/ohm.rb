@@ -16,30 +16,26 @@ module Ohm
       @errors ||= []
     end
 
-  private
+  protected
 
     def assert_format(att, format)
       if assert_present(att)
-        assert attribute(att).match(format), [att, :format]
+        assert send(att).match(format), [att, :format]
       end
     end
 
     def assert_present(att)
       if assert_not_nil(att)
-        assert attribute(att).any?, [att, :empty]
+        assert send(att).any?, [att, :empty]
       end
     end
 
     def assert_not_nil(att)
-      assert attribute(att), [att, :nil]
+      assert send(att), [att, :nil]
     end
 
     def assert(value, error)
       value or errors.push(error) && false
-    end
-
-    def attribute(att)
-      instance_variable_get("@#{att}")
     end
   end
 
@@ -90,12 +86,19 @@ module Ohm
 
     @@attributes = Hash.new { |hash, key| hash[key] = [] }
     @@collections = Hash.new { |hash, key| hash[key] = [] }
+    @@indices = Hash.new { |hash, key| hash[key] = [] }
 
     attr_accessor :id
 
     def self.attribute(name)
-      attr_writer(name)
-      attr_value_reader(name)
+      define_method(name) do
+        @_attributes[name]
+      end
+
+      define_method(:"#{name}=") do |value|
+        @_attributes[name] = value
+      end
+
       attributes << name
     end
 
@@ -109,13 +112,8 @@ module Ohm
       collections << name
     end
 
-    # TODO Encapsulate access to db?
-    def self.attr_value_reader(name)
-      class_eval <<-EOS
-        def #{name}
-          @#{name} ||= db[key("#{name}")]
-        end
-      EOS
+    def self.index(attribute)
+      indices << attribute
     end
 
     def self.attr_list_reader(name)
@@ -139,9 +137,7 @@ module Ohm
     end
 
     def self.all
-      filter(:all).map do |id|
-        new(:id => id)
-      end
+      filter(:all)
     end
 
     def self.attributes
@@ -152,11 +148,21 @@ module Ohm
       @@collections[self]
     end
 
+    def self.indices
+      @@indices[self]
+    end
+
     def self.create(*args)
       new(*args).create
     end
 
+    def self.find(attribute, value)
+      filter("#{attribute}:#{value}")
+    end
+
     def initialize(attrs = {})
+      @_attributes = Hash.new {|hash,key| hash[key] = read_attribute(key) }
+
       attrs.each do |key, value|
         send(:"#{key}=", value)
       end
@@ -166,15 +172,18 @@ module Ohm
       return unless valid?
       initialize_id
       create_model_membership
+      add_to_indices
       save!
     end
 
     def save
       return unless valid?
+      update_indices
       save!
     end
 
     def delete
+      delete_from_indices
       delete_attributes(collections)
       delete_attributes(attributes)
       delete_model_membership
@@ -189,6 +198,23 @@ module Ohm
       self.class.collections
     end
 
+    def indices
+      self.class.indices
+    end
+
+    def ==(other)
+      other.key == key
+    rescue ModelIsNew
+      false
+    end
+
+  protected
+
+    def key(*args)
+      raise ModelIsNew unless id
+      self.class.key(id, *args)
+    end
+
   private
 
     def self.db
@@ -200,7 +226,9 @@ module Ohm
     end
 
     def self.filter(name)
-      db.set_members(key(name))
+      db.set_members(key(name)).map do |id|
+        new(:id => id)
+      end
     end
 
     def self.exists?(id)
@@ -213,11 +241,6 @@ module Ohm
 
     def db
       self.class.db
-    end
-
-    def key(*args)
-      raise ModelIsNew unless id
-      self.class.key(id, *args)
     end
 
     def delete_attributes(atts)
@@ -237,6 +260,27 @@ module Ohm
     def save!
       attributes.each { |att| db[key(att)] = send(att) }
       self
+    end
+
+    def update_indices
+      delete_from_indices
+      add_to_indices
+    end
+
+    def add_to_indices
+      indices.each do |index|
+        db.set_add(self.class.key(index, send(index)), id)
+      end
+    end
+
+    def delete_from_indices
+      indices.each do |index|
+        db.set_delete(self.class.key(index, read_attribute(index)), id)
+      end
+    end
+
+    def read_attribute(name)
+      id && db[key(name)]
     end
   end
 end
