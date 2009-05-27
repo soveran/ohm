@@ -4,6 +4,8 @@ class ValidationsTest < Test::Unit::TestCase
   class Event < Ohm::Model
     attribute :name
 
+    index :name
+
     def validate
       assert_format(:name, /^\w+$/)
     end
@@ -38,6 +40,21 @@ class ValidationsTest < Test::Unit::TestCase
           @event.create
           assert_nil @event.id
         end
+      end
+    end
+
+    context "That must have a unique name" do
+      should "fail when the value already exists" do
+        def @event.validate
+          assert_unique :name
+        end
+
+        Event.create(:name => "foo")
+        @event.name = "foo"
+        @event.create
+
+        assert_nil @event.id
+        assert_equal [[:name, :not_unique]], @event.errors
       end
     end
   end

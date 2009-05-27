@@ -29,4 +29,24 @@ benchmark "ruby array push" do
   array.push(1)
 end
 
-run 10000
+$redis.set_add("bar", 1)
+$redis.set_add("bar", 2)
+
+benchmark "retrieve a set of two members" do
+  $redis.set_members("bar")
+end
+
+benchmark "retrieve membership status and set count" do
+  $redis.set_count("bar")
+  $redis.set_member?("bar", "1")
+end
+
+benchmark "retrieve set count" do
+  $redis.set_count("bar").zero?
+end
+
+benchmark "retrieve membership status" do
+  $redis.set_member?("bar", "1")
+end
+
+run 20_000

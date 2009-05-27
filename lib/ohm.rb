@@ -1,44 +1,8 @@
 require "rubygems"
 require "redis"
+require File.join(File.dirname(__FILE__), "ohm", "validations")
 
 module Ohm
-  module Validations
-    def valid?
-      errors.clear
-      validate
-      errors.empty?
-    end
-
-    def validate
-    end
-
-    def errors
-      @errors ||= []
-    end
-
-  protected
-
-    def assert_format(att, format)
-      if assert_present(att)
-        assert send(att).match(format), [att, :format]
-      end
-    end
-
-    def assert_present(att)
-      if assert_not_nil(att)
-        assert send(att).any?, [att, :empty]
-      end
-    end
-
-    def assert_not_nil(att)
-      assert send(att), [att, :nil]
-    end
-
-    def assert(value, error)
-      value or errors.push(error) && false
-    end
-  end
-
   module Attributes
     class Collection < Array
       attr_accessor :key, :db
@@ -80,6 +44,15 @@ module Ohm
   end
 
   class Model
+    module Validations
+      include Ohm::Validations
+
+      def assert_unique(att)
+        key = self.class.key(:name, name)
+        assert(db.set_count(key).zero? || db.set_member?(key, id), [att, :not_unique])
+      end
+    end
+
     include Validations
 
     ModelIsNew = Class.new(StandardError)
