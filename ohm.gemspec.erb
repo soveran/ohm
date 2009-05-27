@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name = 'ohm'
-  s.version = '0.0.1'
+  s.version = '0.0.2'
   s.summary = %{Object-hash mapping library for Redis.}
   s.date = %q{2009-03-13}
   s.author = "Michel Martens, Damian Janowski"
@@ -9,11 +9,11 @@ Gem::Specification.new do |s|
 
   s.specification_version = 2 if s.respond_to? :specification_version=
 
-  s.files = <%= FileList['lib/**/*.rb', 'README*', 'LICENSE', 'Rakefile', 'test/**/*.*'].inspect %>
+  s.files = <%= Dir['lib/**/*.rb', 'README*', 'LICENSE', 'Rakefile', 'test/**/*.*'].inspect %>
 
   s.require_paths = ['lib']
 
-  s.add_dependency("redis", ">= 1.0")
+  s.add_dependency("ezmobius-redis-rb", ">= 0.0.3")
 
   s.has_rdoc = false
 end

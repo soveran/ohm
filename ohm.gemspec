@@ -9,11 +9,11 @@ Gem::Specification.new do |s|
 
   s.specification_version = 2 if s.respond_to? :specification_version=
 
-  s.files = ["lib/ohm.rb", "README.markdown", "LICENSE", "Rakefile", "test/all_tests.rb", "test/benchmarks.rb", "test/db/dump.rdb", "test/db/redis.pid", "test/model_test.rb", "test/test.conf", "test/test_helper.rb", "test/validations_test.rb"]
+  s.files = ["lib/ohm.rb", "README.markdown", "LICENSE", "Rakefile", "test/all_tests.rb", "test/benchmarks.rb", "test/db/dump.rdb", "test/db/redis.pid", "test/model_test.rb", "test/references_test.rb", "test/test.conf", "test/test_helper.rb", "test/validations_test.rb"]
 
   s.require_paths = ['lib']
 
-  s.add_dependency("redis", ">= 1.0")
+  s.add_dependency("ezmobius-redis-rb", ">= 0.0.3")
 
   s.has_rdoc = false
 end
