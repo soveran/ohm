@@ -3,8 +3,10 @@ require File.dirname(__FILE__) + '/test_helper'
 class ValidationsTest < Test::Unit::TestCase
   class Event < Ohm::Model
     attribute :name
+    attribute :place
 
-    index :name
+    index [:name]
+    index [:name, :place]
 
     def validate
       assert_format(:name, /^\w+$/)
@@ -46,7 +48,7 @@ class ValidationsTest < Test::Unit::TestCase
     context "That must have a unique name" do
       should "fail when the value already exists" do
         def @event.validate
-          assert_unique :name
+          assert_unique [:name]
         end
 
         Event.create(:name => "foo")
@@ -54,7 +56,28 @@ class ValidationsTest < Test::Unit::TestCase
         @event.create
 
         assert_nil @event.id
-        assert_equal [[:name, :not_unique]], @event.errors
+        assert_equal [[[:name], :not_unique]], @event.errors
+      end
+    end
+
+    context "That must have a unique name scoped by place" do
+      should "fail when the value already exists" do
+        def @event.validate
+          assert_unique [:name, :place]
+        end
+
+        Event.create(:name => "foo", :place => "bar")
+        @event.name = "foo"
+        @event.place = "bar"
+        @event.create
+
+        assert_nil @event.id
+        assert_equal [[[:name, :place], :not_unique]], @event.errors
+
+        @event.place = "baz"
+        @event.create
+
+        assert @event.valid?
       end
     end
   end

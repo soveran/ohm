@@ -3,6 +3,12 @@ require "redis"
 require File.join(File.dirname(__FILE__), "ohm", "validations")
 
 module Ohm
+  def key(*args)
+    args.join(":")
+  end
+
+  module_function :key
+
   module Attributes
     class Collection < Array
       attr_accessor :key, :db
@@ -47,9 +53,9 @@ module Ohm
     module Validations
       include Ohm::Validations
 
-      def assert_unique(att)
-        key = self.class.key(:name, name)
-        assert(db.set_count(key).zero? || db.set_member?(key, id), [att, :not_unique])
+      def assert_unique(attrs)
+        index_key = index_key_for(attrs, read_locals(attrs))
+        assert(db.set_count(index_key).zero? || db.set_member?(index_key, id), [attrs, :not_unique])
       end
     end
 
@@ -65,11 +71,11 @@ module Ohm
 
     def self.attribute(name)
       define_method(name) do
-        @_attributes[name]
+        read_local(name)
       end
 
       define_method(:"#{name}=") do |value|
-        @_attributes[name] = value
+        write_local(name, value)
       end
 
       attributes << name
@@ -85,8 +91,8 @@ module Ohm
       collections << name
     end
 
-    def self.index(attribute)
-      indices << attribute
+    def self.index(attrs)
+      indices << attrs
     end
 
     def self.attr_list_reader(name)
@@ -129,12 +135,15 @@ module Ohm
       new(*args).create
     end
 
+    # TODO Add a method that receives several arguments and returns a
+    # string with the values separated by colons.
     def self.find(attribute, value)
-      filter("#{attribute}:#{value}")
+      # filter("#{attribute}:#{value}")
+      filter(Ohm.key(attribute, value))
     end
 
     def initialize(attrs = {})
-      @_attributes = Hash.new {|hash,key| hash[key] = read_attribute(key) }
+      @_attributes = Hash.new {|hash,key| hash[key] = read_remote(key) }
 
       attrs.each do |key, value|
         send(:"#{key}=", value)
@@ -195,7 +204,7 @@ module Ohm
     end
 
     def self.key(*args)
-      args.unshift(self).join(":")
+      Ohm.key(*args.unshift(self))
     end
 
     def self.filter(name)
@@ -231,7 +240,7 @@ module Ohm
     end
 
     def save!
-      attributes.each { |att| db[key(att)] = send(att) }
+      attributes.each { |att| write_remote(att, send(att)) }
       self
     end
 
@@ -241,19 +250,47 @@ module Ohm
     end
 
     def add_to_indices
-      indices.each do |index|
-        db.set_add(self.class.key(index, send(index)), id)
+      indices.each do |attrs|
+        db.set_add(index_key_for(attrs, read_locals(attrs)), id)
       end
     end
 
     def delete_from_indices
-      indices.each do |index|
-        db.set_delete(self.class.key(index, read_attribute(index)), id)
+      indices.each do |attrs|
+        db.set_delete(index_key_for(attrs, read_remotes(attrs)), id)
       end
     end
 
-    def read_attribute(name)
-      id && db[key(name)]
+    def read_local(att)
+      @_attributes[att]
+    end
+
+    def write_local(att, value)
+      @_attributes[att] = value
+    end
+
+    def read_remote(att)
+      id && db[key(att)]
+    end
+
+    def write_remote(att, value)
+      db[key(att)] = value
+    end
+
+    def read_locals(attrs)
+      attrs.map do |att|
+        read_local(att)
+      end
+    end
+
+    def read_remotes(attrs)
+      attrs.map do |att|
+        read_remote(att)
+      end
+    end
+
+    def index_key_for(attrs, values)
+      self.class.key *(attrs + values)
     end
   end
 end
