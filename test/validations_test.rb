@@ -77,7 +77,7 @@ class ValidationsTest < Test::Unit::TestCase
 
       include Ohm::Validations
     end
-    
+
     setup do
       @target = Validatable.new
     end
@@ -122,7 +122,7 @@ class ValidationsTest < Test::Unit::TestCase
 
         assert_equal [[:name, :nil]], @target.errors
       end
-      
+
       should "fail when the attribute is empty" do
         @target.name = ""
         @target.validate
@@ -130,7 +130,7 @@ class ValidationsTest < Test::Unit::TestCase
         assert_equal [[:name, :empty]], @target.errors
       end
     end
-    
+
     context "assert_not_nil" do
       should "fail when the attribute is nil" do
         def @target.validate
@@ -140,7 +140,7 @@ class ValidationsTest < Test::Unit::TestCase
         @target.validate
 
         assert_equal [[:name, :nil]], @target.errors
-        
+
         @target.errors.clear
         @target.name = ""
         @target.validate
