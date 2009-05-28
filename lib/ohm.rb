@@ -1,5 +1,5 @@
 require "rubygems"
-require "redis"
+require File.join(File.dirname(__FILE__), "ohm", "redis")
 require File.join(File.dirname(__FILE__), "ohm", "validations")
 
 module Ohm

@@ -133,7 +133,7 @@ class TestRedis < Test::Unit::TestCase
 
       assert_nil $redis[ModelToBeDeleted.key(id)]
       assert_nil $redis[ModelToBeDeleted.key(id, :name)]
-      assert_equal Set.new, $redis.set_members(ModelToBeDeleted.key(id, :foos))
+      assert_equal Array.new, $redis.set_members(ModelToBeDeleted.key(id, :foos))
       assert_equal Array.new, $redis.list_range(ModelToBeDeleted.key(id, :bars), 0, -1)
 
       assert ModelToBeDeleted.all.empty?

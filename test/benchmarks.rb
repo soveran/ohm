@@ -25,10 +25,6 @@ benchmark "ohm add to set" do
   event.attendees << 1
 end
 
-benchmark "ruby array push" do
-  array.push(1)
-end
-
 $redis.set_add("bar", 1)
 $redis.set_add("bar", 2)
 
