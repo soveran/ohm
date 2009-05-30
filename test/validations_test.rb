@@ -1,4 +1,4 @@
-require File.dirname(__FILE__) + '/test_helper'
+require File.join(File.dirname(__FILE__), "test_helper")
 
 class ValidationsTest < Test::Unit::TestCase
   class Event < Ohm::Model

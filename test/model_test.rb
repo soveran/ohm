@@ -1,4 +1,4 @@
-require File.dirname(__FILE__) + '/test_helper'
+require File.join(File.dirname(__FILE__), "test_helper")
 
 class Event < Ohm::Model
   attribute :name
@@ -32,8 +32,8 @@ class TestRedis < Test::Unit::TestCase
 
   context "Finding an event" do
     setup do
-      $redis.set_add("Event", 1)
-      $redis["Event:1:name"] = "Concert"
+      Ohm.redis.sadd("Event", 1)
+      Ohm.redis.set("Event:1:name", "Concert")
     end
 
     should "return an instance of Event" do
@@ -45,8 +45,8 @@ class TestRedis < Test::Unit::TestCase
 
   context "Finding a user" do
     setup do
-      $redis.set_add("User:all", 1)
-      $redis["User:1:email"] = "albert@example.com"
+      Ohm.redis.sadd("User:all", 1)
+      Ohm.redis.set("User:1:email", "albert@example.com")
     end
 
     should "return an instance of User" do
@@ -58,8 +58,8 @@ class TestRedis < Test::Unit::TestCase
 
   context "Updating a user" do
     setup do
-      $redis.set_add("User:all", 1)
-      $redis["User:1:email"] = "albert@example.com"
+      Ohm.redis.sadd("User:all", 1)
+      Ohm.redis.set("User:1:email", "albert@example.com")
 
       @user = User[1]
     end
@@ -131,10 +131,10 @@ class TestRedis < Test::Unit::TestCase
 
       @model.delete
 
-      assert_nil $redis[ModelToBeDeleted.key(id)]
-      assert_nil $redis[ModelToBeDeleted.key(id, :name)]
-      assert_equal Array.new, $redis.set_members(ModelToBeDeleted.key(id, :foos))
-      assert_equal Array.new, $redis.list_range(ModelToBeDeleted.key(id, :bars), 0, -1)
+      assert_nil Ohm.redis.get(ModelToBeDeleted.key(id))
+      assert_nil Ohm.redis.get(ModelToBeDeleted.key(id, :name))
+      assert_equal Array.new, Ohm.redis.smembers(ModelToBeDeleted.key(id, :foos))
+      assert_equal Array.new, Ohm.redis.list(ModelToBeDeleted.key(id, :bars))
 
       assert ModelToBeDeleted.all.empty?
     end

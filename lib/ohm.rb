@@ -1,13 +1,24 @@
-require "rubygems"
 require File.join(File.dirname(__FILE__), "ohm", "redis")
 require File.join(File.dirname(__FILE__), "ohm", "validations")
 
 module Ohm
+  def redis
+    @redis
+  end
+
+  def connect(*attrs)
+    @redis = Ohm::Redis.new(*attrs)
+  end
+
+  def flush
+    @redis.flushdb
+  end
+
   def key(*args)
     args.join(":")
   end
 
-  module_function :key
+  module_function :key, :connect, :flush, :redis
 
   module Attributes
     class Collection < Array
@@ -22,29 +33,29 @@ module Ohm
 
     class List < Collection
       def retrieve
-        db.list_range(key, 0, -1)
+        db.list(key)
       end
 
       def << value
-        super(value) if db.push_tail(key, value)
+        super(value) if db.rpush(key, value)
       end
     end
 
     class Set < Collection
       def retrieve
-        db.set_members(key).sort
+        db.smembers(key).sort
       end
 
       def << value
-        super(value) if db.set_add(key, value)
+        super(value) if db.sadd(key, value)
       end
 
       def delete(value)
-        super(value) if db.set_delete(key, value)
+        super(value) if db.srem(key, value)
       end
 
       def include?(value)
-        db.set_member?(key, value)
+        db.sismember(key, value)
       end
     end
   end
@@ -55,7 +66,7 @@ module Ohm
 
       def assert_unique(attrs)
         index_key = index_key_for(attrs, read_locals(attrs))
-        assert(db.set_count(index_key).zero? || db.set_member?(index_key, id), [attrs, :not_unique])
+        assert(db.scard(index_key).zero? || db.sismember(index_key, id), [attrs, :not_unique])
       end
     end
 
@@ -135,10 +146,7 @@ module Ohm
       new(*args).create
     end
 
-    # TODO Add a method that receives several arguments and returns a
-    # string with the values separated by colons.
     def self.find(attribute, value)
-      # filter("#{attribute}:#{value}")
       filter(Ohm.key(attribute, value))
     end
 
@@ -200,7 +208,7 @@ module Ohm
   private
 
     def self.db
-      $redis
+      Ohm.redis
     end
 
     def self.key(*args)
@@ -208,13 +216,13 @@ module Ohm
     end
 
     def self.filter(name)
-      db.set_members(key(name)).map do |id|
+      db.smembers(key(name)).map do |id|
         new(:id => id)
       end
     end
 
     def self.exists?(id)
-      db.set_member?(key(:all), id)
+      db.sismember(key(:all), id)
     end
 
     def initialize_id
@@ -222,21 +230,21 @@ module Ohm
     end
 
     def db
-      self.class.db
+      Ohm.redis
     end
 
     def delete_attributes(atts)
       atts.each do |att|
-        db.delete(key(att))
+        db.del(key(att))
       end
     end
 
     def create_model_membership
-      db.set_add(self.class.key(:all), id)
+      db.sadd(self.class.key(:all), id)
     end
 
     def delete_model_membership
-      db.set_delete(self.class.key(:all), id)
+      db.srem(self.class.key(:all), id)
     end
 
     def save!
@@ -251,13 +259,13 @@ module Ohm
 
     def add_to_indices
       indices.each do |attrs|
-        db.set_add(index_key_for(attrs, read_locals(attrs)), id)
+        db.sadd(index_key_for(attrs, read_locals(attrs)), id)
       end
     end
 
     def delete_from_indices
       indices.each do |attrs|
-        db.set_delete(index_key_for(attrs, read_remotes(attrs)), id)
+        db.srem(index_key_for(attrs, read_remotes(attrs)), id)
       end
     end
 
@@ -270,11 +278,11 @@ module Ohm
     end
 
     def read_remote(att)
-      id && db[key(att)]
+      id && db.get(key(att))
     end
 
     def write_remote(att, value)
-      db[key(att)] = value
+      db.set(key(att), value)
     end
 
     def read_locals(attrs)
