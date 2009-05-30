@@ -1,12 +1,9 @@
 require "rubygems"
 require "bench"
 require File.dirname(__FILE__) + "/../lib/ohm"
-require "redis"
 
 Ohm.connect(:port => 6381)
 Ohm.flush
-
-$r = Redis.new(:port => 6381)
 
 class Event < Ohm::Model
   attribute :name
@@ -24,10 +21,6 @@ benchmark "add to set with ohm redis" do
   Ohm.redis.sadd("foo", 1)
 end
 
-benchmark "add to set with redis" do
-  $r.set_add("foo", 1)
-end
-
 benchmark "add to set with ohm" do
   event.attendees << 1
 end
@@ -41,17 +34,7 @@ benchmark "retrieve a set of two members with ohm redis" do
   Ohm.redis.smembers("bar")
 end
 
-$r.set_add("bar", 1)
-$r.set_add("bar", 2)
-
-benchmark "retrieve a set of two members with redis" do
-  $r.set_add("bar", 3)
-  $r.set_delete("bar", 3)
-  $r.set_members("bar")
-end
-
 Ohm.redis.del("Event:#{event.id}:attendees")
-$r.delete("Event:#{event.id}:attendees")
 
 event.attendees << 1
 event.attendees << 2
