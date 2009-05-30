@@ -46,7 +46,7 @@ Usage
     another_event.errors    #=> [[:name, :empty]]
 
     another_event.name = "Ruby Lunch"
-    another_event.save      #=> true
+    another_event.create    #=> true
 
 Installation
 ------------
