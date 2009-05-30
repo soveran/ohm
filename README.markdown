@@ -16,11 +16,12 @@ Usage
 
     require 'ohm'
 
-    $redis = Redis.new
+    Ohm.connect
 
     class Event < Ohm::Model
       attribute :name
       set :participants
+      list :comments
 
       def validate
         assert_present :name
@@ -30,6 +31,11 @@ Usage
     event = Event.create(:name => "Ruby Tuesday")
     event.participants << "Michel Martens"
     event.participants << "Damian Janowski"
+    event.participants      #=> ["Damian Janowski", "Michel Martens"]
+
+    event.comments << "Very interesting event!"
+    event.comments << "Agree"
+    event.comments          #=> ["Very interesting event!", "Agree"]
 
     another_event = Event.new
     another_event.valid?    #=> false
