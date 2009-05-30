@@ -23,7 +23,7 @@ module Ohm
 
     def assert_present(att)
       if assert_not_nil(att)
-        assert send(att).any?, [att, :empty]
+        assert !send(att).empty?, [att, :empty]
       end
     end
 
