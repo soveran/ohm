@@ -23,7 +23,7 @@ class IndicesTest < Test::Unit::TestCase
       @user1.email = "baz"
       @user1.save
 
-      assert_equal [], User.find(:email, "foo").to_a
+      assert_equal [], User.find(:email, "foo")
       assert_equal [@user1], User.find(:email, "baz")
     end
 
