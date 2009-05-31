@@ -151,7 +151,6 @@ module Ohm
       call_command(argv)
     end
 
-
     # Wrap raw_call_command to handle reconnection on socket error. We
     # try to reconnect just one time, otherwise let the error araise.
     def call_command(argv)
