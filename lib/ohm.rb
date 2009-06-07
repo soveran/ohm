@@ -65,8 +65,8 @@ module Ohm
       include Ohm::Validations
 
       def assert_unique(attrs)
-        index_key = index_key_for(attrs, read_locals(attrs))
-        assert(db.scard(index_key).zero? || db.sismember(index_key, id), [attrs, :not_unique])
+        index_key = index_key_for(Array(attrs), read_locals(Array(attrs)))
+        assert(db.scard(index_key).zero? || db.sismember(index_key, id), [Array(attrs), :not_unique])
       end
     end
 
@@ -103,7 +103,7 @@ module Ohm
     end
 
     def self.index(attrs)
-      indices << attrs
+      indices << Array(attrs)
     end
 
     def self.attr_list_reader(name)

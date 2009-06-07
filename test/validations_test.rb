@@ -5,7 +5,7 @@ class ValidationsTest < Test::Unit::TestCase
     attribute :name
     attribute :place
 
-    index [:name]
+    index :name
     index [:name, :place]
 
     def validate
@@ -48,7 +48,7 @@ class ValidationsTest < Test::Unit::TestCase
     context "That must have a unique name" do
       should "fail when the value already exists" do
         def @event.validate
-          assert_unique [:name]
+          assert_unique :name
         end
 
         Event.create(:name => "foo")

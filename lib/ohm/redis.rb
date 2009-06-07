@@ -155,10 +155,10 @@ module Ohm
     # try to reconnect just one time, otherwise let the error araise.
     def call_command(argv)
       connect unless connected?
-      raw_call_command(argv)
+      raw_call_command(argv.dup)
     rescue Errno::ECONNRESET
       reconnect
-      raw_call_command(argv)
+      raw_call_command(argv.dup)
     end
 
     def raw_call_command(argv)

@@ -4,7 +4,7 @@ class IndicesTest < Test::Unit::TestCase
   class User < Ohm::Model
     attribute :email
 
-    index [:email]
+    index :email
   end
 
   context "A model with an indexed attribute" do
