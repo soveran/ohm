@@ -141,6 +141,7 @@ module Ohm
 
     def disconnect
       @sock.close
+      @sock = nil
     end
 
     def reconnect
