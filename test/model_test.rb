@@ -94,10 +94,9 @@ class TestRedis < Test::Unit::TestCase
   end
 
   context "Saving a model" do
-    should "not save a new model" do
-      assert_raise Ohm::Model::ModelIsNew do
-        Event.new.save
-      end
+    should "create the model if it's new" do
+      event = Event.new(:name => "Foo").save
+      assert_equal "Foo", Event[event.id].name
     end
 
     should "save it only if it was previously created" do

@@ -158,6 +158,10 @@ module Ohm
       end
     end
 
+    def new?
+      !id
+    end
+
     def create
       return unless valid?
       initialize_id
@@ -167,6 +171,7 @@ module Ohm
     end
 
     def save
+      create if new?
       return unless valid?
       update_indices
       save!
@@ -201,7 +206,7 @@ module Ohm
   protected
 
     def key(*args)
-      raise ModelIsNew unless id
+      raise ModelIsNew if new?
       self.class.key(id, *args)
     end
 
