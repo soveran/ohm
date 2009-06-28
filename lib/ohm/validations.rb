@@ -79,7 +79,7 @@ module Ohm
     end
 
     def assert_present(att, error = [att, :not_present])
-      assert(send(att).to_s.any?, error)
+      assert(!send(att).to_s.empty?, error)
     end
 
     def assert_numeric(att, error = [att, :not_numeric])
