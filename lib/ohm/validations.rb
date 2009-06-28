@@ -83,13 +83,9 @@ module Ohm
     end
 
     def assert_numeric(att, error = [att, :not_numeric])
-      if assert_not_nil(att)
+      if assert_present(att, error)
         assert_format(att, /^\d+$/, error)
       end
-    end
-
-    def assert_not_nil(att, error = [att, :nil])
-      assert(send(att), error)
     end
 
     def assert(value, error)

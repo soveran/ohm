@@ -57,7 +57,7 @@ class ValidationsTest < Test::Unit::TestCase
         @event.create
 
         assert_nil @event.id
-        assert_equal [[:capacity, :nil]], @event.errors
+        assert_equal [[:capacity, :not_numeric]], @event.errors
       end
 
       should "fail when the value is not numeric" do
