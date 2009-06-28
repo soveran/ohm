@@ -4,6 +4,7 @@ class ValidationsTest < Test::Unit::TestCase
   class Event < Ohm::Model
     attribute :name
     attribute :place
+    attribute :capacity
 
     index :name
     index [:name, :place]
@@ -42,6 +43,48 @@ class ValidationsTest < Test::Unit::TestCase
           @event.create
           assert_nil @event.id
         end
+      end
+    end
+
+    context "That must have a numeric attribute :capacity" do
+      should "fail when the value is nil" do
+        def @event.validate
+          assert_numeric :capacity
+        end
+
+        @event.name = "foo"
+        @event.place = "bar"
+        @event.create
+
+        assert_nil @event.id
+        assert_equal [[:capacity, :nil]], @event.errors
+      end
+
+      should "fail when the value is not numeric" do
+        def @event.validate
+          assert_numeric :capacity
+        end
+
+        @event.name = "foo"
+        @event.place = "bar"
+        @event.capacity = "baz"
+        @event.create
+
+        assert_nil @event.id
+        assert_equal [[:capacity, :not_numeric]], @event.errors
+      end
+
+      should "succeed when the value is numeric" do
+        def @event.validate
+          assert_numeric :capacity
+        end
+
+        @event.name = "foo"
+        @event.place = "bar"
+        @event.capacity = 42
+        @event.create
+
+        assert_not_nil @event.id
       end
     end
 

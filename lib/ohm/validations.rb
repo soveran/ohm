@@ -84,6 +84,12 @@ module Ohm
       end
     end
 
+    def assert_numeric(att)
+      if assert_not_nil(att)
+        assert send(att).kind_of?(Numeric), [att, :not_numeric]
+      end
+    end
+
     def assert_not_nil(att)
       assert send(att), [att, :nil]
     end
