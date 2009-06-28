@@ -203,32 +203,14 @@ class ValidationsTest < Test::Unit::TestCase
       should "fail when the attribute is nil" do
         @target.validate
 
-        assert_equal [[:name, :nil]], @target.errors
+        assert_equal [[:name, :not_present]], @target.errors
       end
 
       should "fail when the attribute is empty" do
         @target.name = ""
         @target.validate
 
-        assert_equal [[:name, :empty]], @target.errors
-      end
-    end
-
-    context "assert_not_nil" do
-      should "fail when the attribute is nil" do
-        def @target.validate
-          assert_not_nil(:name)
-        end
-
-        @target.validate
-
-        assert_equal [[:name, :nil]], @target.errors
-
-        @target.errors.clear
-        @target.name = ""
-        @target.validate
-
-        assert_equal [], @target.errors
+        assert_equal [[:name, :not_present]], @target.errors
       end
     end
   end

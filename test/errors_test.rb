@@ -31,11 +31,11 @@ class ErrorsTest < Test::Unit::TestCase
       values = []
 
       @model.errors.present do |e|
-        e.on [:name, :nil] do
+        e.on [:name, :not_present] do
           values << 1
         end
 
-        e.on [:account, :empty] do
+        e.on [:account, :not_present] do
           values << 2
         end
 
@@ -65,8 +65,8 @@ class ErrorsTest < Test::Unit::TestCase
 
     should "accept multiple matches for an error" do
       values = @model.errors.present do |e|
-        e.on [:name, :nil], "A"
-        e.on [:account, :empty] do
+        e.on [:name, :not_present], "A"
+        e.on [:account, :not_present] do
           "B"
         end
         e.on :terrible_error, "C"
@@ -85,8 +85,8 @@ class ErrorsTest < Test::Unit::TestCase
 
     should "take a custom presenter" do
       values = @model.errors.present(MyPresenter) do |e|
-        e.on([:name, :nil]) { "A" }
-        e.on([:account, :empty]) { "B" }
+        e.on([:name, :not_present]) { "A" }
+        e.on([:account, :not_present]) { "B" }
         e.on(:terrible_error) { "C" }
       end
 

@@ -72,26 +72,24 @@ module Ohm
 
   protected
 
-    def assert_format(att, format)
-      if assert_present(att)
-        assert send(att).match(format), [att, :format]
+    def assert_format(att, format, error = [att, :format])
+      if assert_present(att, error)
+        assert(send(att).to_s.match(format), error)
       end
     end
 
-    def assert_present(att)
+    def assert_present(att, error = [att, :not_present])
+      assert(send(att).to_s.any?, error)
+    end
+
+    def assert_numeric(att, error = [att, :not_numeric])
       if assert_not_nil(att)
-        assert !send(att).empty?, [att, :empty]
+        assert_format(att, /^\d+$/, error)
       end
     end
 
-    def assert_numeric(att)
-      if assert_not_nil(att)
-        assert send(att).kind_of?(Numeric), [att, :not_numeric]
-      end
-    end
-
-    def assert_not_nil(att)
-      assert send(att), [att, :nil]
+    def assert_not_nil(att, error = [att, :nil])
+      assert(send(att), error)
     end
 
     def assert(value, error)
