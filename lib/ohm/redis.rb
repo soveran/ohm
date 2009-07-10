@@ -158,8 +158,11 @@ module Ohm
       connect unless connected?
       raw_call_command(argv.dup)
     rescue Errno::ECONNRESET
-      reconnect
-      raw_call_command(argv.dup)
+      if reconnect
+        raw_call_command(argv.dup)
+      else
+        raise Errno::ECONNRESET
+      end
     end
 
     def raw_call_command(argv)

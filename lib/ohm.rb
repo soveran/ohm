@@ -2,18 +2,30 @@ require File.join(File.dirname(__FILE__), "ohm", "redis")
 require File.join(File.dirname(__FILE__), "ohm", "validations")
 
 module Ohm
+
+  # Provides access to the redis database. This is shared accross all models and instances.
   def redis
     @redis
   end
 
-  def connect(*attrs)
-    @redis = Ohm::Redis.new(*attrs)
+  # Connect to a redis database.
+  # @param options [Hash] options to create a message with.
+  # @option options [#to_s] :host ('127.0.0.1') Host of the redis database.
+  # @option options [#to_s] :port (6379) Port number.
+  # @option options [#to_s] :db (0) Database number.
+  # @option options [#to_s] :timeout (0) Database timeout in seconds.
+  # @example Connect to a database in port 6380:
+  #   Ohm.connect(:port => 6380)
+  def connect(*options)
+    @redis = Ohm::Redis.new(*options)
   end
 
+  # Clear the database.
   def flush
     @redis.flushdb
   end
 
+  # Join the parameters with ":" to create a key.
   def key(*args)
     args.join(":")
   end
@@ -31,6 +43,7 @@ module Ohm
       end
     end
 
+    # Represents a Redis list.
     class List < Collection
       def retrieve
         db.list(key)
@@ -80,6 +93,9 @@ module Ohm
 
     attr_accessor :id
 
+    # Defines a string attribute for the model. This attribute will be persisted by Redis
+    # as a string. Any value stored here will be retrieved in its string representation.
+    # @param name [Symbol] Name of the attribute.
     def self.attribute(name)
       define_method(name) do
         read_local(name)
@@ -92,16 +108,42 @@ module Ohm
       attributes << name
     end
 
+    # Defines a list attribute for the model. It can be accessed only after the model instance
+    # is created.
+    # @param name [Symbol] Name of the list.
     def self.list(name)
       attr_list_reader(name)
       collections << name
     end
 
+    # Defines a set attribute for the model. It can be accessed only after the model instance
+    # is created. Sets are recommended when insertion and retrival order is irrelevant, and
+    # operations like union, join, and membership checks are important.
+    # @param name [Symbol] Name of the set.
     def self.set(name)
       attr_set_reader(name)
       collections << name
     end
 
+    # Creates an index (a set) that will be used for finding instances.
+    # If you want to find a model instance by some attribute value, then an index for that
+    # attribute must exist.
+    # Each index declaration creates an index. It can be either an index on one particular attribute,
+    # or an index accross many attributes.
+    #
+    # @example
+    #   class User < Ohm::Model
+    #     attribute :email
+    #     index :email
+    #   end
+    #
+    #   # Now this is possible:
+    #   User.find :email, "ohm@example.com"
+    #
+    # @overload index :name
+    #   Creates an index for the name attribute.
+    # @overload index [:street, :city]
+    #   Creates a composite index for street and city.
     def self.index(attrs)
       indices << Array(attrs)
     end
