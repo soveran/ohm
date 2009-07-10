@@ -14,6 +14,14 @@ class Post < Ohm::Model
   list :comments
 end
 
+class Person < Ohm::Model
+  attribute :name
+
+  def validate
+    assert_present :name
+  end
+end
+
 class TestRedis < Test::Unit::TestCase
   context "An event initialized with a hash of attributes" do
     should "assign the passed attributes" do
@@ -27,6 +35,10 @@ class TestRedis < Test::Unit::TestCase
       event1 = Event.create(:name => "Ruby Tuesday")
       event2 = Event.create(:name => "Ruby Meetup")
       assert_equal event1.id + 1, event2.id
+    end
+
+    should "return the unsaved object if validation fails" do
+      assert Person.create(:name => nil).kind_of?(Person)
     end
   end
 

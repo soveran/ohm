@@ -143,7 +143,9 @@ module Ohm
     end
 
     def self.create(*args)
-      new(*args).create
+      model = new(*args)
+      model.create
+      model
     end
 
     def self.find(attribute, value)
