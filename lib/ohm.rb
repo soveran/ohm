@@ -9,12 +9,13 @@ module Ohm
   end
 
   # Connect to a redis database.
+  #
   # @param options [Hash] options to create a message with.
   # @option options [#to_s] :host ('127.0.0.1') Host of the redis database.
   # @option options [#to_s] :port (6379) Port number.
   # @option options [#to_s] :db (0) Database number.
   # @option options [#to_s] :timeout (0) Database timeout in seconds.
-  # @example Connect to a database in port 6380:
+  # @example Connect to a database in port 6380.
   #   Ohm.connect(:port => 6380)
   def connect(*options)
     @redis = Ohm::Redis.new(*options)
@@ -44,11 +45,24 @@ module Ohm
     end
 
     # Represents a Redis list.
+    #
+    # @example Use a list attribute.
+    #
+    #   class Event < Ohm::Model
+    #     attribute :name
+    #     list :participants
+    #   end
+    #
+    #   event = Event.create :name => "Redis Meeting"
+    #   event.participants << "Albert"
+    #   event.participants << "Benoit"
+    #   event.participants #=> ["Albert", "Benoit"]
     class List < Collection
       def retrieve
         db.list(key)
       end
 
+      # @param value [#to_s] Pushes value to the list.
       def << value
         super(value) if db.rpush(key, value)
       end
@@ -59,6 +73,7 @@ module Ohm
         db.smembers(key).sort
       end
 
+      # @param value [#to_s] Adds value to the list.
       def << value
         super(value) if db.sadd(key, value)
       end
@@ -77,6 +92,13 @@ module Ohm
     module Validations
       include Ohm::Validations
 
+      # Validates that the attribute or array of attributes are unique. For this,
+      # an index of the same kind must exist.
+      #
+      # @overload assert_unique :name
+      #   Validates that the name attribute is unique.
+      # @overload assert_unique [:street, :city]
+      #   Validates that the :street and :city pair is unique.
       def assert_unique(attrs)
         index_key = index_key_for(Array(attrs), read_locals(Array(attrs)))
         assert(db.scard(index_key).zero? || db.sismember(index_key, id), [Array(attrs), :not_unique])
@@ -95,6 +117,7 @@ module Ohm
 
     # Defines a string attribute for the model. This attribute will be persisted by Redis
     # as a string. Any value stored here will be retrieved in its string representation.
+    #
     # @param name [Symbol] Name of the attribute.
     def self.attribute(name)
       define_method(name) do
@@ -110,6 +133,7 @@ module Ohm
 
     # Defines a list attribute for the model. It can be accessed only after the model instance
     # is created.
+    #
     # @param name [Symbol] Name of the list.
     def self.list(name)
       attr_list_reader(name)
@@ -119,6 +143,7 @@ module Ohm
     # Defines a set attribute for the model. It can be accessed only after the model instance
     # is created. Sets are recommended when insertion and retrival order is irrelevant, and
     # operations like union, join, and membership checks are important.
+    #
     # @param name [Symbol] Name of the set.
     def self.set(name)
       attr_set_reader(name)
@@ -126,8 +151,10 @@ module Ohm
     end
 
     # Creates an index (a set) that will be used for finding instances.
+    #
     # If you want to find a model instance by some attribute value, then an index for that
     # attribute must exist.
+    #
     # Each index declaration creates an index. It can be either an index on one particular attribute,
     # or an index accross many attributes.
     #
