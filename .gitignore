@@ -1,2 +1,4 @@
-pkg
-test/db
+/pkg
+/test/db
+/.yardoc
+/doc
