@@ -9,10 +9,11 @@ class IndicesTest < Test::Unit::TestCase
 
   context "A model with an indexed attribute" do
     setup do
-      Ohm.redis.flushdb
+      Ohm.flush
 
       @user1 = User.create(:email => "foo")
       @user2 = User.create(:email => "bar")
+      @user3 = User.create(:email => "baz qux")
     end
 
     should "be able to find by the given attribute" do
@@ -31,6 +32,10 @@ class IndicesTest < Test::Unit::TestCase
       @user2.delete
 
       assert_equal [], User.find(:email, "bar")
+    end
+
+    should "work with attributes that contain spaces" do
+      assert_equal [@user3], User.find(:email, "baz qux")
     end
   end
 end

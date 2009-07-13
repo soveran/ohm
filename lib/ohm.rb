@@ -1,3 +1,4 @@
+require "base64"
 require File.join(File.dirname(__FILE__), "ohm", "redis")
 require File.join(File.dirname(__FILE__), "ohm", "validations")
 
@@ -218,7 +219,17 @@ module Ohm
     end
 
     def self.find(attribute, value)
-      filter(Ohm.key(attribute, value))
+      filter(Ohm.key(attribute, encode(value)))
+    end
+
+    def self.encode(value)
+      Base64.encode64(value.to_s).chomp
+    end
+
+    def self.encode_each(values)
+      values.collect do |value|
+        encode(value)
+      end
     end
 
     def initialize(attrs = {})
@@ -374,7 +385,7 @@ module Ohm
     end
 
     def index_key_for(attrs, values)
-      self.class.key *(attrs + values)
+      self.class.key *(attrs + self.class.encode_each(values))
     end
   end
 end
