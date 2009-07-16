@@ -202,19 +202,14 @@ class TestRedis < Test::Unit::TestCase
       end
     end
 
-    should "return an array if the model exists" do
-      @event.create
-      assert @event.attendees.kind_of?(Array)
-    end
-
     should "remove an element if sent :delete" do
       @event.create
       @event.attendees << "1"
       @event.attendees << "2"
       @event.attendees << "3"
-      assert_equal ["1", "2", "3"], @event.attendees
+      assert_equal ["1", "2", "3"], @event.attendees.all
       @event.attendees.delete("2")
-      assert_equal ["1", "3"], Event[@event.id].attendees
+      assert_equal ["1", "3"], Event[@event.id].attendees.all
     end
 
     should "return true if the set includes some member" do
@@ -224,6 +219,22 @@ class TestRedis < Test::Unit::TestCase
       @event.attendees << "3"
       assert @event.attendees.include?("2")
       assert_equal false, @event.attendees.include?("4")
+    end
+
+    should "return instances of the passed model if the call to all includes a class" do
+      @event.create
+      @person = Person.create :name => "albert"
+      @event.attendees << @person.id
+
+      assert_equal [@person], @event.attendees.all(Person)
+    end
+
+    should "insert the model instance id instead of the object if using add" do
+      @event.create
+      @person = Person.create :name => "albert"
+      @event.attendees.add(@person)
+
+      assert_equal [@person.id.to_s], @event.attendees.all
     end
   end
 
@@ -235,14 +246,14 @@ class TestRedis < Test::Unit::TestCase
     end
 
     should "return an array" do
-      assert @post.comments.kind_of?(Array)
+      assert @post.comments.all.kind_of?(Array)
     end
 
     should "keep the inserting order" do
       @post.comments << "1"
       @post.comments << "2"
       @post.comments << "3"
-      assert_equal ["1", "2", "3"], @post.comments
+      assert_equal ["1", "2", "3"], @post.comments.all
     end
 
     should "keep the inserting order after saving" do
@@ -250,7 +261,7 @@ class TestRedis < Test::Unit::TestCase
       @post.comments << "2"
       @post.comments << "3"
       @post.save
-      assert_equal ["1", "2", "3"], Post[@post.id].comments
+      assert_equal ["1", "2", "3"], Post[@post.id].comments.all
     end
   end
 

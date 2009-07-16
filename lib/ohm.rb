@@ -35,13 +35,12 @@ module Ohm
   module_function :key, :connect, :flush, :redis
 
   module Attributes
-    class Collection < Array
+    class Collection
       attr_accessor :key, :db
 
       def initialize(db, key)
         self.db = db
         self.key = key
-        super(retrieve)
       end
     end
 
@@ -57,30 +56,55 @@ module Ohm
     #   event = Event.create :name => "Redis Meeting"
     #   event.participants << "Albert"
     #   event.participants << "Benoit"
-    #   event.participants #=> ["Albert", "Benoit"]
+    #   event.participants.all #=> ["Albert", "Benoit"]
     class List < Collection
-      def retrieve
+      def all
         db.list(key)
       end
 
       # @param value [#to_s] Pushes value to the list.
       def << value
-        super(value) if db.rpush(key, value)
+        db.rpush(key, value)
       end
     end
 
+    # Represents a Redis set.
+    #
+    # @example Use a set attribute.
+    #
+    #   class Company < Ohm::Model
+    #     attribute :name
+    #     set :employees
+    #   end
+    #
+    #   company = Company.create :name => "Redis Co."
+    #   company.employees << "Albert"
+    #   company.employees << "Benoit"
+    #   company.employees.all #=> ["Albert", "Benoit"]
+    #   company.include?("Albert") #=> true
     class Set < Collection
-      def retrieve
+      def raw
         db.smembers(key).sort
+      end
+
+      def all(model = nil)
+        model ? raw.collect { |id| model[id] } : raw
       end
 
       # @param value [#to_s] Adds value to the list.
       def << value
-        super(value) if db.sadd(key, value)
+        db.sadd(key, value)
+      end
+
+      # @param value [Ohm::Model#id] Adds the id of the object if it's an Ohm::Model.
+      def add model
+        raise ArgumentError unless model.kind_of?(Ohm::Model)
+        raise ArgumentError unless model.id
+        self << model.id
       end
 
       def delete(value)
-        super(value) if db.srem(key, value)
+        db.srem(key, value)
       end
 
       def include?(value)
