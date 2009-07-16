@@ -112,6 +112,7 @@ module Ohm
 
     @@attributes = Hash.new { |hash, key| hash[key] = [] }
     @@collections = Hash.new { |hash, key| hash[key] = [] }
+    @@counters = Hash.new { |hash, key| hash[key] = [] }
     @@indices = Hash.new { |hash, key| hash[key] = [] }
 
     attr_accessor :id
@@ -130,6 +131,18 @@ module Ohm
       end
 
       attributes << name
+    end
+
+    # Defines a counter attribute for the model. This attribute can't be assigned, only incremented
+    # or decremented. It will be zero by default.
+    #
+    # @param name [Symbol] Name of the counter.
+    def self.counter(name)
+      define_method(name) do
+        read_local(name).to_i
+      end
+
+      counters << name
     end
 
     # Defines a list attribute for the model. It can be accessed only after the model instance
@@ -204,6 +217,10 @@ module Ohm
       @@attributes[self]
     end
 
+    def self.counters
+      @@counters[self]
+    end
+
     def self.collections
       @@collections[self]
     end
@@ -261,14 +278,35 @@ module Ohm
 
     def delete
       delete_from_indices
-      delete_attributes(collections)
       delete_attributes(attributes)
+      delete_attributes(counters)
+      delete_attributes(collections)
       delete_model_membership
       self
     end
 
+    # Increment the attribute denoted by :att.
+    #
+    # @param att [Symbol] Attribute to increment.
+    def incr(att)
+      raise ArgumentError unless counters.include?(att)
+      write_local(att, db.incr(key(att)))
+    end
+
+    # Decrement the attribute denoted by :att.
+    #
+    # @param att [Symbol] Attribute to decrement.
+    def decr(att)
+      raise ArgumentError unless counters.include?(att)
+      write_local(att, db.decr(key(att)))
+    end
+
     def attributes
       self.class.attributes
+    end
+
+    def counters
+      self.class.counters
     end
 
     def collections

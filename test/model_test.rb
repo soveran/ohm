@@ -2,6 +2,7 @@ require File.join(File.dirname(__FILE__), "test_helper")
 
 class Event < Ohm::Model
   attribute :name
+  counter :votes
   set :attendees
 end
 
@@ -250,6 +251,32 @@ class TestRedis < Test::Unit::TestCase
       @post.comments << "3"
       @post.save
       assert_equal ["1", "2", "3"], Post[@post.id].comments
+    end
+  end
+
+  context "Counters" do
+    setup do
+      @event = Event.create(:name => "Ruby Tuesday")
+    end
+
+    should "raise ArgumentError if the attribute is not a counter" do
+      assert_raise ArgumentError do
+        @event.incr(:name)
+      end
+    end
+
+    should "be zero if not initialized" do
+      assert_equal 0, @event.votes
+    end
+
+    should "be able to increment a counter" do
+      @event.incr(:votes)
+      assert_equal 1, @event.votes
+    end
+
+    should "be able to decrement a counter" do
+      @event.decr(:votes)
+      assert_equal -1, @event.votes
     end
   end
 
