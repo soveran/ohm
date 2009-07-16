@@ -36,11 +36,21 @@ module Ohm
 
   module Attributes
     class Collection
+      include Enumerable
+
       attr_accessor :key, :db
 
       def initialize(db, key)
         self.db = db
         self.key = key
+      end
+
+      def each(&block)
+        all.each(&block)
+      end
+
+      def all(model = nil)
+        model ? raw.collect { |id| model[id] } : raw
       end
     end
 
@@ -58,13 +68,16 @@ module Ohm
     #   event.participants << "Benoit"
     #   event.participants.all #=> ["Albert", "Benoit"]
     class List < Collection
-      def all
-        db.list(key)
-      end
 
       # @param value [#to_s] Pushes value to the list.
       def << value
         db.rpush(key, value)
+      end
+
+    private
+
+      def raw
+        db.list(key)
       end
     end
 
@@ -83,13 +96,6 @@ module Ohm
     #   company.employees.all #=> ["Albert", "Benoit"]
     #   company.include?("Albert") #=> true
     class Set < Collection
-      def raw
-        db.smembers(key).sort
-      end
-
-      def all(model = nil)
-        model ? raw.collect { |id| model[id] } : raw
-      end
 
       # @param value [#to_s] Adds value to the list.
       def << value
@@ -109,6 +115,12 @@ module Ohm
 
       def include?(value)
         db.sismember(key, value)
+      end
+
+    private
+
+      def raw
+        db.smembers(key).sort
       end
     end
   end

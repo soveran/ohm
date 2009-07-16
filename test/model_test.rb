@@ -263,6 +263,18 @@ class TestRedis < Test::Unit::TestCase
       @post.save
       assert_equal ["1", "2", "3"], Post[@post.id].comments.all
     end
+
+    should "respond to each" do
+      @post.comments << "1"
+      @post.comments << "2"
+      @post.comments << "3"
+
+      i = 1
+      @post.comments.each do |c|
+        assert_equal i, c.to_i
+        i += 1
+      end
+    end
   end
 
   context "Counters" do
