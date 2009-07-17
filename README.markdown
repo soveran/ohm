@@ -23,6 +23,8 @@ Usage
       set :participants
       list :comments
 
+      index :name
+
       def validate
         assert_present :name
       end
@@ -31,11 +33,11 @@ Usage
     event = Event.create(:name => "Ruby Tuesday")
     event.participants << "Michel Martens"
     event.participants << "Damian Janowski"
-    event.participants      #=> ["Damian Janowski", "Michel Martens"]
+    event.participants.all #=> ["Damian Janowski", "Michel Martens"]
 
     event.comments << "Very interesting event!"
     event.comments << "Agree"
-    event.comments          #=> ["Very interesting event!", "Agree"]
+    event.comments.all #=> ["Very interesting event!", "Agree"]
 
     another_event = Event.new
     another_event.valid?    #=> false
