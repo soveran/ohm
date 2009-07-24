@@ -103,6 +103,7 @@ module Ohm
     def connect
       connect_to(@host, @port, @timeout == 0 ? nil : @timeout)
       call_command([:select, @db]) if @db != 0
+      @sock
     end
 
     def connect_to(host, port, timeout = nil)
@@ -142,6 +143,7 @@ module Ohm
     def disconnect
       @sock.close
       @sock = nil
+      true
     end
 
     def reconnect
