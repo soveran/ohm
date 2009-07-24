@@ -134,6 +134,8 @@ module Ohm
         @sock.setsockopt Socket::SOL_SOCKET, Socket::SO_RCVTIMEO, optval
         @sock.setsockopt Socket::SOL_SOCKET, Socket::SO_SNDTIMEO, optval
       end
+    rescue Errno::ECONNREFUSED
+      raise Errno::ECONNREFUSED, "Unable to connect to Redis on #{host}:#{port}"
     end
 
     def connected?
