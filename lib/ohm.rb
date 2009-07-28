@@ -4,7 +4,7 @@ require File.join(File.dirname(__FILE__), "ohm", "validations")
 
 module Ohm
 
-  # Provides access to the redis database. This is shared accross all models and instances.
+  # Provides access to the Redis database. This is shared accross all models and instances.
   def redis
     @redis
   end
@@ -38,18 +38,58 @@ module Ohm
     class Collection
       include Enumerable
 
-      attr_accessor :key, :db
+      attr_accessor :key, :db, :model
 
-      def initialize(db, key)
+      def initialize(db, key, model = nil)
         self.db = db
         self.key = key
+        self.model = model
       end
 
       def each(&block)
         all.each(&block)
       end
 
-      def all(model = nil)
+      # Return instances of model for all the ids contained in the collection.
+      def all
+        instantiate(raw)
+      end
+
+      # Return the values as model instances, ordered by the options supplied.
+      # Check redis documentation to see what values you can provide to each option.
+      #
+      # @param options [Hash] options to sort the collection.
+      # @option options [#to_s] :by Model attribute to sort the instances by.
+      # @option options [#to_s] :order (ASC) Sorting order, which can be ASC or DESC.
+      # @option options [Integer] :limit (all) Number of items to return.
+      # @option options [Integer] :start (0) An offset from where the limit will be applied.
+      # @example Get the first ten users sorted alphabetically by name:
+      #   @event.attendees.sort(User, :by => :name, :order => "ALPHA", :limit => 10)
+      #
+      # @example Get five posts sorted by number of votes and starting from the number 5 (zero based):
+      #   @blog.posts.sort(Post, :by => :votes, :start => 5, :limit => 10")
+      def sort(options = {})
+        # options[:by] = Ohm.key(model, "*", options[:by])
+        options[:start] ||= 0
+        options[:limit] = [options[:start], options[:limit]] if options[:limit]
+        instantiate(db.sort(key, options))
+      end
+
+      def sort_by(att, options = {})
+        sort(options.merge(:by => model.key("*", att)))
+      end
+
+      def to_ary
+        all
+      end
+
+      def ==(other)
+        to_ary == other
+      end
+
+    private
+
+      def instantiate(raw)
         model ? raw.collect { |id| model[id] } : raw
       end
     end
@@ -73,8 +113,6 @@ module Ohm
       def << value
         db.rpush(key, value)
       end
-
-    private
 
       def raw
         db.list(key)
@@ -116,8 +154,6 @@ module Ohm
       def include?(value)
         db.sismember(key, value)
       end
-
-    private
 
       def raw
         db.smembers(key).sort
@@ -185,8 +221,8 @@ module Ohm
     # is created.
     #
     # @param name [Symbol] Name of the list.
-    def self.list(name)
-      attr_list_reader(name)
+    def self.list(name, model = nil)
+      attr_list_reader(name, model)
       collections << name
     end
 
@@ -195,8 +231,8 @@ module Ohm
     # operations like union, join, and membership checks are important.
     #
     # @param name [Symbol] Name of the set.
-    def self.set(name)
-      attr_set_reader(name)
+    def self.set(name, model = nil)
+      attr_set_reader(name, model)
       collections << name
     end
 
@@ -225,20 +261,18 @@ module Ohm
       indices << Array(attrs)
     end
 
-    def self.attr_list_reader(name)
-      class_eval <<-EOS
-        def #{name}
-          @#{name} ||= Attributes::List.new(db, key("#{name}"))
-        end
-      EOS
+    def self.attr_list_reader(name, model = nil)
+      define_method(name) do
+        instance_variable_get("@#{name}") ||
+          instance_variable_set("@#{name}", Attributes::List.new(db, key(name), model))
+      end
     end
 
-    def self.attr_set_reader(name)
-      class_eval <<-EOS
-        def #{name}
-          @#{name} ||= Attributes::Set.new(db, key("#{name}"))
-        end
-      EOS
+    def self.attr_set_reader(name, model)
+      define_method(name) do
+        instance_variable_get("@#{name}") ||
+          instance_variable_set("@#{name}", Attributes::Set.new(db, key(name), model))
+      end
     end
 
     def self.[](id)

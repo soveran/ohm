@@ -1,18 +1,13 @@
 require File.join(File.dirname(__FILE__), "test_helper")
 
-class Event < Ohm::Model
-  attribute :name
-  counter :votes
-  set :attendees
+class Post < Ohm::Model
+  attribute :body
+  list :comments
 end
 
 class User < Ohm::Model
   attribute :email
-end
-
-class Post < Ohm::Model
-  attribute :body
-  list :comments
+  set :posts, Post
 end
 
 class Person < Ohm::Model
@@ -22,6 +17,13 @@ class Person < Ohm::Model
     assert_present :name
   end
 end
+
+class Event < Ohm::Model
+  attribute :name
+  counter :votes
+  set :attendees, Person
+end
+
 
 class TestRedis < Test::Unit::TestCase
   context "An event initialized with a hash of attributes" do
@@ -207,9 +209,9 @@ class TestRedis < Test::Unit::TestCase
       @event.attendees << "1"
       @event.attendees << "2"
       @event.attendees << "3"
-      assert_equal ["1", "2", "3"], @event.attendees.all
+      assert_equal ["1", "2", "3"], @event.attendees.raw
       @event.attendees.delete("2")
-      assert_equal ["1", "3"], Event[@event.id].attendees.all
+      assert_equal ["1", "3"], Event[@event.id].attendees.raw
     end
 
     should "return true if the set includes some member" do
@@ -226,7 +228,7 @@ class TestRedis < Test::Unit::TestCase
       @person = Person.create :name => "albert"
       @event.attendees << @person.id
 
-      assert_equal [@person], @event.attendees.all(Person)
+      assert_equal [@person], @event.attendees.all
     end
 
     should "insert the model instance id instead of the object if using add" do
@@ -234,7 +236,7 @@ class TestRedis < Test::Unit::TestCase
       @person = Person.create :name => "albert"
       @event.attendees.add(@person)
 
-      assert_equal [@person.id.to_s], @event.attendees.all
+      assert_equal [@person.id.to_s], @event.attendees.raw
     end
   end
 
@@ -274,6 +276,74 @@ class TestRedis < Test::Unit::TestCase
         assert_equal i, c.to_i
         i += 1
       end
+    end
+  end
+
+  context "Applying arbitrary transformations" do
+    class Calendar < Ohm::Model
+      list :holidays, lambda { |v| Date.parse(v) }
+    end
+
+    setup do
+      @calendar = Calendar.create
+      @calendar.holidays << "05/25/2009"
+      @calendar.holidays << "07/09/2009"
+    end
+
+    should "apply a transformation" do
+      assert_equal [Date.parse("2009-05-25"), Date.parse("2009-07-09")], @calendar.holidays
+    end
+  end
+
+  context "Sorting lists and sets" do
+    setup do
+      @post = Post.create(:body => "Lorem")
+      @post.comments << 2
+      @post.comments << 3
+      @post.comments << 1
+    end
+
+    should "sort values" do
+      assert_equal %w{1 2 3}, @post.comments.sort
+    end
+  end
+
+  context "Sorting lists and sets by model attributes" do
+    setup do
+      @event = Event.create(:name => "Ruby Tuesday")
+      @event.attendees << Person.create(:name => "D").id
+      @event.attendees << Person.create(:name => "C").id
+      @event.attendees << Person.create(:name => "B").id
+      @event.attendees << Person.create(:name => "A").id
+    end
+
+    should "sort the model instances by the values provided" do
+      people = @event.attendees.sort_by(:name, :order => "ALPHA")
+      assert_equal %w[A B C D], people.map { |person| person.name }
+    end
+
+    should "accept a number in the limit parameter" do
+      people = @event.attendees.sort_by(:name, :limit => 2, :order => "ALPHA")
+      assert_equal %w[A B], people.map { |person| person.name }
+    end
+
+    should "use the start parameter as an offset if the limit is provided" do
+      people = @event.attendees.sort_by(:name, :limit => 2, :start => 1, :order => "ALPHA")
+      assert_equal %w[B C], people.map { |person| person.name }
+    end
+  end
+
+  context "Collections initialized with a Model parameter" do
+    setup do
+      @user = User.create(:email => "albert@example.com")
+      @user.posts.add Post.create(:body => "D")
+      @user.posts.add Post.create(:body => "C")
+      @user.posts.add Post.create(:body => "B")
+      @user.posts.add Post.create(:body => "A")
+    end
+
+    should "return instances of the passed model" do
+      assert_equal Post, @user.posts.all.first.class
     end
   end
 

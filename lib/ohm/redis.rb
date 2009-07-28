@@ -94,7 +94,7 @@ module Ohm
       cmd << "BY #{opts[:by]}" if opts[:by]
       cmd << "GET #{[opts[:get]].flatten * ' GET '}" if opts[:get]
       cmd << "#{opts[:order]}" if opts[:order]
-      cmd << "LIMIT #{opts[:limit].join(' ')}" if opts[:limit]
+      cmd << "LIMIT #{Array(opts[:limit]).join(' ')}" if opts[:limit]
       call_command(cmd)
     end
 
