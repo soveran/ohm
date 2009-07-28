@@ -171,6 +171,18 @@ class TestRedis < Test::Unit::TestCase
     end
   end
 
+  context "Sorting" do
+    should "sort all" do
+      Ohm.flush
+      Person.create :name => "D"
+      Person.create :name => "C"
+      Person.create :name => "B"
+      Person.create :name => "A"
+
+      assert_equal %w[A B C D], Person.all.sort_by(:name, :order => "ALPHA").map { |person| person.name }
+    end
+  end
+
   context "Loading attributes" do
     setup do
       event = Event.new
@@ -209,9 +221,9 @@ class TestRedis < Test::Unit::TestCase
       @event.attendees << "1"
       @event.attendees << "2"
       @event.attendees << "3"
-      assert_equal ["1", "2", "3"], @event.attendees.raw
+      assert_equal ["1", "2", "3"], @event.attendees.raw.sort
       @event.attendees.delete("2")
-      assert_equal ["1", "3"], Event[@event.id].attendees.raw
+      assert_equal ["1", "3"], Event[@event.id].attendees.raw.sort
     end
 
     should "return true if the set includes some member" do

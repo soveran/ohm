@@ -69,7 +69,6 @@ module Ohm
       # @example Get five posts sorted by number of votes and starting from the number 5 (zero based):
       #   @blog.posts.sort(Post, :by => :votes, :start => 5, :limit => 10")
       def sort(options = {})
-        # options[:by] = Ohm.key(model, "*", options[:by])
         options[:start] ||= 0
         options[:limit] = [options[:start], options[:limit]] if options[:limit]
         instantiate(db.sort(key, options))
@@ -114,6 +113,10 @@ module Ohm
         db.rpush(key, value)
       end
 
+      def empty?
+        db.llen(key).zero?
+      end
+
       def raw
         db.list(key)
       end
@@ -151,12 +154,16 @@ module Ohm
         db.srem(key, value)
       end
 
+      def empty?
+        db.scard(key).zero?
+      end
+
       def include?(value)
         db.sismember(key, value)
       end
 
       def raw
-        db.smembers(key).sort
+        db.smembers(key)
       end
     end
   end
@@ -280,7 +287,7 @@ module Ohm
     end
 
     def self.all
-      filter(:all)
+      @all ||= Attributes::Set.new(db, key(:all), self)
     end
 
     def self.attributes
@@ -306,7 +313,7 @@ module Ohm
     end
 
     def self.find(attribute, value)
-      filter(Ohm.key(attribute, encode(value)))
+      Attributes::Set.new(db, key(attribute, encode(value)), self)
     end
 
     def self.encode(value)
@@ -408,12 +415,6 @@ module Ohm
 
     def self.key(*args)
       Ohm.key(*args.unshift(self))
-    end
-
-    def self.filter(name)
-      db.smembers(key(name)).map do |id|
-        new(:id => id)
-      end
     end
 
     def self.exists?(id)
