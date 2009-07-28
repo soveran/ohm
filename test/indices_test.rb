@@ -17,7 +17,12 @@ class IndicesTest < Test::Unit::TestCase
     end
 
     should "be able to find by the given attribute" do
-      assert_equal [@user1], User.find(:email, "foo")
+      assert_equal @user1, User.find(:email, "foo").first
+    end
+
+    should "return nil if no results are found" do
+      assert User.find(:email, "foobar").empty?
+      assert_equal nil, User.find(:email, "foobar").first
     end
 
     should "update indices when changing attribute values" do

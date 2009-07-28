@@ -78,6 +78,11 @@ module Ohm
         sort(options.merge(:by => model.key("*", att)))
       end
 
+      # @return [Ohm::Model, nil] Returns the first instance found or nil.
+      def first
+        sort(:limit => 1).first unless empty?
+      end
+
       def to_ary
         all
       end
