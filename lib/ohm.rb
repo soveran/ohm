@@ -490,7 +490,7 @@ module Ohm
 
     def read_locals(attrs)
       attrs.map do |att|
-        read_local(att)
+        send(att)
       end
     end
 

@@ -5,6 +5,11 @@ class IndicesTest < Test::Unit::TestCase
     attribute :email
 
     index :email
+    index :email_provider
+
+    def email_provider
+      email.split("@").last
+    end
   end
 
   context "A model with an indexed attribute" do
@@ -41,6 +46,21 @@ class IndicesTest < Test::Unit::TestCase
 
     should "work with attributes that contain spaces" do
       assert_equal [@user3], User.find(:email, "baz qux")
+    end
+  end
+
+  context "Indexing arbitrary attributes" do
+    setup do
+      Ohm.flush
+
+      @user1 = User.create(:email => "foo@gmail.com")
+      @user2 = User.create(:email => "bar@gmail.com")
+      @user3 = User.create(:email => "bazqux@yahoo.com")
+    end
+
+    should "allow indexing by an arbitrary attribute" do
+      assert_equal [@user1, @user2], User.find(:email_provider, "gmail.com").to_a.sort_by { |u| u.id }
+      assert_equal [@user3], User.find(:email_provider, "yahoo.com")
     end
   end
 end
