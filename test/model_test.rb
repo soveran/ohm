@@ -181,6 +181,11 @@ class TestRedis < Test::Unit::TestCase
 
       assert_equal %w[A B C D], Person.all.sort_by(:name, :order => "ALPHA").map { |person| person.name }
     end
+
+    should "return an empty array if there are no elements to sort" do
+      Ohm.flush
+      assert_equal [], Person.all.sort_by(:name)
+    end
   end
 
   context "Loading attributes" do

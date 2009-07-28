@@ -69,18 +69,20 @@ module Ohm
       # @example Get five posts sorted by number of votes and starting from the number 5 (zero based):
       #   @blog.posts.sort(Post, :by => :votes, :start => 5, :limit => 10")
       def sort(options = {})
+        return [] if empty?
         options[:start] ||= 0
         options[:limit] = [options[:start], options[:limit]] if options[:limit]
         instantiate(db.sort(key, options))
       end
 
+      # Sort the model instances by the given value.
       def sort_by(att, options = {})
         sort(options.merge(:by => model.key("*", att)))
       end
 
       # @return [Ohm::Model, nil] Returns the first instance found or nil.
       def first
-        sort(:limit => 1).first unless empty?
+        sort(:limit => 1).first
       end
 
       def to_ary
