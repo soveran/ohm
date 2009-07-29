@@ -6,7 +6,7 @@ module Ohm
 
   # Provides access to the Redis database. This is shared accross all models and instances.
   def redis
-    Thread.current[:redis]
+    Thread.current[:redis] ||= Ohm::Redis.new(*options)
   end
 
   def redis=(connection)
@@ -23,7 +23,12 @@ module Ohm
   # @example Connect to a database in port 6380.
   #   Ohm.connect(:port => 6380)
   def connect(*options)
-    self.redis = Ohm::Redis.new(*options)
+    self.redis = nil
+    @options = options
+  end
+
+  def options
+    @options
   end
 
   # Clear the database.
@@ -36,7 +41,7 @@ module Ohm
     args.join(":")
   end
 
-  module_function :key, :connect, :flush, :redis, :redis=
+  module_function :key, :connect, :flush, :redis, :redis=, :options
 
   module Attributes
     class Collection
