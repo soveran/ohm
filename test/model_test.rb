@@ -255,6 +255,14 @@ class TestRedis < Test::Unit::TestCase
 
       assert_equal [@person.id.to_s], @event.attendees.raw
     end
+
+    should "return the size of the set" do
+      @event.create
+      @event.attendees << "1"
+      @event.attendees << "2"
+      @event.attendees << "3"
+      assert_equal 3, @event.attendees.size
+    end
   end
 
   context "Attributes of type List" do
@@ -293,6 +301,13 @@ class TestRedis < Test::Unit::TestCase
         assert_equal i, c.to_i
         i += 1
       end
+    end
+
+    should "return the size of the list" do
+      @post.comments << "1"
+      @post.comments << "2"
+      @post.comments << "3"
+      assert_equal 3, @post.comments.size
     end
   end
 

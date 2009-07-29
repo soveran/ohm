@@ -97,6 +97,11 @@ module Ohm
         to_ary == other
       end
 
+      # @return [true, false] Returns whether or not the collection is empty.
+      def empty?
+        size.zero?
+      end
+
     private
 
       def instantiate(raw)
@@ -124,12 +129,13 @@ module Ohm
         db.rpush(key, value)
       end
 
-      def empty?
-        db.llen(key).zero?
-      end
-
       def raw
         db.list(key)
+      end
+
+      # @return [Integer] Returns the number of elements in the list.
+      def size
+        db.llen(key)
       end
     end
 
@@ -165,16 +171,17 @@ module Ohm
         db.srem(key, value)
       end
 
-      def empty?
-        db.scard(key).zero?
-      end
-
       def include?(value)
         db.sismember(key, value)
       end
 
       def raw
         db.smembers(key)
+      end
+
+      # @return [Integer] Returns the number of elements in the set.
+      def size
+        db.scard(key)
       end
     end
   end
