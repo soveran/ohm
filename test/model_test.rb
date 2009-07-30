@@ -309,6 +309,30 @@ class TestRedis < Test::Unit::TestCase
       @post.comments << "3"
       assert_equal 3, @post.comments.size
     end
+
+    should "return the last element with pop" do
+      @post.comments << "1"
+      @post.comments << "2"
+      assert_equal "2", @post.comments.pop
+      assert_equal "1", @post.comments.pop
+      assert @post.comments.empty?
+    end
+
+    should "return the first element with shift" do
+      @post.comments << "1"
+      @post.comments << "2"
+      assert_equal "1", @post.comments.shift
+      assert_equal "2", @post.comments.shift
+      assert @post.comments.empty?
+    end
+
+    should "push to the head of the list with unshift" do
+      @post.comments.unshift "1"
+      @post.comments.unshift "2"
+      assert_equal "1", @post.comments.pop
+      assert_equal "2", @post.comments.pop
+      assert @post.comments.empty?
+    end
   end
 
   context "Applying arbitrary transformations" do

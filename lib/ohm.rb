@@ -129,11 +129,27 @@ module Ohm
     #   event.participants.all #=> ["Albert", "Benoit"]
     class List < Collection
 
-      # @param value [#to_s] Pushes value to the list.
+      # @param value [#to_s] Pushes value to the tail of the list.
       def << value
         db.rpush(key, value)
       end
 
+      # @return [String] Return and remove the last element of the list.
+      def pop
+        db.rpop(key)
+      end
+
+      # @return [String] Return and remove the first element of the list.
+      def shift
+        db.lpop(key)
+      end
+
+      # @param value [#to_s] Pushes value to the head of the list.
+      def unshift(value)
+        db.lpush(key, value)
+      end
+
+      # @return [Array] Elements of the list.
       def raw
         db.list(key)
       end
