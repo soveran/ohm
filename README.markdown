@@ -3,6 +3,7 @@ Ohm ॐ
 
 Object-hash mapping library for Redis.
 
+
 Description
 -----------
 
@@ -37,6 +38,7 @@ Now, in an irb session try this:
     => "OK"
     >> Ohm.redis.get "Foo"
     => "Bar"
+
 
 Models
 ------
@@ -86,6 +88,7 @@ Redis datastore.
 This example shows some basic features, like attribute declarations and
 validations.
 
+
 Attribute types
 ---------------
 
@@ -119,6 +122,7 @@ the value, but you can not assign it. In the example above, we used a
 counter attribute for tracking votes. As the incr and decr operations
 are atomic, you can rest assured a vote won't be counted twice.
 
+
 Indexes
 -------
 
@@ -135,6 +139,7 @@ You can also declare an index on multiple colums, like this:
 Note that the `find` method and the `assert_unique` validation need a
 corresponding index to exist.
 
+
 Validations
 -----------
 
@@ -143,6 +148,7 @@ definition you can use assertions that will determine if the attributes
 are valid. Nesting assertions is a good practice, and you are also
 encouraged to create your own assertions. You can trigger validations at
 any point by calling `valid?` on a model instance.
+
 
 Assertions
 -----------
@@ -202,6 +208,7 @@ For this, an index of the same kind must exist. The error code is
       assert(db.scard(index_key).zero? || db.sismember(index_key, id), [Array(attrs), :not_unique])
     end
 
+
 Errors
 ------
 
@@ -227,3 +234,34 @@ If all the assertions fail, the following errors will be present:
 Note that the error for assert_unique wraps the field in an array.
 The purpose for this is to standardize the format for both single and
 multicolumn indexes.
+
+
+Presenting errors
+-----------------
+
+Unlike other ORMs, that define the full error messages in the model
+itself, Ohm encourages you to define the error messages outside. If
+you are using Ohm in the context of a web framework, the views are the
+proper place to write the error messages.
+
+Ohm provides a presenter that helps you in this quest. The basic usage
+is as follows:
+
+    error_messages = @model.errors.present do |e|
+      e.on [:name, :not_present], "Name must be present"
+      e.on [:account, :not_present], "You must supply an account"
+    end
+
+    error_messages #=> ["Name must be present", "You must supply an account"]
+
+Having the error message definitions in the views means you can use any
+sort of helpers. You can also use blocks instead of strings for the
+values. The result of the block is used as the error message:
+
+    error_messages = @model.errors.present do |e|
+      e.on [:email, :not_unique] do
+        "The email #{@model.email} is already registered."
+      end
+    end
+
+    error_messages #=> ["The email foo@example.com is already registered."]
