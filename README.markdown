@@ -138,12 +138,19 @@ corresponding index to exist.
 Validations
 -----------
 
-Before every save, the `validate` method is called by Ohm. In the method definition
-you can use assertions that will determine if the attributes are valid.
+Before every save, the `validate` method is called by Ohm. In the method
+definition you can use assertions that will determine if the attributes
+are valid. Nesting assertions is a good practice, and you are also
+encouraged to create your own assertions. You can trigger validations at
+any point by calling `valid?` on a model instance.
 
-### Assertions
+Assertions
+-----------
 
-#### assert
+Ohm ships with some basic assertions. Check Ohm::Validations to see
+the method definitions.
+
+### assert
 
 The `assert` method is used by all the other assertions. It pushes the
 second parameter to the list of errors if the first parameter evaluates
@@ -153,27 +160,47 @@ to false.
       value or errors.push(error) && false
     end
 
-#### assert_present
+### assert_present
 
 Checks that the given field is not nil or empty. The error code for this
 assertion is :not_present.
 
-#### assert_format
+    def assert_present(att, error = [att, :not_present])
+      assert(!send(att).to_s.empty?, error)
+    end
+
+### assert_format
 
 Checks that the given field matches the provided format. The error code
 for this assertion is :format.
 
-#### assert_numeric
+    def assert_format(att, format, error = [att, :format])
+      if assert_present(att, error)
+        assert(send(att).to_s.match(format), error)
+      end
+    end
+
+### assert_numeric
 
 Checks that the given field holds a number as a Fixnum or as a string
 representation. The error code for this assertion is :not_numeric.
 
-#### assert_unique
+    def assert_numeric(att, error = [att, :not_numeric])
+      if assert_present(att, error)
+        assert_format(att, /^\d+$/, error)
+      end
+    end
+
+### assert_unique
 
 Validates that the attribute or array of attributes are unique.
 For this, an index of the same kind must exist. The error code is
 :not_unique.
 
+    def assert_unique(attrs)
+      index_key = index_key_for(Array(attrs), read_locals(Array(attrs)))
+      assert(db.scard(index_key).zero? || db.sismember(index_key, id), [Array(attrs), :not_unique])
+    end
 
 Errors
 ------
@@ -193,7 +220,7 @@ Given the following example:
       assert_unique :qux
     end
 
-If the validation fails, the following errors will be present:
+If all the assertions fail, the following errors will be present:
 
     obj.errors #=> [[:foo, :not_present], [:bar, :not_numeric], [:baz, :format], [[:qux], :not_unique]]
 
