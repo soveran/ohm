@@ -28,7 +28,7 @@ If you don't have Ohm, try this:
 
     $ sudo gem install ohm
 
-Now, in an irb session try this:
+Now, in an irb session you can test the Redis adapter directly:
 
     >> require "ohm"
     => true
@@ -43,8 +43,9 @@ Now, in an irb session try this:
 Models
 ------
 
-Ohm::Model is an object-hash mapper that persists its attributes in a
-Redis datastore.
+Ohm's purpose in life is to map objects to a key value datastore. It
+doesn't need migrations or external schema definitions. Take a look at
+the example below:
 
 ### Example
 
@@ -61,32 +62,8 @@ Redis datastore.
       end
     end
 
-    event = Event.create(:name => "Ruby Tuesday")
-    event.participants << "Michel Martens"
-    event.participants << "Damian Janowski"
-    event.participants.all #=> ["Damian Janowski", "Michel Martens"]
-
-    event.comments << "Very interesting event!"
-    event.comments << "Agree"
-    event.comments.all #=> ["Very interesting event!", "Agree"]
-
-    another_event = Event.new
-    another_event.valid?    #=> false
-    another_event.errors    #=> [[:name, :nil]]
-
-    another_event.name = ""
-    another_event.valid?    #=> false
-    another_event.errors    #=> [[:name, :empty]]
-
-    another_event.name = "Ruby Lunch"
-    another_event.create    #=> true
-
-    event.incr(:votes)      #=> 1
-    event.incr(:votes)      #=> 2
-    event.decr(:votes)      #=> 1
-
 This example shows some basic features, like attribute declarations and
-validations.
+validations. Keep reading to find out what you can do with models.
 
 
 Attribute types
