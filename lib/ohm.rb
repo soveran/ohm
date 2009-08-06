@@ -84,14 +84,32 @@ module Ohm
         instantiate(db.sort(key, options))
       end
 
-      # Sort the model instances by the given value.
+      # Sort the model instances by the given attribute.
+      #
+      # @example Sorting elements by name:
+      #
+      #   User.create :name => "B"
+      #   User.create :name => "A"
+      #
+      #   user = User.all.sort_by :name, :order => "ALPHA"
+      #   user.name == "A" #=> true
       def sort_by(att, options = {})
         sort(options.merge(:by => model.key("*", att)))
       end
 
+      # Sort the model instances by id and return the first instance
+      # found. If a :by option is provided with a valid attribute name, the
+      # method sort_by is used instead and the option provided is passed as the
+      # first parameter.
+      #
+      # @see #sort
+      # @see #sort_by
       # @return [Ohm::Model, nil] Returns the first instance found or nil.
-      def first
-        sort(:limit => 1).first
+      def first(options = {})
+        options = options.merge(:limit => 1)
+        options[:by] ?
+          sort_by(options.delete(:by), options).first :
+          sort(options).first
       end
 
       def to_ary
@@ -172,8 +190,8 @@ module Ohm
     #   company = Company.create :name => "Redis Co."
     #   company.employees << "Albert"
     #   company.employees << "Benoit"
-    #   company.employees.all #=> ["Albert", "Benoit"]
-    #   company.include?("Albert") #=> true
+    #   company.employees.all       #=> ["Albert", "Benoit"]
+    #   company.include?("Albert")  #=> true
     class Set < Collection
 
       # @param value [#to_s] Adds value to the list.

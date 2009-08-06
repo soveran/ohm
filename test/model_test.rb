@@ -186,6 +186,20 @@ class TestRedis < Test::Unit::TestCase
       Ohm.flush
       assert_equal [], Person.all.sort_by(:name)
     end
+
+    should "return the first element sorted by id when using first" do
+      Ohm.flush
+      Person.create :name => "A"
+      Person.create :name => "B"
+      assert_equal "A", Person.all.first.name
+    end
+
+    should "return the first element sorted by name if first receives a sorting option" do
+      Ohm.flush
+      Person.create :name => "B"
+      Person.create :name => "A"
+      assert_equal "A", Person.all.first(:by => :name, :order => "ALPHA").name
+    end
   end
 
   context "Loading attributes" do
@@ -399,7 +413,7 @@ class TestRedis < Test::Unit::TestCase
     end
 
     should "return instances of the passed model" do
-      assert_equal Post, @user.posts.all.first.class
+      assert_equal Post, @user.posts.first.class
     end
   end
 

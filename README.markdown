@@ -99,6 +99,16 @@ the value, but you can not assign it. In the example above, we used a
 counter attribute for tracking votes. As the incr and decr operations
 are atomic, you can rest assured a vote won't be counted twice.
 
+Associations
+------------
+
+Ohm lets you use collections (lists and sets) to represent associations. For this, you only need to provide a second paramenter when declaring a list or a set:
+
+    set :attendees, Person
+
+After this, everytime you refer to `event.attendees` you will be talking about instances of the model `Person`. If you want to get the raw values of the set, you can use `event.attendees.raw`.
+
+The `attendees` collection also exposes two sorting methods: `sort` returns the elements ordered by `id`, and `sort_by` receives a parameter with an attribute name, which will determine the sorting order. Both methods receive an options hash which is explained in the documentation for {Ohm::Attributes::Collection#sort}.
 
 Indexes
 -------
