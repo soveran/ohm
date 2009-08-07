@@ -206,7 +206,8 @@ Given the following example:
 
 If all the assertions fail, the following errors will be present:
 
-    obj.errors #=> [[:foo, :not_present], [:bar, :not_numeric], [:baz, :format], [[:qux], :not_unique]]
+    obj.errors
+    # => [[:foo, :not_present], [:bar, :not_numeric], [:baz, :format], [[:qux], :not_unique]]
 
 Note that the error for assert_unique wraps the field in an array.
 The purpose for this is to standardize the format for both single and
@@ -229,7 +230,8 @@ is as follows:
       e.on [:account, :not_present], "You must supply an account"
     end
 
-    error_messages #=> ["Name must be present", "You must supply an account"]
+    error_messages
+    # => ["Name must be present", "You must supply an account"]
 
 Having the error message definitions in the views means you can use any
 sort of helpers. You can also use blocks instead of strings for the
@@ -241,4 +243,5 @@ values. The result of the block is used as the error message:
       end
     end
 
-    error_messages #=> ["The email foo@example.com is already registered."]
+    error_messages
+    # => ["The email foo@example.com is already registered."]
