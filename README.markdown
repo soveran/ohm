@@ -28,6 +28,8 @@ If you don't have Ohm, try this:
 
     $ sudo gem install ohm
 
+Or you can grab the code from [http://github.com/soveran/ohm](http://github.com/soveran/ohm).
+
 Now, in an irb session you can test the Redis adapter directly:
 
     >> require "ohm"
