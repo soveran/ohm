@@ -7,7 +7,7 @@ Object-hash mapping library for Redis.
 Description
 -----------
 
-Ohm is a library that allows to store an object in
+Ohm is a library for storing objects in
 [Redis](http://code.google.com/p/redis/), a persistent key-value
 database. It includes an extensible list of validations and has very
 good performance.
