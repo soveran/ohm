@@ -64,9 +64,24 @@ the example below:
       end
     end
 
+All models have the `id` attribute built in, you don't need to declare it.
+
+This is how you interact with ids:
+
+    event = Event.create :name => "Ohm Worldwide Conference 2031"
+    event.id
+    # => 1
+
+    # Find an event by id
+    event == Event[1]
+    # => true
+
+    # Trying to find a non existent event
+    Event[2]
+    # => nil
+
 This example shows some basic features, like attribute declarations and
 validations. Keep reading to find out what you can do with models.
-
 
 Attribute types
 ---------------
@@ -104,13 +119,21 @@ are atomic, you can rest assured a vote won't be counted twice.
 Associations
 ------------
 
-Ohm lets you use collections (lists and sets) to represent associations. For this, you only need to provide a second paramenter when declaring a list or a set:
+Ohm lets you use collections (lists and sets) to represent associations.
+For this, you only need to provide a second paramenter when declaring a
+list or a set:
 
     set :attendees, Person
 
-After this, everytime you refer to `event.attendees` you will be talking about instances of the model `Person`. If you want to get the raw values of the set, you can use `event.attendees.raw`.
+After this, everytime you refer to `event.attendees` you will be talking
+about instances of the model `Person`. If you want to get the raw values
+of the set, you can use `event.attendees.raw`.
 
-The `attendees` collection also exposes two sorting methods: `sort` returns the elements ordered by `id`, and `sort_by` receives a parameter with an attribute name, which will determine the sorting order. Both methods receive an options hash which is explained in the documentation for {Ohm::Attributes::Collection#sort}.
+The `attendees` collection also exposes two sorting methods: `sort`
+returns the elements ordered by `id`, and `sort_by` receives a parameter
+with an attribute name, which will determine the sorting order. Both
+methods receive an options hash which is explained in the documentation
+for {Ohm::Attributes::Collection#sort}.
 
 Indexes
 -------

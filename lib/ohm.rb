@@ -404,7 +404,7 @@ module Ohm
     end
 
     def save
-      create if new?
+      return create if new?
       return unless valid?
       update_indices
       save!
