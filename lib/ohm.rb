@@ -406,8 +406,11 @@ module Ohm
     def save
       return create if new?
       return unless valid?
-      update_indices
-      save!
+
+      mutex do
+        update_indices
+        save!
+      end
     end
 
     def delete
@@ -455,6 +458,13 @@ module Ohm
       other.key == key
     rescue ModelIsNew
       false
+    end
+
+    # Lock the object before ejecuting the block, and release it once the block is done.
+    def mutex
+      lock!
+      yield
+      unlock!
     end
 
   protected
@@ -552,6 +562,18 @@ module Ohm
 
     def index_key_for(attrs, values)
       self.class.key *(attrs + self.class.encode_each(values))
+    end
+
+    # Lock the object so no other instances can modify it.
+    # @see Model#mutex
+    def lock!
+      lock = db.setnx(key(:_lock), 1) until lock == 1
+    end
+
+    # Release the lock.
+    # @see Model#mutex
+    def unlock!
+      db.del(key(:_lock))
     end
   end
 end
