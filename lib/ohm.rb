@@ -398,9 +398,12 @@ module Ohm
     def create
       return unless valid?
       initialize_id
-      create_model_membership
-      add_to_indices
-      save!
+
+      mutex do
+        create_model_membership
+        add_to_indices
+        save!
+      end
     end
 
     def save
@@ -465,6 +468,7 @@ module Ohm
       lock!
       yield
       unlock!
+      self
     end
 
   protected
