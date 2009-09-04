@@ -24,7 +24,6 @@ class Event < Ohm::Model
   set :attendees, Person
 end
 
-
 class TestRedis < Test::Unit::TestCase
   context "An event initialized with a hash of attributes" do
     should "assign the passed attributes" do
@@ -42,6 +41,28 @@ class TestRedis < Test::Unit::TestCase
 
     should "return the unsaved object if validation fails" do
       assert Person.create(:name => nil).kind_of?(Person)
+    end
+  end
+
+  context "An event updated from a hash of attributes" do
+
+    class Meetup < Ohm::Model
+      attribute :name
+
+      def validate
+        assert_present :name
+      end
+    end
+
+    should "assign an id and save the object" do
+      event = Meetup.create(:name => "Ruby Tuesday")
+      event.update(:name => "Ruby Meetup")
+      assert_equal "Ruby Meetup", event.name
+    end
+
+    should "return false if the validation fails" do
+      event = Meetup.create(:name => "Ruby Tuesday")
+      assert !event.update(:name => nil)
     end
   end
 
@@ -350,18 +371,20 @@ class TestRedis < Test::Unit::TestCase
   end
 
   context "Applying arbitrary transformations" do
+    require "date"
+
     class Calendar < Ohm::Model
       list :holidays, lambda { |v| Date.parse(v) }
     end
 
     setup do
       @calendar = Calendar.create
-      @calendar.holidays << "05/25/2009"
-      @calendar.holidays << "07/09/2009"
+      @calendar.holidays << "2009-05-25"
+      @calendar.holidays << "2009-07-09"
     end
 
     should "apply a transformation" do
-      assert_equal [Date.parse("2009-05-25"), Date.parse("2009-07-09")], @calendar.holidays
+      assert_equal [Date.new(2009, 5, 25), Date.new(2009, 7, 9)], @calendar.holidays
     end
   end
 

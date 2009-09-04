@@ -385,10 +385,7 @@ module Ohm
 
     def initialize(attrs = {})
       @_attributes = Hash.new {|hash,key| hash[key] = read_remote(key) }
-
-      attrs.each do |key, value|
-        send(:"#{key}=", value)
-      end
+      update_attributes(attrs)
     end
 
     def new?
@@ -413,6 +410,17 @@ module Ohm
       mutex do
         update_indices
         save!
+      end
+    end
+
+    def update(attrs)
+      update_attributes(attrs)
+      save
+    end
+
+    def update_attributes(attrs)
+      attrs.each do |key, value|
+        send(:"#{key}=", value)
       end
     end
 
