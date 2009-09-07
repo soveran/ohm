@@ -16,12 +16,13 @@ class TestMutex < Test::Unit::TestCase
       t1 = t2 = nil
       p1 = Thread.new do
         @p1.mutex do
-          sleep 0.5
+          sleep 0.4
           t1 = Time.now
         end
       end
 
       p2 = Thread.new do
+        sleep 0.1
         @p2.mutex do
           t2 = Time.now
         end
