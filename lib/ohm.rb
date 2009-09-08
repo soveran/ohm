@@ -534,13 +534,28 @@ module Ohm
 
     def add_to_indices
       indices.each do |attrs|
-        db.sadd(index_key_for(attrs, read_locals(attrs)), id)
+        next add_to_index(attrs) unless multiple_index?(attrs)
+        read_locals(attrs).first.each do |value|
+          add_to_index(attrs, [value])
+        end
       end
     end
 
+    def multiple_index?(attrs)
+      attrs.size.eql?(1) &&
+      read_locals(attrs).first.kind_of?(Enumerable) &&
+      read_locals(attrs).first.kind_of?(String).eql?(false)
+    end
+
+    def add_to_index(attrs, value = read_locals(attrs))
+      index = index_key_for(attrs, value)
+      db.sadd(index, id)
+      db.sadd(key(:_indices), index)
+    end
+
     def delete_from_indices
-      indices.each do |attrs|
-        db.srem(index_key_for(attrs, read_remotes(attrs)), id)
+      db.smembers(key(:_indices)).each do |index|
+        db.srem(index, id)
       end
     end
 

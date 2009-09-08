@@ -1,21 +1,28 @@
 require File.join(File.dirname(__FILE__), "test_helper")
 
 class IndicesTest < Test::Unit::TestCase
+  setup do
+    Ohm.flush
+  end
+
   class User < Ohm::Model
     attribute :email
 
     index :email
     index :email_provider
+    index :working_days
 
     def email_provider
       email.split("@").last
+    end
+
+    def working_days
+      @working_days ||= []
     end
   end
 
   context "A model with an indexed attribute" do
     setup do
-      Ohm.flush
-
       @user1 = User.create(:email => "foo")
       @user2 = User.create(:email => "bar")
       @user3 = User.create(:email => "baz qux")
@@ -51,8 +58,6 @@ class IndicesTest < Test::Unit::TestCase
 
   context "Indexing arbitrary attributes" do
     setup do
-      Ohm.flush
-
       @user1 = User.create(:email => "foo@gmail.com")
       @user2 = User.create(:email => "bar@gmail.com")
       @user3 = User.create(:email => "bazqux@yahoo.com")
@@ -61,6 +66,33 @@ class IndicesTest < Test::Unit::TestCase
     should "allow indexing by an arbitrary attribute" do
       assert_equal [@user1, @user2], User.find(:email_provider, "gmail.com").to_a.sort_by { |u| u.id }
       assert_equal [@user3], User.find(:email_provider, "yahoo.com")
+    end
+  end
+
+  context "Indexing enumerables" do
+    setup do
+      @user1 = User.create(:email => "foo@gmail.com")
+      @user2 = User.create(:email => "bar@gmail.com")
+
+      @user1.working_days << "Mon"
+      @user1.working_days << "Tue"
+      @user2.working_days << "Mon"
+      @user2.working_days << "Wed"
+
+      @user1.save
+      @user2.save
+    end
+
+    should "index each item" do
+      assert_equal [@user1, @user2], User.find(:working_days, "Mon").to_a.sort_by { |u| u.id }
+    end
+
+    # TODO If we deal with Ohm collections, the updates are atomic but the reindexing never happens.
+    # One solution may be to reindex after inserts or deletes in collection.
+    should "remove the indices when the object changes" do
+      @user2.working_days.delete "Mon"
+      @user2.save
+      assert_equal [@user1], User.find(:working_days, "Mon")
     end
   end
 end
