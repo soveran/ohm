@@ -7,7 +7,7 @@ class ValidationsTest < Test::Unit::TestCase
     attribute :capacity
 
     index :name
-    index [:name, :place]
+    index :place
 
     def validate
       assert_format(:name, /^\w+$/)
@@ -99,12 +99,12 @@ class ValidationsTest < Test::Unit::TestCase
         @event.create
 
         assert_nil @event.id
-        assert_equal [[[:name], :not_unique]], @event.errors
+        assert_equal [[:name, :not_unique]], @event.errors
       end
     end
 
     context "That must have a unique name scoped by place" do
-      should "fail when the value already exists" do
+      should "fail when the value already exists for a scoped attribute" do
         def @event.validate
           assert_unique [:name, :place]
         end

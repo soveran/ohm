@@ -237,8 +237,8 @@ module Ohm
       # @overload assert_unique [:street, :city]
       #   Validates that the :street and :city pair is unique.
       def assert_unique(attrs)
-        index_key = index_key_for(Array(attrs), read_locals(Array(attrs)))
-        assert(db.scard(index_key).zero? || db.sismember(index_key, id), [Array(attrs), :not_unique])
+        result = db.sinter(*Array(attrs).map { |att| index_key_for(att, send(att)) })
+        assert(result.empty? || result.include?(id.to_s), [attrs, :not_unique])
       end
     end
 
@@ -305,9 +305,6 @@ module Ohm
     # If you want to find a model instance by some attribute value, then an index for that
     # attribute must exist.
     #
-    # Each index declaration creates an index. It can be either an index on one particular attribute,
-    # or an index accross many attributes.
-    #
     # @example
     #   class User < Ohm::Model
     #     attribute :email
@@ -317,12 +314,9 @@ module Ohm
     #   # Now this is possible:
     #   User.find :email, "ohm@example.com"
     #
-    # @overload index :name
-    #   Creates an index for the name attribute.
-    # @overload index [:street, :city]
-    #   Creates a composite index for street and city.
-    def self.index(attrs)
-      indices << Array(attrs)
+    # @param name [Symbol] Name of the attribute to be indexed.
+    def self.index(att)
+      indices << att
     end
 
     def self.attr_list_reader(name, model = nil)
@@ -375,12 +369,6 @@ module Ohm
 
     def self.encode(value)
       Base64.encode64(value.to_s).chomp
-    end
-
-    def self.encode_each(values)
-      values.collect do |value|
-        encode(value)
-      end
     end
 
     def initialize(attrs = {})
@@ -533,22 +521,19 @@ module Ohm
     end
 
     def add_to_indices
-      indices.each do |attrs|
-        next add_to_index(attrs) unless multiple_index?(attrs)
-        read_locals(attrs).first.each do |value|
-          add_to_index(attrs, [value])
-        end
+      indices.each do |att|
+        next add_to_index(att) unless multiple_index?(att)
+        send(att).each { |value| add_to_index(att, value) }
       end
     end
 
-    def multiple_index?(attrs)
-      attrs.size.eql?(1) &&
-      read_locals(attrs).first.kind_of?(Enumerable) &&
-      read_locals(attrs).first.kind_of?(String).eql?(false)
+    def multiple_index?(att)
+      send(att).kind_of?(Enumerable) &&
+      send(att).kind_of?(String) == false
     end
 
-    def add_to_index(attrs, value = read_locals(attrs))
-      index = index_key_for(attrs, value)
+    def add_to_index(att, value = send(att))
+      index = index_key_for(att, value)
       db.sadd(index, id)
       db.sadd(key(:_indices), index)
     end
@@ -587,8 +572,8 @@ module Ohm
       end
     end
 
-    def index_key_for(attrs, values)
-      self.class.key *(attrs + self.class.encode_each(values))
+    def index_key_for(att, value)
+      self.class.key(att, self.class.encode(value))
     end
 
     # Lock the object so no other instances can modify it.
