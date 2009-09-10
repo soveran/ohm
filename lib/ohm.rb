@@ -222,6 +222,45 @@ module Ohm
       def size
         db.scard(key)
       end
+
+      # Returns an intersection with the sets generated from the passed hash.
+      #
+      # @see Ohm::Model.filter
+      def filter(hash, &block)
+        apply(:sinterstore, keys(hash).push(key), &block)
+      end
+
+      # Returns a union with the sets generated from the passed hash.
+      #
+      # @see Ohm::Model.search
+      def search(hash, &block)
+        apply(:sunionstore, keys(hash), &block)
+      end
+
+      def delete!
+        db.del(key)
+      end
+
+      # Apply a redis operation on a collection of sets. Note that
+      # the resulting set is removed inmediatly after use.
+      def apply(operation, source, &block)
+        target = source.join(operation)
+        db.send(operation, target, *source)
+        set = self.class.new(db, target, model)
+        block.call(set)
+        set.delete!
+      end
+
+    private
+
+      # Transform a hash of attribute/values into an array of keys.
+      def keys(hash)
+        hash.inject([]) do |acc, t|
+          acc + Array(t[1]).map do |v|
+            model.key(t[0], model.encode(v))
+          end
+        end
+      end
     end
   end
 
@@ -363,8 +402,38 @@ module Ohm
       model
     end
 
-    def self.find(attribute, value)
-      Attributes::Set.new(db, key(attribute, encode(value)), self)
+    # Find all the records matching the specified attribute-value pair.
+    #
+    # @example
+    #   Event.find(:starts_on, Date.today)
+    def self.find(attrs, value)
+      Attributes::Set.new(db, key(attrs, encode(value)), self)
+    end
+
+    # Search across multiple indices and return the intersection of the sets.
+    #
+    # @example Finds all the user events for the supplied days
+    #   event1 = Event.create day: "2009-09-09", author: "Albert"
+    #   event2 = Event.create day: "2009-09-09", author: "Benoit"
+    #   event3 = Event.create day: "2009-09-10", author: "Albert"
+    #   Event.filter(author: "Albert", day: "2009-09-09") do |events|
+    #     assert_equal [event1], events
+    #   end
+    def self.filter(hash, &block)
+      self.all.filter(hash, &block)
+    end
+
+    # Search across multiple indices and return the union of the sets.
+    #
+    # @example Finds all the events for the supplied days
+    #   event1 = Event.create day: "2009-09-09"
+    #   event2 = Event.create day: "2009-09-10"
+    #   event3 = Event.create day: "2009-09-11"
+    #   Event.search(day: ["2009-09-09", "2009-09-10", "2009-09-011"]) do |events|
+    #     assert_equal [event1, event2, event3], events
+    #   end
+    def self.search(hash, &block)
+      self.all.search(hash, &block)
     end
 
     def self.encode(value)
@@ -522,14 +591,18 @@ module Ohm
 
     def add_to_indices
       indices.each do |att|
-        next add_to_index(att) unless multiple_index?(att)
+        next add_to_index(att) unless collection?(send(att))
         send(att).each { |value| add_to_index(att, value) }
       end
     end
 
-    def multiple_index?(att)
-      send(att).kind_of?(Enumerable) &&
-      send(att).kind_of?(String) == false
+    def collection?(value)
+      self.class.collection?(value)
+    end
+
+    def self.collection?(value)
+      value.kind_of?(Enumerable) &&
+      value.kind_of?(String) == false
     end
 
     def add_to_index(att, value = send(att))

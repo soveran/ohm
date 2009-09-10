@@ -25,7 +25,7 @@ class ConnectionTest < Test::Unit::TestCase
     threads << Thread.new do
       conn1 = Ohm.redis
     end
-    
+
     threads << Thread.new do
       conn2 = Ohm.redis
     end

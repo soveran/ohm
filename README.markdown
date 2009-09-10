@@ -144,13 +144,8 @@ Ohm maintains different sets of objects ids for quick lookups.
 For example, in the example above, the index on the name attribute will
 allow for searches like Event.find(:name, "some value").
 
-You can also declare an index on multiple colums, like this:
-
-    index [:name, :company]
-
 Note that the `find` method and the `assert_unique` validation need a
 corresponding index to exist.
-
 
 Validations
 -----------
@@ -216,8 +211,8 @@ For this, an index of the same kind must exist. The error code is
 :not_unique.
 
     def assert_unique(attrs)
-      index_key = index_key_for(Array(attrs), read_locals(Array(attrs)))
-      assert(db.scard(index_key).zero? || db.sismember(index_key, id), [Array(attrs), :not_unique])
+      result = db.sinter(*Array(attrs).map { |att| index_key_for(att, send(att)) })
+      assert(result.empty? || result.include?(id.to_s), [attrs, :not_unique])
     end
 
 

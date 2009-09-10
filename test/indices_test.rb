@@ -95,4 +95,50 @@ class IndicesTest < Test::Unit::TestCase
       assert_equal [@user1], User.find(:working_days, "Mon")
     end
   end
+
+  context "Intersection and and union" do
+    class Event < Ohm::Model
+      attr_accessor :days
+
+      attribute :timeline
+      index :timeline
+      index :days
+
+      def days
+        @days ||= []
+      end
+    end
+
+    setup do
+      @event1 = Event.create(timeline: 1)
+      @event2 = Event.create(timeline: 1)
+      @event3 = Event.create(timeline: 2)
+      @event1.days = [1, 2]
+      @event2.days = [2, 3]
+      @event3.days = [3, 4]
+      @event1.save
+      @event2.save
+      @event3.save
+    end
+
+    should "intersect multiple sets of results" do
+      Event.filter(timeline: 1, days: [1, 2]) do |set|
+        assert_equal [@event1], set
+      end
+    end
+
+    should "group multiple sets of results" do
+      Event.search(days: [1, 2]) do |set|
+        assert_equal [@event1, @event2], set
+      end
+    end
+
+    should "combine intersections and unions" do
+      Event.search(days: [1, 2, 3]) do |events|
+        events.filter(timeline: 1) do |result|
+          assert_equal [@event1, @event2], result
+        end
+      end
+    end
+  end
 end
