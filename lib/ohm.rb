@@ -437,7 +437,7 @@ module Ohm
     end
 
     def self.encode(value)
-      Base64.encode64(value.to_s).chomp
+      Base64.encode64(value.to_s).gsub("\n", "")
     end
 
     def initialize(attrs = {})

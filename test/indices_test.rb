@@ -7,10 +7,12 @@ class IndicesTest < Test::Unit::TestCase
 
   class User < Ohm::Model
     attribute :email
+    attribute :update
 
     index :email
     index :email_provider
     index :working_days
+    index :update
 
     def email_provider
       email.split("@").last
@@ -139,6 +141,11 @@ class IndicesTest < Test::Unit::TestCase
           assert_equal [@event1, @event2], result
         end
       end
+    end
+
+    should "work with strings that generate a new line when encoded" do
+      user = User.create(email: "foo@bar", update: "CORRECTED - UPDATE 2-Suspected US missile strike kills 5 in Pakistan")
+      assert_equal [user], User.find(:update, "CORRECTED - UPDATE 2-Suspected US missile strike kills 5 in Pakistan")
     end
   end
 end
