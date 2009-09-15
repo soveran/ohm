@@ -1,4 +1,5 @@
 require File.join(File.dirname(__FILE__), "test_helper")
+require "ostruct"
 
 class Post < Ohm::Model
   attribute :body
@@ -488,6 +489,14 @@ class TestRedis < Test::Unit::TestCase
 
     should "not be comparable to instances of other models" do
       assert_not_equal @user, Event.create(:name => "Ruby Tuesday")
+    end
+
+    should "be comparable to non-models" do
+      assert_not_equal @user, 1
+      assert_not_equal @user, true
+
+      # Not equal although the other object responds to #key.
+      assert_not_equal @user, OpenStruct.new(:key => @user.send(:key))
     end
   end
 end

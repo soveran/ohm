@@ -536,7 +536,7 @@ module Ohm
     end
 
     def ==(other)
-      other.key == key
+      other.kind_of?(self.class) && other.key == key
     rescue ModelIsNew
       false
     end
