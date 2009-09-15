@@ -221,6 +221,14 @@ class TestRedis < Test::Unit::TestCase
       Person.create :name => "A"
       assert_equal "A", Person.all.first(:by => :name, :order => "ALPHA").name
     end
+
+    should "return attribute values when the get parameter is specified" do
+      Ohm.flush
+      Person.create :name => "B"
+      Person.create :name => "A"
+
+      assert_equal "A", Person.all.sort_by(:name, get: "Person:*:name", order: "ALPHA").first
+    end
   end
 
   context "Loading attributes" do

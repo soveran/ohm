@@ -81,7 +81,8 @@ module Ohm
         return [] if empty?
         options[:start] ||= 0
         options[:limit] = [options[:start], options[:limit]] if options[:limit]
-        instantiate(db.sort(key, options))
+        result = db.sort(key, options)
+        options[:get] ? result : instantiate(result)
       end
 
       # Sort the model instances by the given attribute.
@@ -226,6 +227,11 @@ module Ohm
       # Returns an intersection with the sets generated from the passed hash.
       #
       # @see Ohm::Model.filter
+      # @yield [results] Results of the filtering. Beware that the set of results is deleted from Redis when the block ends.
+      # @example
+      #   Event.search(day: "2009-09-11") do |search_results|
+      #     events = search_results.all
+      #   end
       def filter(hash, &block)
         apply(:sinterstore, keys(hash).push(key), &block)
       end
@@ -233,6 +239,13 @@ module Ohm
       # Returns a union with the sets generated from the passed hash.
       #
       # @see Ohm::Model.search
+      # @yield [results] Results of the search. Beware that the set of results is deleted from Redis when the block ends.
+      # @example
+      #   Event.search(day: "2009-09-11") do |search_results|
+      #     search_results.filter(public: true) do |filter_results|
+      #       events = filter_results.all
+      #     end
+      #   end
       def search(hash, &block)
         apply(:sunionstore, keys(hash), &block)
       end

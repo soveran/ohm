@@ -100,7 +100,7 @@ class IndicesTest < Test::Unit::TestCase
 
   context "Intersection and and union" do
     class Event < Ohm::Model
-      attr_accessor :days
+      attr_writer :days
 
       attribute :timeline
       index :timeline

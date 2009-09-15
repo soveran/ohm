@@ -135,6 +135,21 @@ with an attribute name, which will determine the sorting order. Both
 methods receive an options hash which is explained in the documentation
 for {Ohm::Attributes::Collection#sort}.
 
+Adding instances of `Person` to the attendees hash is done with the
+`add` method:
+
+    @event.attendees.add(Person.create(name: "Albert"))
+
+    # And now...
+    @event.attendees.each do |person|
+      # ...do what you want with this person.
+    end
+
+Just to clarify: when you add items to a set with `<<`, Ohm inserts
+whatever you send without checking it. When you use `add`, it assumes
+it's an instance of some `Ohm::Model` and stores its id.
+
+
 Indexes
 -------
 
@@ -178,43 +193,28 @@ to false.
 Checks that the given field is not nil or empty. The error code for this
 assertion is :not_present.
 
-    def assert_present(att, error = [att, :not_present])
-      assert(!send(att).to_s.empty?, error)
-    end
+    assert_present :name
 
 ### assert_format
 
 Checks that the given field matches the provided format. The error code
 for this assertion is :format.
 
-    def assert_format(att, format, error = [att, :format])
-      if assert_present(att, error)
-        assert(send(att).to_s.match(format), error)
-      end
-    end
+    assert_format :username, /^\w+$/
 
 ### assert_numeric
 
 Checks that the given field holds a number as a Fixnum or as a string
 representation. The error code for this assertion is :not_numeric.
 
-    def assert_numeric(att, error = [att, :not_numeric])
-      if assert_present(att, error)
-        assert_format(att, /^\d+$/, error)
-      end
-    end
+    assert_numeric :votes
 
 ### assert_unique
 
 Validates that the attribute or array of attributes are unique.
-For this, an index of the same kind must exist. The error code is
-:not_unique.
+For this, an index of the same kind must exist. The error code is :not_unique.
 
-    def assert_unique(attrs)
-      result = db.sinter(*Array(attrs).map { |att| index_key_for(att, send(att)) })
-      assert(result.empty? || result.include?(id.to_s), [attrs, :not_unique])
-    end
-
+    assert_unique :email
 
 Errors
 ------
