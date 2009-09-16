@@ -229,8 +229,15 @@ module Ohm
       # @see Ohm::Model.filter
       # @yield [results] Results of the filtering. Beware that the set of results is deleted from Redis when the block ends.
       # @example
+      #   Event.filter(public: true) do |filter_results|
+      #     @events = filter_results.all
+      #   end
+      #
+      #   # You can also combine search and filter
       #   Event.search(day: "2009-09-11") do |search_results|
-      #     events = search_results.all
+      #     search_results.filter(public: true) do |filter_results|
+      #       @events = filter_results.all
+      #     end
       #   end
       def filter(hash, &block)
         apply(:sinterstore, keys(hash).push(key), &block)
@@ -242,9 +249,7 @@ module Ohm
       # @yield [results] Results of the search. Beware that the set of results is deleted from Redis when the block ends.
       # @example
       #   Event.search(day: "2009-09-11") do |search_results|
-      #     search_results.filter(public: true) do |filter_results|
-      #       events = filter_results.all
-      #     end
+      #     events = search_results.all
       #   end
       def search(hash, &block)
         apply(:sunionstore, keys(hash), &block)
