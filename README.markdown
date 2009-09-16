@@ -159,8 +159,37 @@ Ohm maintains different sets of objects ids for quick lookups.
 For example, in the example above, the index on the name attribute will
 allow for searches like Event.find(:name, "some value").
 
-Note that the `find` method and the `assert_unique` validation need a
-corresponding index to exist.
+Note that the `assert_unique` validation and the methods `find`, `search` and `filter` need a
+corresponding index in order to work.
+
+### Finding
+
+You can find a collection of records with the `find` method:
+
+    # This returns a collection of users with the username "Albert"
+    User.find(username: "Albert")
+
+### Searching and filtering
+
+    # This returns a collection of users with usernames "Albert" or "Benoit"
+    User.search(username: ["Albert", "Benoit"]) do |search_results|
+      @users = search_results.all
+    end
+
+    # This returns a collection of users with usernames "Albert" or "Benoit",
+    # but only those with the account enabled.
+    User.search(username: ["Albert", "Benoit"]) do |search_results|
+      search_results.filter(account: "enabled") do |filter_results|
+        @users = filter_results.all
+      end
+    end
+
+Important: note that both `search` and `filter` yield the results
+to a block. This is important because the set of results is stored
+for the duration of the block (to allow for chaining of searches and
+filters), but is deleted once the block ends. The `.all` is necessary
+for retrieving the actual instances, as keeping a reference to a set
+that is going to be deleted would only return empty sets.
 
 Validations
 -----------
@@ -237,12 +266,7 @@ Given the following example:
 If all the assertions fail, the following errors will be present:
 
     obj.errors
-    # => [[:foo, :not_present], [:bar, :not_numeric], [:baz, :format], [[:qux], :not_unique]]
-
-Note that the error for assert_unique wraps the field in an array.
-The purpose for this is to standardize the format for both single and
-multicolumn indexes.
-
+    # => [[:foo, :not_present], [:bar, :not_numeric], [:baz, :format], [:qux, :not_unique]]
 
 Presenting errors
 -----------------
