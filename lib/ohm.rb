@@ -262,7 +262,7 @@ module Ohm
       # Apply a redis operation on a collection of sets. Note that
       # the resulting set is removed inmediatly after use.
       def apply(operation, source, &block)
-        target = source.join(operation)
+        target = source.join(operation.to_s)
         db.send(operation, target, *source)
         set = self.class.new(db, target, model)
         block.call(set)

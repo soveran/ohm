@@ -112,9 +112,9 @@ class IndicesTest < Test::Unit::TestCase
     end
 
     setup do
-      @event1 = Event.create(timeline: 1)
-      @event2 = Event.create(timeline: 1)
-      @event3 = Event.create(timeline: 2)
+      @event1 = Event.create(:timeline => 1)
+      @event2 = Event.create(:timeline => 1)
+      @event3 = Event.create(:timeline => 2)
       @event1.days = [1, 2]
       @event2.days = [2, 3]
       @event3.days = [3, 4]
@@ -124,27 +124,27 @@ class IndicesTest < Test::Unit::TestCase
     end
 
     should "intersect multiple sets of results" do
-      Event.filter(timeline: 1, days: [1, 2]) do |set|
+      Event.filter(:timeline => 1, :days => [1, 2]) do |set|
         assert_equal [@event1], set
       end
     end
 
     should "group multiple sets of results" do
-      Event.search(days: [1, 2]) do |set|
+      Event.search(:days => [1, 2]) do |set|
         assert_equal [@event1, @event2], set
       end
     end
 
     should "combine intersections and unions" do
-      Event.search(days: [1, 2, 3]) do |events|
-        events.filter(timeline: 1) do |result|
+      Event.search(:days => [1, 2, 3]) do |events|
+        events.filter(:timeline => 1) do |result|
           assert_equal [@event1, @event2], result
         end
       end
     end
 
     should "work with strings that generate a new line when encoded" do
-      user = User.create(email: "foo@bar", update: "CORRECTED - UPDATE 2-Suspected US missile strike kills 5 in Pakistan")
+      user = User.create(:email => "foo@bar", :update => "CORRECTED - UPDATE 2-Suspected US missile strike kills 5 in Pakistan")
       assert_equal [user], User.find(:update, "CORRECTED - UPDATE 2-Suspected US missile strike kills 5 in Pakistan")
     end
   end
