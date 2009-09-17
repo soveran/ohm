@@ -7,7 +7,7 @@ class ConnectionTest < Test::Unit::TestCase
 
   test "connects lazily" do
     assert_nothing_raised do
-      Ohm.connect(:port => 1234567)
+      Ohm.connect(:port => 9876)
     end
 
     assert_raises(Errno::ECONNREFUSED) do
