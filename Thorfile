@@ -1,3 +1,5 @@
+# encoding: UTF-8
+
 class Ohm < Thor
   desc "doc", "Generate YARD documentation"
   method_options :open => false

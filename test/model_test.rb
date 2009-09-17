@@ -23,6 +23,13 @@ class Event < Ohm::Model
   attribute :name
   counter :votes
   set :attendees, Person
+
+  attribute :slug
+
+  def write
+    self.slug = name.to_s.downcase
+    super
+  end
 end
 
 class TestRedis < Test::Unit::TestCase
@@ -46,7 +53,6 @@ class TestRedis < Test::Unit::TestCase
   end
 
   context "An event updated from a hash of attributes" do
-
     class Meetup < Ohm::Model
       attribute :name
 
@@ -145,6 +151,12 @@ class TestRedis < Test::Unit::TestCase
       event.save
 
       assert_equal "Lorem", Event[event.id].name
+    end
+
+    should "allow to hook into write" do
+      event = Event.create(:name => "Foo")
+
+      assert_equal "foo", event.slug
     end
   end
 

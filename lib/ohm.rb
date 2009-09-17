@@ -459,7 +459,7 @@ module Ohm
     end
 
     def initialize(attrs = {})
-      @_attributes = Hash.new {|hash,key| hash[key] = read_remote(key) }
+      @_attributes = Hash.new { |hash, key| hash[key] = read_remote(key) }
       update_attributes(attrs)
     end
 
@@ -474,7 +474,7 @@ module Ohm
       mutex do
         create_model_membership
         add_to_indices
-        save!
+        write
       end
     end
 
@@ -484,7 +484,7 @@ module Ohm
 
       mutex do
         update_indices
-        save!
+        write
       end
     end
 
@@ -561,6 +561,11 @@ module Ohm
       self.class.key(id, *args)
     end
 
+    def write
+      attributes.each { |att| write_remote(att, send(att)) }
+      self
+    end
+
   private
 
     def self.db
@@ -595,11 +600,6 @@ module Ohm
 
     def delete_model_membership
       db.srem(self.class.key(:all), id)
-    end
-
-    def save!
-      attributes.each { |att| write_remote(att, send(att)) }
-      self
     end
 
     def update_indices
