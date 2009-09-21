@@ -8,11 +8,13 @@ class IndicesTest < Test::Unit::TestCase
   class User < Ohm::Model
     attribute :email
     attribute :update
+    attribute :activation_code
 
     index :email
     index :email_provider
     index :working_days
     index :update
+    index :activation_code
 
     def email_provider
       email.split("@").last
@@ -20,6 +22,11 @@ class IndicesTest < Test::Unit::TestCase
 
     def working_days
       @working_days ||= []
+    end
+
+    def write
+      self.activation_code ||= "user:#{id}"
+      super
     end
   end
 
@@ -68,6 +75,10 @@ class IndicesTest < Test::Unit::TestCase
     should "allow indexing by an arbitrary attribute" do
       assert_equal [@user1, @user2], User.find(:email_provider, "gmail.com").to_a.sort_by { |u| u.id }
       assert_equal [@user3], User.find(:email_provider, "yahoo.com")
+    end
+
+    should "allow indexing by an attribute that is lazily set" do
+      assert_equal [@user1], User.find(:activation_code, "user:1").to_a
     end
   end
 

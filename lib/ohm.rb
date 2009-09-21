@@ -473,8 +473,8 @@ module Ohm
 
       mutex do
         create_model_membership
-        add_to_indices
         write
+        add_to_indices
       end
     end
 
@@ -483,8 +483,8 @@ module Ohm
       return unless valid?
 
       mutex do
-        update_indices
         write
+        update_indices
       end
     end
 
@@ -563,7 +563,6 @@ module Ohm
 
     def write
       attributes.each { |att| write_remote(att, send(att)) }
-      self
     end
 
   private
