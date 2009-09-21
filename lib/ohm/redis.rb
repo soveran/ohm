@@ -183,7 +183,7 @@ module Ohm
     def extract_bulk_argument(argv)
       if bulk_command?(argv)
         bulk = argv[-1].to_s
-        argv[-1] = bulk.length
+        argv[-1] = bulk.respond_to?(:bytesize) ? bulk.bytesize : bulk.size
         bulk
       end
     end
