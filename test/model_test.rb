@@ -55,6 +55,7 @@ class TestRedis < Test::Unit::TestCase
   context "An event updated from a hash of attributes" do
     class Meetup < Ohm::Model
       attribute :name
+      attribute :location
 
       def validate
         assert_present :name
@@ -70,6 +71,13 @@ class TestRedis < Test::Unit::TestCase
     should "return false if the validation fails" do
       event = Meetup.create(:name => "Ruby Tuesday")
       assert !event.update(:name => nil)
+    end
+
+    should "delete the attribute if set to nil" do
+      event = Meetup.create(:name => "Ruby Tuesday", :location => "Los Angeles")
+      assert_equal "Los Angeles", Meetup[event.id].location
+      assert event.update(:location => nil)
+      assert_equal nil, Meetup[event.id].location
     end
   end
 

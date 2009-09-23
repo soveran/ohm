@@ -647,7 +647,9 @@ module Ohm
     end
 
     def write_remote(att, value)
-      db.set(key(att), value)
+      value.nil? ?
+        db.del(key(att)) :
+        db.set(key(att), value)
     end
 
     def read_locals(attrs)
