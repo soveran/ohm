@@ -73,6 +73,11 @@ class TestRedis < Test::Unit::TestCase
       assert !event.update(:name => nil)
     end
 
+    should "save the attributes in UTF8" do
+     event = Meetup.create(:name => "Ruby Tuesday")
+     assert_equal "UTF-8", Meetup[event.id].name.encoding.to_s
+    end
+
     should "delete the attribute if set to nil" do
       event = Meetup.create(:name => "Ruby Tuesday", :location => "Los Angeles")
       assert_equal "Los Angeles", Meetup[event.id].location

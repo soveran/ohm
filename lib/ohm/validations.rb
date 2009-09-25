@@ -1,3 +1,5 @@
+# encoding: UTF-8
+
 module Ohm
   module Validations
     class Presenter
