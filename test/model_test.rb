@@ -1,3 +1,5 @@
+# encoding: UTF-8
+
 require File.join(File.dirname(__FILE__), "test_helper")
 require "ostruct"
 
@@ -74,8 +76,8 @@ class TestRedis < Test::Unit::TestCase
     end
 
     should "save the attributes in UTF8" do
-     event = Meetup.create(:name => "Ruby Tuesday")
-     assert_equal "UTF-8", Meetup[event.id].name.encoding.to_s
+     event = Meetup.create(:name => "32° Kisei-sen")
+     assert_equal "32° Kisei-sen", Meetup[event.id].name
     end
 
     should "delete the attribute if set to nil" do

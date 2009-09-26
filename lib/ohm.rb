@@ -1,6 +1,7 @@
 # encoding: UTF-8
 
 require "base64"
+require File.join(File.dirname(__FILE__), "ohm", "compat")
 require File.join(File.dirname(__FILE__), "ohm", "redis")
 require File.join(File.dirname(__FILE__), "ohm", "validations")
 
