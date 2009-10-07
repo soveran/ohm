@@ -243,6 +243,7 @@ module Ohm
       #     end
       #   end
       def filter(hash, &block)
+        raise ArgumentError, "filter expects a block" unless block_given?
         apply(:sinterstore, keys(hash).push(key), &block)
       end
 
@@ -255,6 +256,7 @@ module Ohm
       #     events = search_results.all
       #   end
       def search(hash, &block)
+        raise ArgumentError, "search expects a block" unless block_given?
         apply(:sunionstore, keys(hash), &block)
       end
 
@@ -265,11 +267,11 @@ module Ohm
       # Apply a redis operation on a collection of sets. Note that
       # the resulting set is removed inmediatly after use.
       def apply(operation, source, &block)
-        target = source.join(operation.to_s)
+        target = source.uniq.join("+")
         db.send(operation, target, *source)
         set = self.class.new(db, target, model)
         block.call(set)
-        set.delete!
+        set.delete! if source.size > 1
       end
 
     private
