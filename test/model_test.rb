@@ -112,6 +112,10 @@ class TestRedis < Test::Unit::TestCase
       assert_equal 1, User[1].id
       assert_equal "albert@example.com", User[1].email
     end
+
+    should "allow to map ids to models" do
+      assert_equal [User[1]], [1].map(&User)
+    end
   end
 
   context "Updating a user" do
@@ -524,6 +528,29 @@ class TestRedis < Test::Unit::TestCase
 
       # Not equal although the other object responds to #key.
       assert_not_equal @user, OpenStruct.new(:key => @user.send(:key))
+    end
+  end
+
+  context "Debugging" do
+    class ::Bar < Ohm::Model
+      attribute :name
+      counter :visits
+      set :friends
+      list :comments
+    end
+
+    should "provide a meaningful inspect" do
+      bar = Bar.new
+
+      assert_equal "#<Bar:? name=nil friends=nil comments=nil visits=0>", bar.inspect
+
+      bar.update(:name => "Albert")
+      bar.friends << 1
+      bar.friends << 2
+      bar.comments << "A"
+      bar.incr(:visits)
+
+      assert_equal %Q{#<Bar:#{bar.id} name="Albert" friends=#<Set: ["1", "2"]> comments=#<List: ["A"]> visits=1>}, Bar[bar.id].inspect
     end
   end
 end

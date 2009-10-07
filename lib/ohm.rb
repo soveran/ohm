@@ -180,6 +180,10 @@ module Ohm
       def size
         db.llen(key)
       end
+
+      def inspect
+        "#<List: #{raw.inspect}>"
+      end
     end
 
     # Represents a Redis set.
@@ -272,6 +276,10 @@ module Ohm
         set = self.class.new(db, target, model)
         block.call(set)
         set.delete! if source.size > 1
+      end
+
+      def inspect
+        "#<Set: #{raw.inspect}>"
       end
 
     private
@@ -397,6 +405,10 @@ module Ohm
 
     def self.[](id)
       new(:id => id) if exists?(id)
+    end
+
+    def self.to_proc
+      Proc.new { |id| self[id] }
     end
 
     def self.all
@@ -557,6 +569,20 @@ module Ohm
       yield
       unlock!
       self
+    end
+
+    def inspect
+      everything = (attributes + collections + counters).map do |att|
+        value = begin
+                  send(att)
+                rescue ModelIsNew
+                  nil
+                end
+
+        [att, value.inspect]
+      end
+
+      "#<#{self.class}:#{id || "?"} #{everything.map {|e| e.join("=") }.join(" ")}>"
     end
 
   protected
