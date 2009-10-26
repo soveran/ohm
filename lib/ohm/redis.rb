@@ -240,9 +240,12 @@ module Ohm
     def format_bulk_reply(line)
       bulklen = line.to_i
       return nil if bulklen == -1
-      reply = @sock.read(bulklen).force_encoding("UTF-8")
+      reply = @sock.read(bulklen)
       @sock.read(2) # Discard CRLF.
-      reply
+
+      reply.respond_to?(:force_encoding) ?
+        reply.force_encoding("UTF-8") :
+        reply
     end
 
     def format_multi_bulk_reply(line)
