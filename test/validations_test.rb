@@ -123,6 +123,18 @@ class ValidationsTest < Test::Unit::TestCase
         assert @event.valid?
       end
     end
+
+    context "That defines a unique validation on a non indexed attribute" do
+      should "raise ArgumentError" do
+        def @event.validate
+          assert_unique :capacity
+        end
+
+        assert_raise ArgumentError do
+          @event.valid?
+        end
+      end
+    end
   end
 
   context "An existing model with a valid name" do

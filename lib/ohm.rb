@@ -695,6 +695,7 @@ module Ohm
     end
 
     def index_key_for(att, value)
+      raise ArgumentError unless indices.include?(att)
       self.class.key(att, self.class.encode(value))
     end
 
