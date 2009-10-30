@@ -13,9 +13,8 @@ class Ohm < Thor
     system "open doc/index.html" if options[:open]
   end
 
-  desc "deploy", "Generate and deploy documentation"
+  desc "deploy", "Deploy documentation"
   def deploy
-    doc
     system "rsync -az doc/* ohm.keyvalue.org:deploys/ohm.keyvalue.org/"
   end
 
