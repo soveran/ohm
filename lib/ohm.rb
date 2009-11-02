@@ -128,6 +128,24 @@ module Ohm
         size.zero?
       end
 
+      # Clears the values in the collection.
+      def clear
+        db.del(key)
+        self
+      end
+
+      # Appends the given values to the collection.
+      def concat(values)
+        values.each { |value| self << value }
+        self
+      end
+
+      # Replaces the collection with the passed values.
+      def replace(values)
+        clear
+        concat(values)
+      end
+
     private
 
       def instantiate(raw)
@@ -263,10 +281,6 @@ module Ohm
         apply(:sunionstore, keys(hash), &block)
       end
 
-      def delete!
-        db.del(key)
-      end
-
       # Apply a redis operation on a collection of sets. Note that
       # the resulting set is removed inmediatly after use.
       def apply(operation, source, &block)
@@ -274,7 +288,7 @@ module Ohm
         db.send(operation, target, *source)
         set = self.class.new(db, target, model)
         block.call(set)
-        set.delete! if source.size > 1
+        set.clear if source.size > 1
       end
 
       def inspect

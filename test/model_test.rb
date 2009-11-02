@@ -338,6 +338,24 @@ class TestRedis < Test::Unit::TestCase
       @event.attendees << "3"
       assert_equal 3, @event.attendees.size
     end
+
+    should "empty the set" do
+      @event.create
+      @event.attendees << "1"
+
+      @event.attendees.clear
+
+      assert @event.attendees.empty?
+    end
+
+    should "replace the values in the set" do
+      @event.create
+      @event.attendees << "1"
+
+      @event.attendees.replace(["2", "3"])
+
+      assert_equal ["2", "3"], @event.attendees.raw.sort
+    end
   end
 
   context "Attributes of type List" do
@@ -407,6 +425,19 @@ class TestRedis < Test::Unit::TestCase
       assert_equal "1", @post.comments.pop
       assert_equal "2", @post.comments.pop
       assert @post.comments.empty?
+    end
+
+    should "empty the list" do
+      @post.comments.unshift "1"
+      @post.comments.clear
+
+      assert @post.comments.empty?
+    end
+
+    should "replace the values in the list" do
+      @post.comments.replace(["1", "2"])
+
+      assert_equal ["1", "2"], @post.comments.raw
     end
   end
 
