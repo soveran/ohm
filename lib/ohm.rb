@@ -248,54 +248,50 @@ module Ohm
         db.scard(key)
       end
 
-      # Returns an intersection with the sets generated from the passed hash.
-      #
-      # @see Ohm::Model.filter
-      # @yield [results] Results of the filtering. Beware that the set of results is deleted from Redis when the block ends.
-      # @example
-      #   Event.filter(public: true) do |filter_results|
-      #     @events = filter_results.all
-      #   end
-      #
-      #   # You can also combine search and filter
-      #   Event.search(day: "2009-09-11") do |search_results|
-      #     search_results.filter(public: true) do |filter_results|
-      #       @events = filter_results.all
-      #     end
-      #   end
-      def filter(hash, &block)
-        raise ArgumentError, "filter expects a block" unless block_given?
-        apply(:sinterstore, keys(hash).push(key), &block)
-      end
-
-      # Returns a union with the sets generated from the passed hash.
-      #
-      # @see Ohm::Model.search
-      # @yield [results] Results of the search. Beware that the set of results is deleted from Redis when the block ends.
-      # @example
-      #   Event.search(day: "2009-09-11") do |search_results|
-      #     events = search_results.all
-      #   end
-      def search(hash, &block)
-        raise ArgumentError, "search expects a block" unless block_given?
-        apply(:sunionstore, keys(hash), &block)
-      end
-
-      # Apply a redis operation on a collection of sets. Note that
-      # the resulting set is removed inmediatly after use.
-      def apply(operation, source, &block)
-        target = source.uniq.join("+")
-        db.send(operation, target, *source)
-        set = self.class.new(db, target, model)
-        block.call(set)
-        set.clear if source.size > 1
-      end
-
       def inspect
         "#<Set: #{raw.inspect}>"
       end
+    end
+
+    class Index < Set
+
+      # Returns an intersection with the sets generated from the passed hash.
+      #
+      # @see Ohm::Model.find
+      # @example
+      #   @events = Event.find(public: true)
+      #
+      #   # You can combine the result with sort and other set operations:
+      #   @events.sort_by(:name)
+      def find(hash)
+        apply(:sinterstore, hash)
+      end
+
+      # Returns the difference between the receiver and the passed sets.
+      #
+      # @example
+      #   @events = Event.find(public: true).except(status: "sold_out")
+      def except(hash)
+        apply(:sdiffstore, hash)
+      end
+
+      def inspect
+        "#<Index: #{raw.inspect}>"
+      end
+
+      def clear
+        raise Ohm::Model::CannotDeleteIndex
+      end
 
     private
+
+      # Apply a redis operation on a collection of sets.
+      def apply(operation, hash)
+        indices = keys(hash).unshift(key).uniq
+        target = indices.join("+")
+        db.send(operation, target, *indices)
+        self.class.new(db, target, model)
+      end
 
       # Transform a hash of attribute/values into an array of keys.
       def keys(hash)
@@ -307,6 +303,8 @@ module Ohm
       end
     end
   end
+
+  Error = Class.new(StandardError)
 
   class Model
     module Validations
@@ -327,7 +325,17 @@ module Ohm
 
     include Validations
 
-    ModelIsNew = Class.new(StandardError)
+    class MissingID < Error
+      def message
+        "You tried to perform an operation that needs the model ID, but it's not present."
+      end
+    end
+
+    class CannotDeleteIndex < Error
+      def message
+        "You tried to delete an internal index used by Ohm."
+      end
+    end
 
     @@attributes = Hash.new { |hash, key| hash[key] = [] }
     @@collections = Hash.new { |hash, key| hash[key] = [] }
@@ -395,7 +403,7 @@ module Ohm
     #   end
     #
     #   # Now this is possible:
-    #   User.find :email, "ohm@example.com"
+    #   User.find email: "ohm@example.com"
     #
     # @param name [Symbol] Name of the attribute to be indexed.
     def self.index(att)
@@ -425,7 +433,7 @@ module Ohm
     end
 
     def self.all
-      @all ||= Attributes::Set.new(db, key(:all), self)
+      @all ||= Attributes::Index.new(db, key(:all), self)
     end
 
     def self.attributes
@@ -450,38 +458,16 @@ module Ohm
       model
     end
 
-    # Find all the records matching the specified attribute-value pair.
-    #
-    # @example
-    #   Event.find(:starts_on, Date.today)
-    def self.find(attrs, value)
-      Attributes::Set.new(db, key(attrs, encode(value)), self)
-    end
-
     # Search across multiple indices and return the intersection of the sets.
     #
     # @example Finds all the user events for the supplied days
     #   event1 = Event.create day: "2009-09-09", author: "Albert"
     #   event2 = Event.create day: "2009-09-09", author: "Benoit"
     #   event3 = Event.create day: "2009-09-10", author: "Albert"
-    #   Event.filter(author: "Albert", day: "2009-09-09") do |events|
-    #     assert_equal [event1], events
-    #   end
-    def self.filter(hash, &block)
-      self.all.filter(hash, &block)
-    end
-
-    # Search across multiple indices and return the union of the sets.
     #
-    # @example Finds all the events for the supplied days
-    #   event1 = Event.create day: "2009-09-09"
-    #   event2 = Event.create day: "2009-09-10"
-    #   event3 = Event.create day: "2009-09-11"
-    #   Event.search(day: ["2009-09-09", "2009-09-10", "2009-09-011"]) do |events|
-    #     assert_equal [event1, event2, event3], events
-    #   end
-    def self.search(hash, &block)
-      self.all.search(hash, &block)
+    #   assert_equal [event1], Event.find(author: "Albert", day: "2009-09-09")
+    def self.find(hash)
+      all.find(hash)
     end
 
     def self.encode(value)
@@ -538,19 +524,19 @@ module Ohm
       self
     end
 
-    # Increment the attribute denoted by :att.
+    # Increment the counter denoted by :att.
     #
     # @param att [Symbol] Attribute to increment.
     def incr(att)
-      raise ArgumentError unless counters.include?(att)
+      raise ArgumentError, "#{att.inspect} is not a counter." unless counters.include?(att)
       write_local(att, db.incr(key(att)))
     end
 
-    # Decrement the attribute denoted by :att.
+    # Decrement the counter denoted by :att.
     #
     # @param att [Symbol] Attribute to decrement.
     def decr(att)
-      raise ArgumentError unless counters.include?(att)
+      raise ArgumentError, "#{att.inspect} is not a counter." unless counters.include?(att)
       write_local(att, db.decr(key(att)))
     end
 
@@ -572,7 +558,7 @@ module Ohm
 
     def ==(other)
       other.kind_of?(self.class) && other.key == key
-    rescue ModelIsNew
+    rescue MissingID
       false
     end
 
@@ -588,7 +574,7 @@ module Ohm
       everything = (attributes + collections + counters).map do |att|
         value = begin
                   send(att)
-                rescue ModelIsNew
+                rescue MissingID
                   nil
                 end
 
@@ -601,7 +587,7 @@ module Ohm
   protected
 
     def key(*args)
-      raise ModelIsNew if new?
+      raise MissingID if new?
       self.class.key(id, *args)
     end
 

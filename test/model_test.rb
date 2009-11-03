@@ -291,7 +291,7 @@ class TestRedis < Test::Unit::TestCase
     end
 
     should "not be available if the model is new" do
-      assert_raise Ohm::Model::ModelIsNew do
+      assert_raise Ohm::Model::MissingID do
         @event.attendees << 1
       end
     end
