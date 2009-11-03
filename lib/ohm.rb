@@ -74,11 +74,14 @@ module Ohm
       # @option options [#to_s] :order (ASC) Sorting order, which can be ASC or DESC.
       # @option options [Integer] :limit (all) Number of items to return.
       # @option options [Integer] :start (0) An offset from where the limit will be applied.
+      #
       # @example Get the first ten users sorted alphabetically by name:
-      #   @event.attendees.sort(User, :by => :name, :order => "ALPHA", :limit => 10)
+      #
+      #   @event.attendees.sort(:by => :name, :order => "ALPHA", :limit => 10)
       #
       # @example Get five posts sorted by number of votes and starting from the number 5 (zero based):
-      #   @blog.posts.sort(Post, :by => :votes, :start => 5, :limit => 10")
+      #
+      #   @blog.posts.sort(:by => :votes, :start => 5, :limit => 10")
       def sort(options = {})
         return [] if empty?
         options[:start] ||= 0
@@ -94,8 +97,9 @@ module Ohm
       #   User.create :name => "B"
       #   User.create :name => "A"
       #
-      #   user = User.all.sort_by :name, :order => "ALPHA"
-      #   user.name == "A" #=> true
+      #   user = User.all.sort_by(:name, :order => "ALPHA").first
+      #   user.name == "A"
+      #   # => true
       def sort_by(att, options = {})
         sort(options.merge(:by => model.key("*", att)))
       end
