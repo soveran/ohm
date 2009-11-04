@@ -150,6 +150,12 @@ module Ohm
         concat(values)
       end
 
+      # @param value [Ohm::Model#id] Adds the id of the object if it's an Ohm::Model.
+      def add(model)
+        raise ArgumentError unless model.id
+        self << model.id
+      end
+
     private
 
       def instantiate(raw)
@@ -202,6 +208,10 @@ module Ohm
         db.llen(key)
       end
 
+      def include?(value)
+        raw.include?(value)
+      end
+
       def inspect
         "#<List: #{raw.inspect}>"
       end
@@ -226,13 +236,6 @@ module Ohm
       # @param value [#to_s] Adds value to the list.
       def << value
         db.sadd(key, value)
-      end
-
-      # @param value [Ohm::Model#id] Adds the id of the object if it's an Ohm::Model.
-      def add model
-        raise ArgumentError unless model.kind_of?(Ohm::Model)
-        raise ArgumentError unless model.id
-        self << model.id
       end
 
       def delete(value)
@@ -614,7 +617,7 @@ module Ohm
     end
 
     def initialize_id
-      self.id = db.incr(self.class.key("id"))
+      self.id = db.incr(self.class.key("id")).to_s
     end
 
     def db

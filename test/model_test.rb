@@ -6,6 +6,7 @@ require "ostruct"
 class Post < Ohm::Model
   attribute :body
   list :comments
+  list :related, Post
 end
 
 class User < Ohm::Model
@@ -44,9 +45,13 @@ class TestRedis < Test::Unit::TestCase
 
   context "An event created from a hash of attributes" do
     should "assign an id and save the object" do
+      Ohm.flush
+
       event1 = Event.create(:name => "Ruby Tuesday")
       event2 = Event.create(:name => "Ruby Meetup")
-      assert_equal event1.id + 1, event2.id
+
+      assert_equal "1", event1.id
+      assert_equal "2", event2.id
     end
 
     should "return the unsaved object if validation fails" do
@@ -144,14 +149,19 @@ class TestRedis < Test::Unit::TestCase
 
   context "Creating a new model" do
     should "assign a new id to the event" do
+      Ohm.flush
+
       event1 = Event.new
       event1.create
 
       event2 = Event.new
       event2.create
 
-      assert event1.id
-      assert_equal event1.id + 1, event2.id
+      assert !event1.new?
+      assert !event2.new?
+
+      assert_equal "1", event1.id
+      assert_equal "2", event2.id
     end
   end
 
@@ -438,6 +448,21 @@ class TestRedis < Test::Unit::TestCase
       @post.comments.replace(["1", "2"])
 
       assert_equal ["1", "2"], @post.comments.raw
+    end
+
+    should "add models" do
+      @post.related.add(Post.create(:body => "Hello"))
+
+      assert_equal ["2"], @post.related.raw
+    end
+
+    should "find elements in the list" do
+      another_post = Post.create
+
+      @post.related.add(another_post)
+
+      assert  @post.related.include?(another_post.id)
+      assert !@post.related.include?("-1")
     end
   end
 
