@@ -16,9 +16,14 @@ end
 
 class Person < Ohm::Model
   attribute :name
+  index :initial
 
   def validate
     assert_present :name
+  end
+
+  def initial
+    name[0, 1].upcase
   end
 end
 
@@ -275,6 +280,8 @@ class TestRedis < Test::Unit::TestCase
 
   context "Loading attributes" do
     setup do
+      Ohm.flush
+
       event = Event.new
       event.name = "Ruby Tuesday"
       @id = event.create.id
@@ -365,6 +372,16 @@ class TestRedis < Test::Unit::TestCase
       @event.attendees.replace(["2", "3"])
 
       assert_equal ["2", "3"], @event.attendees.raw.sort
+    end
+
+    should "filter elements" do
+      @event.create
+      @event.attendees.add(Person.create(:name => "Albert"))
+      @event.attendees.add(Person.create(:name => "Marie"))
+
+      assert_equal ["1"], @event.attendees.find(:initial => "A").raw
+      assert_equal ["2"], @event.attendees.find(:initial => "M").raw
+      assert_equal [],    @event.attendees.find(:initial => "Z").raw
     end
   end
 

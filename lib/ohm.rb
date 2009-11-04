@@ -258,9 +258,6 @@ module Ohm
       def inspect
         "#<Set: #{raw.inspect}>"
       end
-    end
-
-    class Index < Set
 
       # Returns an intersection with the sets generated from the passed hash.
       #
@@ -282,14 +279,6 @@ module Ohm
         apply(:sdiffstore, hash, "-")
       end
 
-      def inspect
-        "#<Index: #{raw.inspect}>"
-      end
-
-      def clear
-        raise Ohm::Model::CannotDeleteIndex
-      end
-
     private
 
       # Apply a redis operation on a collection of sets.
@@ -307,6 +296,16 @@ module Ohm
             model.index_key_for(t[0], v)
           end
         end
+      end
+    end
+
+    class Index < Set
+      def inspect
+        "#<Index: #{raw.inspect}>"
+      end
+
+      def clear
+        raise Ohm::Model::CannotDeleteIndex
       end
     end
   end
