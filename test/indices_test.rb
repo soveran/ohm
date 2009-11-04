@@ -9,6 +9,7 @@ class IndicesTest < Test::Unit::TestCase
     attribute :email
     attribute :update
     attribute :activation_code
+    attribute :sandunga
 
     index :email
     index :email_provider
@@ -39,6 +40,12 @@ class IndicesTest < Test::Unit::TestCase
 
     should "be able to find by the given attribute" do
       assert_equal @user1, User.find(:email => "foo").first
+    end
+
+    should "raise if the field is not indexed" do
+      assert_raises do
+        User.find(:sandunga => "foo")
+      end
     end
 
     should "return nil if no results are found" do
@@ -145,6 +152,12 @@ class IndicesTest < Test::Unit::TestCase
 
     should "compute the difference between sets" do
       assert_equal [@event2], Event.find(:timeline => 1).except(:days => 1)
+    end
+
+    should "raise if the argument is not an index" do
+      assert_raise do
+        Event.find(:timeline => 1).except(:not_an_index => 1)
+      end
     end
 
     should "work with strings that generate a new line when encoded" do

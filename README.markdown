@@ -12,6 +12,12 @@ Ohm is a library for storing objects in
 database. It includes an extensible list of validations and has very
 good performance.
 
+Community
+---------
+
+Join the mailing list: [http://groups.google.com/group/ohm-ruby](http://groups.google.com/group/ohm-ruby)
+
+Meet us on IRC: [#ohm](irc://chat.freenode.net/#ohm) on [freenode.net](http://freenode.net/)
 
 Getting started
 ---------------
@@ -157,9 +163,9 @@ An index is a set that's handled automatically by Ohm. For any index declared,
 Ohm maintains different sets of objects ids for quick lookups.
 
 For example, in the example above, the index on the name attribute will
-allow for searches like Event.find(:name, "some value").
+allow for searches like Event.find(name: "some value").
 
-Note that the `assert_unique` validation and the methods `find`, `search` and `filter` need a
+Note that the `assert_unique` validation and the methods `find` and `except` need a
 corresponding index in order to work.
 
 ### Finding
@@ -169,27 +175,22 @@ You can find a collection of records with the `find` method:
     # This returns a collection of users with the username "Albert"
     User.find(username: "Albert")
 
-### Searching and filtering
+### Filtering results
 
-    # This returns a collection of users with usernames "Albert" or "Benoit"
-    User.search(username: ["Albert", "Benoit"]) do |search_results|
-      @users = search_results.all
-    end
+    # Find all users from Argentina
+    User.find(country: "Argentina")
 
-    # This returns a collection of users with usernames "Albert" or "Benoit",
-    # but only those with the account enabled.
-    User.search(username: ["Albert", "Benoit"]) do |search_results|
-      search_results.filter(account: "enabled") do |filter_results|
-        @users = filter_results.all
-      end
-    end
+    # Find all activated users from Argentina
+    User.find(country: "Argentina", status: "activated")
 
-Important: note that both `search` and `filter` yield the results
-to a block. This is important because the set of results is stored
-for the duration of the block (to allow for chaining of searches and
-filters), but is deleted once the block ends. The `.all` is necessary
-for retrieving the actual instances, as keeping a reference to a set
-that is going to be deleted would only return empty sets.
+    # Find all users from Argentina, except those with a suspended account.
+    User.find(country: "Argentina").except(status: "suspended")
+
+Note that calling these methods results in new sets being created
+on the fly. This is important so that you can perform further operations
+before reading the items to the client.
+
+For more information, see (SINTERSTORE)[http://code.google.com/p/redis/wiki/SinterstoreCommand] and (SDIFFSTORE)[http://code.google.com/p/redis/wiki/SdiffstoreCommand].
 
 Validations
 -----------

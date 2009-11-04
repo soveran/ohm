@@ -268,7 +268,7 @@ module Ohm
       #   # You can combine the result with sort and other set operations:
       #   @events.sort_by(:name)
       def find(hash)
-        apply(:sinterstore, hash)
+        apply(:sinterstore, hash, "+")
       end
 
       # Returns the difference between the receiver and the passed sets.
@@ -276,7 +276,7 @@ module Ohm
       # @example
       #   @events = Event.find(public: true).except(status: "sold_out")
       def except(hash)
-        apply(:sdiffstore, hash)
+        apply(:sdiffstore, hash, "-")
       end
 
       def inspect
@@ -290,9 +290,9 @@ module Ohm
     private
 
       # Apply a redis operation on a collection of sets.
-      def apply(operation, hash)
+      def apply(operation, hash, glue)
         indices = keys(hash).unshift(key).uniq
-        target = indices.join("+")
+        target = indices.join(glue)
         db.send(operation, target, *indices)
         self.class.new(db, target, model)
       end
@@ -301,7 +301,7 @@ module Ohm
       def keys(hash)
         hash.inject([]) do |acc, t|
           acc + Array(t[1]).map do |v|
-            model.key(t[0], model.encode(v))
+            model.index_key_for(t[0], v)
           end
         end
       end
@@ -698,9 +698,13 @@ module Ohm
       end
     end
 
-    def index_key_for(att, value)
+    def self.index_key_for(att, value)
       raise ArgumentError unless indices.include?(att)
-      self.class.key(att, self.class.encode(value))
+      key(att, encode(value))
+    end
+
+    def index_key_for(att, value)
+      self.class.index_key_for(att, value)
     end
 
     # Lock the object so no other instances can modify it.
