@@ -326,7 +326,7 @@ module Ohm
       #   Validates that the :street and :city pair is unique.
       def assert_unique(attrs)
         result = db.sinter(*Array(attrs).map { |att| index_key_for(att, send(att)) })
-        assert(result.empty? || result.include?(id.to_s), [attrs, :not_unique])
+        assert result.empty? || !new? && result.include?(id.to_s), [attrs, :not_unique]
       end
     end
 
@@ -349,7 +349,11 @@ module Ohm
     @@counters = Hash.new { |hash, key| hash[key] = [] }
     @@indices = Hash.new { |hash, key| hash[key] = [] }
 
-    attr_accessor :id
+    attr_writer :id
+
+    def id
+      @id or raise MissingID
+    end
 
     # Defines a string attribute for the model. This attribute will be persisted by Redis
     # as a string. Any value stored here will be retrieved in its string representation.
@@ -488,6 +492,8 @@ module Ohm
 
     def new?
       !id
+    rescue MissingID
+      true
     end
 
     def create
@@ -588,13 +594,12 @@ module Ohm
         [att, value.inspect]
       end
 
-      "#<#{self.class}:#{id || "?"} #{everything.map {|e| e.join("=") }.join(" ")}>"
+      "#<#{self.class}:#{new? ? "?" : id} #{everything.map {|e| e.join("=") }.join(" ")}>"
     end
 
   protected
 
     def key(*args)
-      raise MissingID if new?
       self.class.key(id, *args)
     end
 
@@ -680,7 +685,7 @@ module Ohm
     end
 
     def read_remote(att)
-      id && db.get(key(att))
+      db.get(key(att)) unless new?
     end
 
     def write_remote(att, value)
