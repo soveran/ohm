@@ -490,9 +490,7 @@ module Ohm
     end
 
     def new?
-      !id
-    rescue MissingID
-      true
+      !@id
     end
 
     def create
