@@ -130,7 +130,7 @@ class ValidationsTest < Test::Unit::TestCase
           assert_unique :capacity
         end
 
-        assert_raise ArgumentError do
+        assert_raises(Ohm::Model::IndexNotFound) do
           @event.valid?
         end
       end

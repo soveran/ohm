@@ -152,7 +152,6 @@ module Ohm
 
       # @param value [Ohm::Model#id] Adds the id of the object if it's an Ohm::Model.
       def add(model)
-        raise ArgumentError unless model.id
         self << model.id
       end
 
@@ -340,6 +339,16 @@ module Ohm
     class CannotDeleteIndex < Error
       def message
         "You tried to delete an internal index used by Ohm."
+      end
+    end
+
+    class IndexNotFound < Error
+      def initialize(att)
+        @att = att
+      end
+
+      def message
+        "Index #{@att.inspect} not found."
       end
     end
 
@@ -704,7 +713,7 @@ module Ohm
     end
 
     def self.index_key_for(att, value)
-      raise ArgumentError unless indices.include?(att)
+      raise IndexNotFound, att unless indices.include?(att)
       key(att, encode(value))
     end
 

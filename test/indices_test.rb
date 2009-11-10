@@ -43,7 +43,7 @@ class IndicesTest < Test::Unit::TestCase
     end
 
     should "raise if the field is not indexed" do
-      assert_raises(ArgumentError) do
+      assert_raises(Ohm::Model::IndexNotFound) do
         User.find(:sandunga => "foo")
       end
     end
@@ -155,7 +155,7 @@ class IndicesTest < Test::Unit::TestCase
     end
 
     should "raise if the argument is not an index" do
-      assert_raises(ArgumentError) do
+      assert_raises(Ohm::Model::IndexNotFound) do
         Event.find(:timeline => 1).except(:not_an_index => 1)
       end
     end
