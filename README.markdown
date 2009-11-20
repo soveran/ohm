@@ -190,7 +190,7 @@ Note that calling these methods results in new sets being created
 on the fly. This is important so that you can perform further operations
 before reading the items to the client.
 
-For more information, see (SINTERSTORE)[http://code.google.com/p/redis/wiki/SinterstoreCommand] and (SDIFFSTORE)[http://code.google.com/p/redis/wiki/SdiffstoreCommand].
+For more information, see [SINTERSTORE](http://code.google.com/p/redis/wiki/SinterstoreCommand) and [SDIFFSTORE](http://code.google.com/p/redis/wiki/SdiffstoreCommand).
 
 Validations
 -----------
