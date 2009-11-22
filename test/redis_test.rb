@@ -1,5 +1,7 @@
 require File.join(File.dirname(__FILE__), "test_helper")
 
+# This test suit is based on the Redis-rb spec,
+# located at http://github.com/ezmobius/redis-rb/
 class Foo
   attr_accessor :bar
   def initialize(bar)
@@ -22,30 +24,43 @@ class RedisTest < Test::Unit::TestCase
       @r.flushdb
     end
 
-    should "should be able to GET a key" do
+    should "be able to GET a key" do
       assert_equal "bar", @r.get("foo")
     end
 
-    should "should be able to SET a key" do
+    should "be able to SET a key" do
       @r.set("foo", "nik")
       assert_equal "nik", @r.get("foo")
     end
 
-    should "should be able to SETNX(setnx)" do
+    should "be able to SETNX(setnx)" do
       @r.set("foo", "nik")
       assert_equal "nik", @r.get("foo")
       @r.setnx("foo", "bar")
       assert_equal "nik", @r.get("foo")
     end
 
-    should "should be able to INCR(increment) a key" do
+    should "be able to MSET keys" do
+      @r.mset(:foo => "foobar", :bar => 1000)
+      assert_equal ["foobar", "1000"], @r.mget("foo", "bar")
+      assert_equal ["foobar", "1000", nil], @r.mget("foo", "bar", "baz")
+    end
+
+    should "be able to MGET keys" do
+      @r.set("foo", 1000)
+      @r.set("bar", 2000)
+      assert_equal ["1000", "2000"], @r.mget("foo", "bar")
+      assert_equal ["1000", "2000", nil], @r.mget("foo", "bar", "baz")
+    end
+
+    should "be able to INCR(increment) a key" do
       @r.del("counter")
       assert_equal 1, @r.incr("counter")
       assert_equal 2, @r.incr("counter")
       assert_equal 3, @r.incr("counter")
     end
 
-    should "should be able to DECR(decrement) a key" do
+    should "be able to DECR(decrement) a key" do
       @r.del("counter")
       assert_equal 1, @r.incr("counter")
       assert_equal 2, @r.incr("counter")
@@ -54,11 +69,11 @@ class RedisTest < Test::Unit::TestCase
       assert_equal 0, @r.decrby("counter", 2)
     end
 
-    should "should be able to RANDKEY(return a random key)" do
+    should "be able to RANDKEY(return a random key)" do
       assert_not_nil @r.randomkey
     end
 
-    should "should be able to RENAME a key" do
+    should "be able to RENAME a key" do
       @r.del "foo"
       @r.del "bar"
       @r.set("foo", "hi")
@@ -66,7 +81,7 @@ class RedisTest < Test::Unit::TestCase
       assert_equal "hi", @r.get("bar")
     end
 
-    should "should be able to RENAMENX(rename unless the new key already exists) a key" do
+    should "be able to RENAMENX(rename unless the new key already exists) a key" do
       @r.del "foo"
       @r.del "bar"
       @r.set("foo", "hi")
@@ -77,14 +92,14 @@ class RedisTest < Test::Unit::TestCase
       assert_equal "ohai", @r.get("bar")
     end
 
-    should "should be able to EXISTS(check if key exists)" do
+    should "be able to EXISTS(check if key exists)" do
       @r.set("foo", "nik")
       assert @r.exists("foo")
       @r.del "foo"
       assert_equal false, @r.exists("foo")
     end
 
-    should "should be able to KEYS(glob for keys)" do
+    should "be able to KEYS(glob for keys)" do
       @r.keys("f*").each do |key|
         @r.del key
       end
@@ -94,14 +109,14 @@ class RedisTest < Test::Unit::TestCase
       assert_equal ["f","fo", "foo"], @r.keys("f*").sort
     end
 
-    should "should be able to check the TYPE of a key" do
+    should "be able to check the TYPE of a key" do
       @r.set("foo", "nik")
       assert_equal "string", @r.type("foo")
       @r.del "foo"
       assert_equal "none", @r.type("foo")
     end
 
-    should "should be able to push to the head of a list" do
+    should "be able to push to the head of a list" do
       @r.lpush "list", "hello"
       @r.lpush "list", 42
       assert_equal "list", @r.type("list")
@@ -110,14 +125,14 @@ class RedisTest < Test::Unit::TestCase
       @r.del("list")
     end
 
-    should "should be able to push to the tail of a list" do
+    should "be able to push to the tail of a list" do
       @r.rpush "list", "hello"
       assert_equal "list", @r.type("list")
       assert_equal 1, @r.llen("list")
       @r.del("list")
     end
 
-    should "should be able to pop the tail of a list" do
+    should "be able to pop the tail of a list" do
       @r.rpush "list", "hello"
       @r.rpush "list", "goodbye"
       assert_equal "list", @r.type("list")
@@ -126,7 +141,7 @@ class RedisTest < Test::Unit::TestCase
       @r.del("list")
     end
 
-    should "should be able to pop the head of a list" do
+    should "be able to pop the head of a list" do
       @r.rpush "list", "hello"
       @r.rpush "list", "goodbye"
       assert_equal "list", @r.type("list")
@@ -135,7 +150,7 @@ class RedisTest < Test::Unit::TestCase
       @r.del("list")
     end
 
-    should "should be able to get the length of a list" do
+    should "be able to get the length of a list" do
       @r.rpush "list", "hello"
       @r.rpush "list", "goodbye"
       assert_equal "list", @r.type("list")
@@ -143,7 +158,7 @@ class RedisTest < Test::Unit::TestCase
       @r.del("list")
     end
 
-    should "should be able to get a range of values from a list" do
+    should "be able to get a range of values from a list" do
       @r.rpush "list", "hello"
       @r.rpush "list", "goodbye"
       @r.rpush "list", "1"
@@ -155,7 +170,7 @@ class RedisTest < Test::Unit::TestCase
       @r.del("list")
     end
 
-    should "should be able to get all the values from a list" do
+    should "be able to get all the values from a list" do
       @r.rpush "list", "1"
       @r.rpush "list", "2"
       @r.rpush "list", "3"
@@ -165,7 +180,7 @@ class RedisTest < Test::Unit::TestCase
       @r.del("list")
     end
 
-    should "should be able to trim a list" do
+    should "be able to trim a list" do
       @r.rpush "list", "hello"
       @r.rpush "list", "goodbye"
       @r.rpush "list", "1"
@@ -179,7 +194,7 @@ class RedisTest < Test::Unit::TestCase
       @r.del("list")
     end
 
-    should "should be able to get a value by indexing into a list" do
+    should "be able to get a value by indexing into a list" do
       @r.rpush "list", "hello"
       @r.rpush "list", "goodbye"
       assert_equal "list", @r.type("list")
@@ -188,7 +203,7 @@ class RedisTest < Test::Unit::TestCase
       @r.del("list")
     end
 
-    should "should be able to set a value by indexing into a list" do
+    should "be able to set a value by indexing into a list" do
       @r.rpush "list", "hello"
       @r.rpush "list", "hello"
       assert_equal "list", @r.type("list")
@@ -198,7 +213,7 @@ class RedisTest < Test::Unit::TestCase
       @r.del("list")
     end
 
-    should "should be able to remove values from a list LREM" do
+    should "be able to remove values from a list LREM" do
       @r.rpush "list", "hello"
       @r.rpush "list", "goodbye"
       assert_equal "list", @r.type("list")
@@ -208,7 +223,23 @@ class RedisTest < Test::Unit::TestCase
       @r.del("list")
     end
 
-    should "should be able add members to a set" do
+    should "be able to pop values from a list and push them onto a temp list with RPOPLPUSH" do
+      @r.rpush "list", 'one'
+      @r.rpush "list", 'two'
+      @r.rpush "list", 'three'
+      assert_equal "list", @r.type('list')
+      assert_equal 3, @r.llen('list')
+      assert_equal %w(one two three), @r.lrange('list',0,-1)
+      assert_equal [], @r.lrange('tmp',0,-1)
+      assert_equal "three", @r.rpoplpush('list', 'tmp')
+      assert_equal %w(three), @r.lrange('tmp',0,-1)
+      assert_equal "two", @r.rpoplpush('list', 'tmp')
+      assert_equal %w(two three), @r.lrange('tmp',0,-1)
+      assert_equal "one", @r.rpoplpush('list', 'tmp')
+      assert_equal %w(one two three), @r.lrange('tmp',0,-1)
+    end
+
+    should "be able add members to a set" do
       @r.sadd "set", "key1"
       @r.sadd "set", "key2"
       assert_equal "set", @r.type("set")
@@ -217,7 +248,7 @@ class RedisTest < Test::Unit::TestCase
       @r.del("set")
     end
 
-    should "should be able delete members to a set" do
+    should "be able delete members to a set" do
       @r.sadd "set", "key1"
       @r.sadd "set", "key2"
       assert_equal "set", @r.type("set")
@@ -229,7 +260,7 @@ class RedisTest < Test::Unit::TestCase
       @r.del("set")
     end
 
-    should "should be able count the members of a set" do
+    should "be able count the members of a set" do
       @r.sadd "set", "key1"
       @r.sadd "set", "key2"
       assert_equal "set", @r.type("set")
@@ -237,7 +268,7 @@ class RedisTest < Test::Unit::TestCase
       @r.del("set")
     end
 
-    should "should be able test for set membership" do
+    should "be able test for set membership" do
       @r.sadd "set", "key1"
       @r.sadd "set", "key2"
       assert_equal "set", @r.type("set")
@@ -248,7 +279,7 @@ class RedisTest < Test::Unit::TestCase
       @r.del("set")
     end
 
-    should "should be able to do set intersection" do
+    should "be able to do set intersection" do
       @r.sadd "set", "key1"
       @r.sadd "set", "key2"
       @r.sadd "set2", "key2"
@@ -256,7 +287,7 @@ class RedisTest < Test::Unit::TestCase
       @r.del("set")
     end
 
-    should "should be able to do set intersection and store the results in a key" do
+    should "be able to do set intersection and store the results in a key" do
       @r.sadd "set", "key1"
       @r.sadd "set", "key2"
       @r.sadd "set2", "key2"
@@ -265,7 +296,7 @@ class RedisTest < Test::Unit::TestCase
       @r.del("set")
     end
 
-    should "should be able to do crazy SORT queries" do
+    should "be able to do crazy SORT queries" do
       @r.set("dog_1", "louie")
       @r.rpush "dogs", 1
       @r.set("dog_2", "lucy")
@@ -278,13 +309,68 @@ class RedisTest < Test::Unit::TestCase
       assert_equal ["taj"], @r.sort("dogs", :get => "dog_*", :limit => [0,1], :order => "desc alpha")
     end
 
-    should "should provide info" do
+    should "be able add members to a zset ZADD" do
+      @r.zadd 'zset', 1, 'set'
+      assert_equal %w(set), @r.zrange('zset', 0, 1)
+      assert_equal 1, @r.zcard('zset')
+      @r.del('zset')
+    end
+
+    should "be able count the members of a zset ZCARD" do
+      @r.zadd 'zset', 1, 'foo'
+      @r.zcard('zset')
+      @r.del('zset')
+    end
+
+
+    should "be able delete members of a zset ZREM" do
+      @r.zadd 'zset', 1, 'set'
+      assert_equal 1, @r.zcard('zset')
+      @r.zadd 'zset', 2, 'set2'
+      assert_equal 2, @r.zcard('zset')
+      @r.zrem 'zset', 'set'
+      assert_equal 1, @r.zcard('zset')
+      @r.del('zset')
+    end
+
+    should "be able to get a range of values from a zset ZRANGE" do
+      @r.zadd 'zset', 1, 'set'
+      @r.zadd 'zset', 2, 'set2'
+      @r.zadd 'zset', 3, 'set3'
+      assert_equal 3, @r.zcard('zset')
+      assert_equal %w(set set2 set3), @r.zrange('zset', 0, 3)
+      @r.del('set')
+      @r.del('set2')
+      @r.del('set3')
+      @r.del('zset')
+    end
+
+    should "be able to get a reverse range of values from a zset ZREVRANGE" do
+      @r.zadd 'zset', 1, 'set'
+      @r.zadd 'zset', 2, 'set2'
+      @r.zadd 'zset', 3, 'set3'
+      assert_equal 3, @r.zcard('zset')
+      assert_equal %w(set3 set2 set), @r.zrevrange('zset', 0, 3)
+      @r.del('zset')
+    end
+
+    should "be able to get a range by score of values from a zset ZRANGEBYSCORE" do
+      @r.zadd 'zset', 1, 'set'
+      @r.zadd 'zset', 2, 'set2'
+      @r.zadd 'zset', 3, 'set3'
+      @r.zadd 'zset', 4, 'set4'
+      assert_equal 4, @r.zcard('zset')
+      assert_equal %w(set2 set3), @r.zrangebyscore('zset', 2, 3)
+      @r.del('zset')
+    end
+
+    should "provide info" do
       [:last_save_time, :redis_version, :total_connections_received, :connected_clients, :total_commands_processed, :connected_slaves, :uptime_in_seconds, :used_memory, :uptime_in_days, :changes_since_last_save].each do |x|
         assert @r.info.keys.include?(x)
       end
     end
 
-    should "should be able to flush the database" do
+    should "be able to flush the database" do
       @r.set("key1", "keyone")
       @r.set("key2", "keytwo")
       assert_equal ["foo", "key1", "key2"], @r.keys("*").sort #foo from before
@@ -292,20 +378,13 @@ class RedisTest < Test::Unit::TestCase
       assert_equal [], @r.keys("*")
     end
 
-    should "should be able to provide the last save time" do
+    should "be able to provide the last save time" do
       savetime = @r.lastsave
       assert_equal Time, Time.at(savetime).class
       assert Time.at(savetime) <= Time.now
     end
 
-    should "should be able to MGET keys" do
-      @r.set("foo", 1000)
-      @r.set("bar", 2000)
-      assert_equal ["1000", "2000"], @r.mget("foo", "bar")
-      assert_equal ["1000", "2000", nil], @r.mget("foo", "bar", "baz")
-    end
-
-    should "should bgsave" do
+    should "bgsave" do
       assert_nothing_raised do
         @r.bgsave
       end

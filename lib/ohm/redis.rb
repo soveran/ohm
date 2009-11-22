@@ -1,5 +1,10 @@
 # encoding: UTF-8
 
+# Redis client based on RubyRedis, original work of Salvatore Sanfilippo
+# http://github.com/antirez/redis/blob/4a327b4af9885d89b5860548f44569d1d2bde5ab/client-libraries/ruby_2/rubyredis.rb
+#
+# Some improvements where inspired by the Redis-rb library, including the testing suite.
+# http://github.com/ezmobius/redis-rb/
 require 'socket'
 
 begin
@@ -22,25 +27,34 @@ module Ohm
       end
     end
 
-    BulkCommands = {
-      :set => true,
-      :setnx => true,
-      :rpush => true,
-      :lpush => true,
-      :lset => true,
-      :lrem => true,
-      :sadd => true,
-      :srem => true,
-      :sismember => true,
+    BULK_COMMANDS = {
       :echo => true,
       :getset => true,
-      :smove => true
+      :lpush => true,
+      :lrem => true,
+      :lset => true,
+      :rpoplpush => true,
+      :rpush => true,
+      :sadd => true,
+      :set => true,
+      :setnx => true,
+      :sismember => true,
+      :smove => true,
+      :srem => true,
+      :zadd => true,
+      :zrem => true,
+      :zscore => true
     }
 
-    ProcessorIdentity = lambda { |reply| reply }
-    ProcessorConvertToBool = lambda { |reply| reply == 0 ? false : reply }
-    ProcessorSplitKeys = lambda { |reply| reply.split(" ") }
-    ProcessorInfo = lambda do |reply|
+    MULTI_BULK_COMMANDS = {
+      :mset => true,
+      :msetnx => true
+    }
+
+    PROCESSOR_IDENTITY = lambda { |reply| reply }
+    PROCESSOR_CONVERT_TO_BOOL = lambda { |reply| reply == 0 ? false : reply }
+    PROCESSOR_SPLIT_KEYS = lambda { |reply| reply.split(" ") }
+    PROCESSOR_INFO = lambda do |reply|
       info = Hash.new
       reply.each_line do |line|
         key, value = line.split(":", 2).map { |part| part.chomp }
@@ -49,30 +63,33 @@ module Ohm
       info
     end
 
-    ReplyProcessor = {
-      :exists => ProcessorConvertToBool,
-      :sismember=> ProcessorConvertToBool,
-      :sadd=> ProcessorConvertToBool,
-      :srem=> ProcessorConvertToBool,
-      :smove=> ProcessorConvertToBool,
-      :move=> ProcessorConvertToBool,
-      :setnx=> ProcessorConvertToBool,
-      :del=> ProcessorConvertToBool,
-      :renamenx=> ProcessorConvertToBool,
-      :expire=> ProcessorConvertToBool,
-      :keys => ProcessorSplitKeys,
-      :info => ProcessorInfo
+    REPLY_PROCESSOR = {
+      :exists => PROCESSOR_CONVERT_TO_BOOL,
+      :sismember=> PROCESSOR_CONVERT_TO_BOOL,
+      :sadd=> PROCESSOR_CONVERT_TO_BOOL,
+      :srem=> PROCESSOR_CONVERT_TO_BOOL,
+      :smove=> PROCESSOR_CONVERT_TO_BOOL,
+      :zadd => PROCESSOR_CONVERT_TO_BOOL,
+      :zrem => PROCESSOR_CONVERT_TO_BOOL,
+      :move=> PROCESSOR_CONVERT_TO_BOOL,
+      :setnx=> PROCESSOR_CONVERT_TO_BOOL,
+      :del=> PROCESSOR_CONVERT_TO_BOOL,
+      :renamenx=> PROCESSOR_CONVERT_TO_BOOL,
+      :expire=> PROCESSOR_CONVERT_TO_BOOL,
+      :keys => PROCESSOR_SPLIT_KEYS,
+      :info => PROCESSOR_INFO
     }
 
-    ReplyProcessor.send(:initialize) do |hash, key|
-      hash[key] = ProcessorIdentity
+    REPLY_PROCESSOR.send(:initialize) do |hash, key|
+      hash[key] = PROCESSOR_IDENTITY
     end
 
-    def initialize(opts={})
-      @host = opts[:host] || '127.0.0.1'
-      @port = opts[:port] || 6379
-      @db = opts[:db] || 0
-      @timeout = opts[:timeout] || 0
+    def initialize(options = {})
+      @host = options[:host] || '127.0.0.1'
+      @port = options[:port] || 6379
+      @db = options[:db] || 0
+      @timeout = options[:timeout] || 0
+      @password = options[:password]
       connect
     end
 
@@ -104,6 +121,7 @@ module Ohm
 
     def connect
       connect_to(@host, @port, @timeout == 0 ? nil : @timeout)
+      call_command([:auth, @password]) if @password
       call_command([:select, @db]) if @db != 0
       @sock
     end
@@ -172,26 +190,48 @@ module Ohm
     end
 
     def raw_call_command(argv)
-      bulk = extract_bulk_argument(argv)
-      @sock.write(argv.join(" ") + "\r\n")
-      @sock.write(bulk + "\r\n") if bulk
+      bulk_command?(argv) ?
+        process_bulk_command(argv) :
+        multi_bulk_command?(argv) ?
+          process_multi_bulk_command(argv) :
+          process_command(argv)
       process_reply(argv[0])
     end
 
-    def bulk_command?(argv)
-      BulkCommands[argv[0]] and argv.length > 1
+    def process_command(argv)
+      @sock.write("#{argv.join(" ")}\r\n")
     end
 
-    def extract_bulk_argument(argv)
-      if bulk_command?(argv)
-        bulk = argv[-1].to_s
-        argv[-1] = bulk.respond_to?(:bytesize) ? bulk.bytesize : bulk.size
-        bulk
+    def process_bulk_command(argv)
+      bulk = argv.pop.to_s
+      argv.push ssize(bulk)
+      @sock.write("#{argv.join(" ")}\r\n")
+      @sock.write("#{bulk}\r\n")
+    end
+
+    def process_multi_bulk_command(argv)
+      params = argv.pop.to_a.flatten
+      params.unshift(argv[0])
+
+      command = ["*#{params.size}"]
+      params.each do |param|
+        command << "$#{ssize(param)}"
+        command << param
       end
+
+      @sock.write(command.map { |cmd| "#{cmd}\r\n"}.join)
+    end
+
+    def bulk_command?(argv)
+      BULK_COMMANDS[argv[0]] and argv.length > 1
+    end
+
+    def multi_bulk_command?(argv)
+      MULTI_BULK_COMMANDS[argv[0]]
     end
 
     def process_reply(command)
-      ReplyProcessor[command][read_reply]
+      REPLY_PROCESSOR[command][read_reply]
     end
 
     def read_reply
@@ -239,7 +279,7 @@ module Ohm
 
     def format_bulk_reply(line)
       bulklen = line.to_i
-      return nil if bulklen == -1
+      return if bulklen == -1
       reply = @sock.read(bulklen)
       @sock.read(2) # Discard CRLF.
 
@@ -252,6 +292,10 @@ module Ohm
       reply = []
       line.to_i.times { reply << read_reply }
       reply
+    end
+
+    def ssize(string)
+      string.respond_to?(:bytesize) ? string.bytesize : string.size
     end
   end
 end
