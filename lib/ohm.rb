@@ -610,7 +610,12 @@ module Ohm
     end
 
     def write
-      attributes.each { |att| write_remote(att, send(att)) }
+      unless attributes.empty?
+        rems, adds = attributes.map { |a| [key(a), send(a)] }.partition { |t| t.last.nil? }
+
+        db.del(*rems.flatten.compact) unless rems.empty?
+        db.mset(Hash[*adds.flatten])  unless adds.empty?
+      end
     end
 
   private
@@ -692,12 +697,6 @@ module Ohm
 
     def read_remote(att)
       db.get(key(att)) unless new?
-    end
-
-    def write_remote(att, value)
-      value.nil? ?
-        db.del(key(att)) :
-        db.set(key(att), value)
     end
 
     def read_locals(attrs)
