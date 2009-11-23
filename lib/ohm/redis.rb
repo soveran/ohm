@@ -215,6 +215,7 @@ module Ohm
 
       command = ["*#{params.size}"]
       params.each do |param|
+        param = param.to_s
         command << "$#{ssize(param)}"
         command << param
       end

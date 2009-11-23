@@ -100,7 +100,7 @@ class TestRedis < Test::Unit::TestCase
 
   context "Finding an event" do
     setup do
-      Ohm.redis.sadd("Event", 1)
+      Ohm.redis.sadd("Event:all", 1)
       Ohm.redis.set("Event:1:name", "Concert")
     end
 
@@ -171,7 +171,7 @@ class TestRedis < Test::Unit::TestCase
   end
 
   context "Saving a model" do
-    should "create the model if it's new" do
+    should "create the model if it is new" do
       event = Event.new(:name => "Foo").save
       assert_equal "Foo", Event[event.id].name
     end
