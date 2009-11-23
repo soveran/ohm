@@ -614,7 +614,7 @@ module Ohm
         rems, adds = attributes.map { |a| [key(a), send(a)] }.partition { |t| t.last.nil? }
 
         db.del(*rems.flatten.compact) unless rems.empty?
-        db.mset(Hash[*adds.flatten])  unless adds.empty?
+        db.mset(adds.flatten)         unless adds.empty?
       end
     end
 
