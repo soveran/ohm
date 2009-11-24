@@ -626,4 +626,24 @@ class TestRedis < Test::Unit::TestCase
       assert_equal %Q{#<Bar:#{bar.id} name="Albert" friends=#<Set: ["1", "2"]> comments=#<List: ["A"]> visits=1>}, Bar[bar.id].inspect
     end
   end
+
+  context "Overwritting write" do
+    class ::Baz < Ohm::Model
+      attribute :name
+
+      def write
+        self.name = "Foobar"
+        super
+      end
+    end
+
+    should "work properly" do
+      baz = Baz.new
+      baz.name = "Foo"
+      baz.save
+      baz.name = "Foo"
+      baz.save
+      assert_equal "Foobar", Baz[baz.id].name
+    end
+  end
 end

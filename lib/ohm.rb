@@ -368,15 +368,18 @@ module Ohm
     #
     # @param name [Symbol] Name of the attribute.
     def self.attribute(name)
-      define_method(name) do
-        read_local(name)
-      end
+      unless attributes.include?(name)
 
-      define_method(:"#{name}=") do |value|
-        write_local(name, value)
-      end
+        define_method(name) do
+          read_local(name)
+        end
 
-      attributes << name
+        define_method(:"#{name}=") do |value|
+          write_local(name, value)
+        end
+
+        attributes << name
+      end
     end
 
     # Defines a counter attribute for the model. This attribute can't be assigned, only incremented
@@ -384,11 +387,14 @@ module Ohm
     #
     # @param name [Symbol] Name of the counter.
     def self.counter(name)
-      define_method(name) do
-        read_local(name).to_i
-      end
+      unless counters.include?(name)
 
-      counters << name
+        define_method(name) do
+          read_local(name).to_i
+        end
+
+        counters << name
+      end
     end
 
     # Defines a list attribute for the model. It can be accessed only after the model instance
@@ -396,8 +402,10 @@ module Ohm
     #
     # @param name [Symbol] Name of the list.
     def self.list(name, model = nil)
-      attr_list_reader(name, model)
-      collections << name
+      unless collections.include?(name)
+        attr_list_reader(name, model)
+        collections << name
+      end
     end
 
     # Defines a set attribute for the model. It can be accessed only after the model instance
@@ -406,8 +414,10 @@ module Ohm
     #
     # @param name [Symbol] Name of the set.
     def self.set(name, model = nil)
-      attr_set_reader(name, model)
-      collections << name
+      unless collections.include?(name)
+        attr_set_reader(name, model)
+        collections << name
+      end
     end
 
     # Creates an index (a set) that will be used for finding instances.
@@ -426,7 +436,9 @@ module Ohm
     #
     # @param name [Symbol] Name of the attribute to be indexed.
     def self.index(att)
-      indices << att
+      unless indices.include?(att)
+        indices << att
+      end
     end
 
     def self.attr_list_reader(name, model = nil)
@@ -609,16 +621,50 @@ module Ohm
       self.class.key(id, *args)
     end
 
+    # Rewrite at runtime to use either SET or MSET for persisting to
+    # Redis. The idea is to use MSET when possible.
     def write
+      if legacy_redis_version?
+        def write
+          write_with_set
+        end
+      else
+        def write
+          write_with_mset
+        end
+      end
+      write
+    end
+
+    # Write attributes using SET
+    # This method will be removed once MSET becomes standard.
+    def write_with_set
+      attributes.each do |att|
+        (value = send(att)) ?
+          db.set(key(att), value) :
+          db.del(key(att))
+      end
+    end
+
+    # Write attributes using MSET
+    # This is the preferred method, and will be the only option
+    # available once MSET becomes standard.
+    def write_with_mset
       unless attributes.empty?
         rems, adds = attributes.map { |a| [key(a), send(a)] }.partition { |t| t.last.nil? }
-
         db.del(*rems.flatten.compact) unless rems.empty?
         db.mset(adds.flatten)         unless adds.empty?
       end
     end
 
   private
+
+    # Determine if MSET is available. This method
+    # and the branch at #write will be deprecated
+    # once Redis 1.1 becomes the recommended version.
+    def legacy_redis_version?
+      db.info[:redis_version] <= "1.02"
+    end
 
     def self.db
       Ohm.redis

@@ -14,6 +14,12 @@ class Foo
 end
 
 class RedisTest < Test::Unit::TestCase
+  setup do
+    @legacy ||= begin
+                  Ohm.redis.info[:redis_version] <= "1.02"
+                end
+  end
+
   describe "redis" do
     setup do
       @r ||= Ohm.redis
@@ -41,9 +47,11 @@ class RedisTest < Test::Unit::TestCase
     end
 
     should "be able to MSET keys" do
-      @r.mset(:foo => "foobar", :bar => 1000)
-      assert_equal ["foobar", "1000"], @r.mget("foo", "bar")
-      assert_equal ["foobar", "1000", nil], @r.mget("foo", "bar", "baz")
+      unless @legacy
+        @r.mset(:foo => "foobar", :bar => 1000)
+        assert_equal ["foobar", "1000"], @r.mget("foo", "bar")
+        assert_equal ["foobar", "1000", nil], @r.mget("foo", "bar", "baz")
+      end
     end
 
     should "be able to MGET keys" do
@@ -224,19 +232,21 @@ class RedisTest < Test::Unit::TestCase
     end
 
     should "be able to pop values from a list and push them onto a temp list with RPOPLPUSH" do
-      @r.rpush "list", 'one'
-      @r.rpush "list", 'two'
-      @r.rpush "list", 'three'
-      assert_equal "list", @r.type('list')
-      assert_equal 3, @r.llen('list')
-      assert_equal %w(one two three), @r.lrange('list',0,-1)
-      assert_equal [], @r.lrange('tmp',0,-1)
-      assert_equal "three", @r.rpoplpush('list', 'tmp')
-      assert_equal %w(three), @r.lrange('tmp',0,-1)
-      assert_equal "two", @r.rpoplpush('list', 'tmp')
-      assert_equal %w(two three), @r.lrange('tmp',0,-1)
-      assert_equal "one", @r.rpoplpush('list', 'tmp')
-      assert_equal %w(one two three), @r.lrange('tmp',0,-1)
+      unless @legacy
+        @r.rpush "list", 'one'
+        @r.rpush "list", 'two'
+        @r.rpush "list", 'three'
+        assert_equal "list", @r.type('list')
+        assert_equal 3, @r.llen('list')
+        assert_equal %w(one two three), @r.lrange('list',0,-1)
+        assert_equal [], @r.lrange('tmp',0,-1)
+        assert_equal "three", @r.rpoplpush('list', 'tmp')
+        assert_equal %w(three), @r.lrange('tmp',0,-1)
+        assert_equal "two", @r.rpoplpush('list', 'tmp')
+        assert_equal %w(two three), @r.lrange('tmp',0,-1)
+        assert_equal "one", @r.rpoplpush('list', 'tmp')
+        assert_equal %w(one two three), @r.lrange('tmp',0,-1)
+      end
     end
 
     should "be able add members to a set" do
@@ -310,58 +320,70 @@ class RedisTest < Test::Unit::TestCase
     end
 
     should "be able add members to a zset ZADD" do
-      @r.zadd 'zset', 1, 'set'
-      assert_equal %w(set), @r.zrange('zset', 0, 1)
-      assert_equal 1, @r.zcard('zset')
-      @r.del('zset')
+      unless @legacy
+        @r.zadd 'zset', 1, 'set'
+        assert_equal %w(set), @r.zrange('zset', 0, 1)
+        assert_equal 1, @r.zcard('zset')
+        @r.del('zset')
+      end
     end
 
     should "be able count the members of a zset ZCARD" do
-      @r.zadd 'zset', 1, 'foo'
-      @r.zcard('zset')
-      @r.del('zset')
+      unless @legacy
+        @r.zadd 'zset', 1, 'foo'
+        @r.zcard('zset')
+        @r.del('zset')
+      end
     end
 
 
     should "be able delete members of a zset ZREM" do
-      @r.zadd 'zset', 1, 'set'
-      assert_equal 1, @r.zcard('zset')
-      @r.zadd 'zset', 2, 'set2'
-      assert_equal 2, @r.zcard('zset')
-      @r.zrem 'zset', 'set'
-      assert_equal 1, @r.zcard('zset')
-      @r.del('zset')
+      unless @legacy
+        @r.zadd 'zset', 1, 'set'
+        assert_equal 1, @r.zcard('zset')
+        @r.zadd 'zset', 2, 'set2'
+        assert_equal 2, @r.zcard('zset')
+        @r.zrem 'zset', 'set'
+        assert_equal 1, @r.zcard('zset')
+        @r.del('zset')
+      end
     end
 
     should "be able to get a range of values from a zset ZRANGE" do
-      @r.zadd 'zset', 1, 'set'
-      @r.zadd 'zset', 2, 'set2'
-      @r.zadd 'zset', 3, 'set3'
-      assert_equal 3, @r.zcard('zset')
-      assert_equal %w(set set2 set3), @r.zrange('zset', 0, 3)
-      @r.del('set')
-      @r.del('set2')
-      @r.del('set3')
-      @r.del('zset')
+      unless @legacy
+        @r.zadd 'zset', 1, 'set'
+        @r.zadd 'zset', 2, 'set2'
+        @r.zadd 'zset', 3, 'set3'
+        assert_equal 3, @r.zcard('zset')
+        assert_equal %w(set set2 set3), @r.zrange('zset', 0, 3)
+        @r.del('set')
+        @r.del('set2')
+        @r.del('set3')
+        @r.del('zset')
+      end
     end
 
     should "be able to get a reverse range of values from a zset ZREVRANGE" do
-      @r.zadd 'zset', 1, 'set'
-      @r.zadd 'zset', 2, 'set2'
-      @r.zadd 'zset', 3, 'set3'
-      assert_equal 3, @r.zcard('zset')
-      assert_equal %w(set3 set2 set), @r.zrevrange('zset', 0, 3)
-      @r.del('zset')
+      unless @legacy
+        @r.zadd 'zset', 1, 'set'
+        @r.zadd 'zset', 2, 'set2'
+        @r.zadd 'zset', 3, 'set3'
+        assert_equal 3, @r.zcard('zset')
+        assert_equal %w(set3 set2 set), @r.zrevrange('zset', 0, 3)
+        @r.del('zset')
+      end
     end
 
     should "be able to get a range by score of values from a zset ZRANGEBYSCORE" do
-      @r.zadd 'zset', 1, 'set'
-      @r.zadd 'zset', 2, 'set2'
-      @r.zadd 'zset', 3, 'set3'
-      @r.zadd 'zset', 4, 'set4'
-      assert_equal 4, @r.zcard('zset')
-      assert_equal %w(set2 set3), @r.zrangebyscore('zset', 2, 3)
-      @r.del('zset')
+      unless @legacy
+        @r.zadd 'zset', 1, 'set'
+        @r.zadd 'zset', 2, 'set2'
+        @r.zadd 'zset', 3, 'set3'
+        @r.zadd 'zset', 4, 'set4'
+        assert_equal 4, @r.zcard('zset')
+        assert_equal %w(set2 set3), @r.zrangebyscore('zset', 2, 3)
+        @r.del('zset')
+      end
     end
 
     should "provide info" do
