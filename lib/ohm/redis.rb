@@ -54,14 +54,7 @@ module Ohm
     PROCESSOR_IDENTITY = lambda { |reply| reply }
     PROCESSOR_CONVERT_TO_BOOL = lambda { |reply| reply == 0 ? false : reply }
     PROCESSOR_SPLIT_KEYS = lambda { |reply| reply.split(" ") }
-    PROCESSOR_INFO = lambda do |reply|
-      info = Hash.new
-      reply.each_line do |line|
-        key, value = line.split(":", 2).map { |part| part.chomp }
-        info[key.to_sym] = value
-      end
-      info
-    end
+    PROCESSOR_INFO = lambda { |reply| Hash[*(reply.lines.map { |l| l.chomp.split(":") }.flatten)] }
 
     REPLY_PROCESSOR = {
       :exists => PROCESSOR_CONVERT_TO_BOOL,

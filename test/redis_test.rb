@@ -16,7 +16,7 @@ end
 class RedisTest < Test::Unit::TestCase
   setup do
     @legacy ||= begin
-                  Ohm.redis.info[:redis_version] <= "1.02"
+                  Ohm.redis.info["redis_version"] <= "1.02"
                 end
   end
 
@@ -387,7 +387,7 @@ class RedisTest < Test::Unit::TestCase
     end
 
     should "provide info" do
-      [:last_save_time, :redis_version, :total_connections_received, :connected_clients, :total_commands_processed, :connected_slaves, :uptime_in_seconds, :used_memory, :uptime_in_days, :changes_since_last_save].each do |x|
+      %w(last_save_time redis_version total_connections_received connected_clients total_commands_processed connected_slaves uptime_in_seconds used_memory uptime_in_days changes_since_last_save).each do |x|
         assert @r.info.keys.include?(x)
       end
     end

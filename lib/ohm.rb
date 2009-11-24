@@ -663,7 +663,7 @@ module Ohm
     # and the branch at #write will be deprecated
     # once Redis 1.1 becomes the recommended version.
     def legacy_redis_version?
-      db.info[:redis_version] <= "1.02"
+      db.info["redis_version"] <= "1.02"
     end
 
     def self.db
