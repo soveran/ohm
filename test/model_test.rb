@@ -98,6 +98,63 @@ class TestRedis < Test::Unit::TestCase
     end
   end
 
+  context "Model definition" do
+    should "raise if an attribute is redefined" do
+      assert_raise Ohm::Model::RedefinitionError do
+        class RedefinedModel < Ohm::Model
+          attribute :name
+          attribute :name
+        end
+      end
+    end
+
+    should "raise if a counter is redefined" do
+      assert_raise Ohm::Model::RedefinitionError do
+        class RedefinedModel < Ohm::Model
+          counter :age
+          counter :age
+        end
+      end
+    end
+
+    should "raise if a list is redefined" do
+      assert_raise Ohm::Model::RedefinitionError do
+        class RedefinedModel < Ohm::Model
+          list :todo
+          list :todo
+        end
+      end
+    end
+
+    should "raise if a set is redefined" do
+      assert_raise Ohm::Model::RedefinitionError do
+        class RedefinedModel < Ohm::Model
+          set :friends
+          set :friends
+        end
+      end
+    end
+
+    should "raise if a collection is redefined" do
+      assert_raise Ohm::Model::RedefinitionError do
+        class RedefinedModel < Ohm::Model
+          list :toys
+          set :toys
+        end
+      end
+    end
+
+    should "raise if a index is redefined" do
+      assert_raise Ohm::Model::RedefinitionError do
+        class RedefinedModel < Ohm::Model
+          attribute :color
+          index :color
+          index :color
+        end
+      end
+    end
+  end
+
   context "Finding an event" do
     setup do
       Ohm.redis.sadd("Event:all", 1)

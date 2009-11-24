@@ -86,6 +86,16 @@ module Ohm
       connect
     end
 
+    def version
+      @version ||= info["redis_version"]
+    end
+
+    def support_mset?
+      @support_mset.nil? ?
+        @support_mset = version >= "1.05" :
+        @support_mset
+    end
+
     def to_s
       "Redis Client connected to #{@host}:#{@port} against DB #{@db}"
     end

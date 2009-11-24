@@ -352,6 +352,16 @@ module Ohm
       end
     end
 
+    class RedefinitionError < Error
+      def initialize(att)
+        @att = att
+      end
+
+      def message
+        "Cannot redefine #{@att.inspect}"
+      end
+    end
+
     @@attributes = Hash.new { |hash, key| hash[key] = [] }
     @@collections = Hash.new { |hash, key| hash[key] = [] }
     @@counters = Hash.new { |hash, key| hash[key] = [] }
@@ -368,18 +378,17 @@ module Ohm
     #
     # @param name [Symbol] Name of the attribute.
     def self.attribute(name)
-      unless attributes.include?(name)
+      raise RedefinitionError, name if attributes.include?(name)
 
-        define_method(name) do
-          read_local(name)
-        end
-
-        define_method(:"#{name}=") do |value|
-          write_local(name, value)
-        end
-
-        attributes << name
+      define_method(name) do
+        read_local(name)
       end
+
+      define_method(:"#{name}=") do |value|
+        write_local(name, value)
+      end
+
+      attributes << name
     end
 
     # Defines a counter attribute for the model. This attribute can't be assigned, only incremented
@@ -387,14 +396,13 @@ module Ohm
     #
     # @param name [Symbol] Name of the counter.
     def self.counter(name)
-      unless counters.include?(name)
+      raise RedefinitionError, name if counters.include?(name)
 
-        define_method(name) do
-          read_local(name).to_i
-        end
-
-        counters << name
+      define_method(name) do
+        read_local(name).to_i
       end
+
+      counters << name
     end
 
     # Defines a list attribute for the model. It can be accessed only after the model instance
@@ -402,10 +410,10 @@ module Ohm
     #
     # @param name [Symbol] Name of the list.
     def self.list(name, model = nil)
-      unless collections.include?(name)
-        attr_list_reader(name, model)
-        collections << name
-      end
+      raise RedefinitionError, name if collections.include?(name)
+
+      attr_list_reader(name, model)
+      collections << name
     end
 
     # Defines a set attribute for the model. It can be accessed only after the model instance
@@ -414,10 +422,10 @@ module Ohm
     #
     # @param name [Symbol] Name of the set.
     def self.set(name, model = nil)
-      unless collections.include?(name)
-        attr_set_reader(name, model)
-        collections << name
-      end
+      raise RedefinitionError, name if collections.include?(name)
+
+      attr_set_reader(name, model)
+      collections << name
     end
 
     # Creates an index (a set) that will be used for finding instances.
@@ -436,9 +444,9 @@ module Ohm
     #
     # @param name [Symbol] Name of the attribute to be indexed.
     def self.index(att)
-      unless indices.include?(att)
-        indices << att
-      end
+      raise RedefinitionError, att if indices.include?(att)
+
+      indices << att
     end
 
     def self.attr_list_reader(name, model = nil)
@@ -621,19 +629,11 @@ module Ohm
       self.class.key(id, *args)
     end
 
-    # Rewrite at runtime to use either SET or MSET for persisting to
-    # Redis. The idea is to use MSET when possible.
+    # Use MSET if possible, SET otherwise.
     def write
-      if legacy_redis_version?
-        def write
-          write_with_set
-        end
-      else
-        def write
-          write_with_mset
-        end
-      end
-      write
+      db.support_mset? ?
+        write_with_mset :
+        write_with_set
     end
 
     # Write attributes using SET
@@ -658,13 +658,6 @@ module Ohm
     end
 
   private
-
-    # Determine if MSET is available. This method
-    # and the branch at #write will be deprecated
-    # once Redis 1.1 becomes the recommended version.
-    def legacy_redis_version?
-      db.info["redis_version"] <= "1.02"
-    end
 
     def self.db
       Ohm.redis
