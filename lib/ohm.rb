@@ -3,6 +3,7 @@
 require "base64"
 require File.join(File.dirname(__FILE__), "ohm", "redis")
 require File.join(File.dirname(__FILE__), "ohm", "validations")
+require File.join(File.dirname(__FILE__), "ohm", "compat-1.8.6")
 
 module Ohm
 
