@@ -165,4 +165,37 @@ class IndicesTest < Test::Unit::TestCase
       assert_equal [user], User.find(:update => "CORRECTED - UPDATE 2-Suspected US missile strike kills 5 in Pakistan")
     end
   end
+
+  context "New indices" do
+    should "populate a new index when the model is saved" do
+      class Event < Ohm::Model
+        attribute :name
+      end
+
+      foo = Event.create(:name => "Foo")
+
+      assert_raise(Ohm::Model::IndexNotFound) { Event.find(:name => "Foo") }
+
+      class Event < Ohm::Model
+        index :name
+      end
+
+      # Find works correctly once the index is added.
+      assert_nothing_raised { Event.find(:name => "Foo") }
+
+      # The index was added after foo was created.
+      assert Event.find(:name => "Foo").empty?
+
+      bar = Event.create(:name => "Bar")
+
+      # Bar was indexed properly.
+      assert_equal bar, Event.find(:name => "Bar").first
+
+      # Saving all the objects populates the indices.
+      Event.all.each { |e| e.save }
+
+      # Now foo is indexed.
+      assert_equal foo, Event.find(:name => "Foo").first
+    end
+  end
 end
