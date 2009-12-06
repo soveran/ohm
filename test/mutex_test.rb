@@ -32,5 +32,21 @@ class TestMutex < Test::Unit::TestCase
       p2.join
       assert t2 > t1
     end
+
+    should "allow an instance to lock a record if the previous lock is expired" do
+      @p1.send(:lock!)
+      @p2.mutex do
+        assert true
+      end
+    end
+
+    should "work if two clients are fighting for the lock" do
+      @p1.send(:lock!)
+
+      assert_nothing_raised do
+        @p1.mutex {}
+        @p2.mutex {}
+      end
+    end
   end
 end

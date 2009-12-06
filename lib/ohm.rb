@@ -761,15 +761,32 @@ module Ohm
     end
 
     # Lock the object so no other instances can modify it.
+    # This method implements the design pattern for locks
+    # described at: http://code.google.com/p/redis/wiki/SetnxCommand
+    #
     # @see Model#mutex
     def lock!
-      lock = db.setnx(key(:_lock), 1) until lock == 1
+      until db.setnx(key(:_lock), lock_timeout)
+        next unless lock = db.get(key(:_lock))
+        sleep(0.5) and next unless lock_expired?(lock)
+
+        break unless lock = db.getset(key(:_lock), lock_timeout)
+        break if lock_expired?(lock)
+      end
     end
 
     # Release the lock.
     # @see Model#mutex
     def unlock!
       db.del(key(:_lock))
+    end
+
+    def lock_timeout
+      Time.now.to_i + 2
+    end
+
+    def lock_expired? lock
+      lock.to_i < Time.now.to_i
     end
   end
 end
