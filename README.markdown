@@ -106,13 +106,13 @@ when you retrieve the value.
 
 A `set` in Redis is an unordered list, with an external behavior similar
 to that of Ruby arrays, but optimized for faster membership lookups.
-It's used internaly by Ohm to keep track of the instances of each model
+It's used internally by Ohm to keep track of the instances of each model
 and for generating and maintaining indexes.
 
 ### list
 
-A `list` is like an array in Ruby. It's perfectly suited for queues and
-for keeping elements in order.
+A `list` is like an array in Ruby. It's perfectly suited for queues
+and for keeping elements in order.
 
 ### counter
 
@@ -122,16 +122,45 @@ the value, but you can not assign it. In the example above, we used a
 counter attribute for tracking votes. As the incr and decr operations
 are atomic, you can rest assured a vote won't be counted twice.
 
+Persistence strategy
+--------------------
+
+The attributes declared with `attribute` are only persisted after
+calling `save`. If the object is in an invalid state, no value is sent
+to Redis (see the section on **Validations** below).
+
+Operations on attributes of type `list`, `set` and `counter` are
+possible only after the object is created (when it has an assigned
+`id`). Any operation on these kinds of attributes is performed
+immediately, without running the object validations. This design yields
+better performance than running the validations on each operation or
+buffering the operations and waiting for a call to `save`.
+
+For most use cases, this pattern doesn't represent a problem.
+If you need to check for validity before operating on lists, sets or
+counters, you can use this pattern:
+
+    if event.valid?
+      event.comments << "Great event!"
+    end
+
+If you are saving the object, this will suffice:
+
+    if event.save
+      event.comments << "Wonderful event!"
+    end
+
+
 Associations
 ------------
 
 Ohm lets you use collections (lists and sets) to represent associations.
-For this, you only need to provide a second paramenter when declaring a
+For this, you only need to provide a second parameter when declaring a
 list or a set:
 
     set :attendees, Person
 
-After this, everytime you refer to `event.attendees` you will be talking
+After this, every time you refer to `event.attendees` you will be talking
 about instances of the model `Person`. If you want to get the raw values
 of the set, you can use `event.attendees.raw`.
 
