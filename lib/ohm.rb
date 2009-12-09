@@ -782,11 +782,11 @@ module Ohm
     end
 
     def lock_timeout
-      Time.now.to_i + 2
+      Time.now.to_f + 1
     end
 
     def lock_expired? lock
-      lock.to_i < Time.now.to_i
+      lock.to_f < Time.now.to_f
     end
   end
 end

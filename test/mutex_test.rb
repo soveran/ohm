@@ -42,10 +42,18 @@ class TestMutex < Test::Unit::TestCase
 
     should "work if two clients are fighting for the lock" do
       @p1.send(:lock!)
+      @p3 = Person[1]
+      @p4 = Person[1]
 
       assert_nothing_raised do
-        @p1.mutex {}
-        @p2.mutex {}
+        p1 = Thread.new { @p1.mutex {} }
+        p2 = Thread.new { @p2.mutex {} }
+        p3 = Thread.new { @p3.mutex {} }
+        p4 = Thread.new { @p4.mutex {} }
+        p1.join
+        p2.join
+        p3.join
+        p4.join
       end
     end
   end
