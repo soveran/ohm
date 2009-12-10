@@ -7,19 +7,19 @@
 # http://github.com/ezmobius/redis-rb/
 require 'socket'
 
-begin
-  if (RUBY_VERSION >= '1.9')
-    require 'timeout'
-    RedisTimer = Timeout
-  else
-    require 'system_timer'
-    RedisTimer = SystemTimer
-  end
-rescue LoadError
-  RedisTimer = nil
-end
-
 module Ohm
+  begin
+    if (RUBY_VERSION >= '1.9')
+      require 'timeout'
+      RedisTimer = Timeout
+    else
+      require 'system_timer'
+      RedisTimer = SystemTimer
+    end
+  rescue LoadError
+    RedisTimer = nil
+  end
+
   class Redis
     class ProtocolError < RuntimeError
       def initialize(reply_type)
