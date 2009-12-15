@@ -602,7 +602,7 @@ module Ohm
       false
     end
 
-    # Lock the object before ejecuting the block, and release it once the block is done.
+    # Lock the object before executing the block, and release it once the block is done.
     def mutex
       lock!
       yield
