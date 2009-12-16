@@ -56,5 +56,34 @@ class TestMutex < Test::Unit::TestCase
         p4.join
       end
     end
+
+    should "yield the right result after a lock fight" do
+      class Candidate < Ohm::Model
+        attribute :name
+        counter :votes
+      end
+
+      @candidate = Candidate.create :name => "Foo"
+      @candidate.send(:lock!)
+
+      threads = []
+
+      n = 10
+      m = 9
+
+      n.times do |i|
+        threads << Thread.new do
+          m.times do |i|
+            @candidate.mutex do
+              sleep 0.1
+              @candidate.incr(:votes)
+            end
+          end
+        end
+      end
+
+      threads.each { |t| t.join }
+      assert_equal n * m, @candidate.votes
+    end
   end
 end
