@@ -453,6 +453,13 @@ class TestRedis < Test::Unit::TestCase
       assert @post.comments.all.kind_of?(Array)
     end
 
+    should "append elements with push" do
+      @post.comments.push "1"
+      @post.comments << "2"
+
+      assert_equal ["1", "2"], @post.comments.all
+    end
+
     should "keep the inserting order" do
       @post.comments << "1"
       @post.comments << "2"

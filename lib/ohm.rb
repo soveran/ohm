@@ -183,6 +183,8 @@ module Ohm
         db.rpush(key, value)
       end
 
+      alias push <<
+
       # @return [String] Return and remove the last element of the list.
       def pop
         db.rpop(key)
