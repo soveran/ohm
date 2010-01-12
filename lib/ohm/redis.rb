@@ -42,6 +42,7 @@ module Ohm
       :smove => true,
       :srem => true,
       :zadd => true,
+      :zincrby => true,
       :zrem => true,
       :zscore => true
     }

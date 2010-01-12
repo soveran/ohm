@@ -386,6 +386,23 @@ class RedisTest < Test::Unit::TestCase
       end
     end
 
+    should "increment by a certain amount the score of a zset ZINCRBY" do
+      assert_equal 0, @r.zcard("league")
+
+      @r.zincrby "league", 1, "foo"
+      assert_equal "1", @r.zscore("league", "foo")
+
+      assert_equal 1, @r.zcard("league")
+
+      @r.zincrby "league", 10, "foo"
+      assert_equal "11", @r.zscore("league", "foo")
+
+      @r.set "bar", "2"
+      assert_raises do
+        @r.zincrby "bar", 2, "baz"
+      end
+    end
+
     should "provide info" do
       %w(last_save_time redis_version total_connections_received connected_clients total_commands_processed connected_slaves uptime_in_seconds used_memory uptime_in_days changes_since_last_save).each do |x|
         assert @r.info.keys.include?(x)
