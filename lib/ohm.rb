@@ -355,16 +355,6 @@ module Ohm
       end
     end
 
-    class RedefinitionError < Error
-      def initialize(att)
-        @att = att
-      end
-
-      def message
-        "Cannot redefine #{@att.inspect}"
-      end
-    end
-
     @@attributes = Hash.new { |hash, key| hash[key] = [] }
     @@collections = Hash.new { |hash, key| hash[key] = [] }
     @@counters = Hash.new { |hash, key| hash[key] = [] }
@@ -381,8 +371,6 @@ module Ohm
     #
     # @param name [Symbol] Name of the attribute.
     def self.attribute(name)
-      raise RedefinitionError, name if attributes.include?(name)
-
       define_method(name) do
         read_local(name)
       end
@@ -391,7 +379,7 @@ module Ohm
         write_local(name, value)
       end
 
-      attributes << name
+      attributes << name unless attributes.include?(name)
     end
 
     # Defines a counter attribute for the model. This attribute can't be assigned, only incremented
@@ -399,13 +387,11 @@ module Ohm
     #
     # @param name [Symbol] Name of the counter.
     def self.counter(name)
-      raise RedefinitionError, name if counters.include?(name)
-
       define_method(name) do
         read_local(name).to_i
       end
 
-      counters << name
+      counters << name unless counters.include?(name)
     end
 
     # Defines a list attribute for the model. It can be accessed only after the model instance
@@ -413,10 +399,8 @@ module Ohm
     #
     # @param name [Symbol] Name of the list.
     def self.list(name, model = nil)
-      raise RedefinitionError, name if collections.include?(name)
-
       attr_list_reader(name, model)
-      collections << name
+      collections << name unless collections.include?(name)
     end
 
     # Defines a set attribute for the model. It can be accessed only after the model instance
@@ -425,10 +409,8 @@ module Ohm
     #
     # @param name [Symbol] Name of the set.
     def self.set(name, model = nil)
-      raise RedefinitionError, name if collections.include?(name)
-
       attr_set_reader(name, model)
-      collections << name
+      collections << name unless collections.include?(name)
     end
 
     # Creates an index (a set) that will be used for finding instances.
@@ -447,9 +429,7 @@ module Ohm
     #
     # @param name [Symbol] Name of the attribute to be indexed.
     def self.index(att)
-      raise RedefinitionError, att if indices.include?(att)
-
-      indices << att
+      indices << att unless indices.include?(att)
     end
 
     def self.attr_list_reader(name, model = nil)

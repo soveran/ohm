@@ -99,8 +99,8 @@ class TestRedis < Test::Unit::TestCase
   end
 
   context "Model definition" do
-    should "raise if an attribute is redefined" do
-      assert_raise Ohm::Model::RedefinitionError do
+    should "not raise if an attribute is redefined" do
+      assert_nothing_raised do
         class RedefinedModel < Ohm::Model
           attribute :name
           attribute :name
@@ -108,8 +108,8 @@ class TestRedis < Test::Unit::TestCase
       end
     end
 
-    should "raise if a counter is redefined" do
-      assert_raise Ohm::Model::RedefinitionError do
+    should "not raise if a counter is redefined" do
+      assert_nothing_raised do
         class RedefinedModel < Ohm::Model
           counter :age
           counter :age
@@ -117,8 +117,8 @@ class TestRedis < Test::Unit::TestCase
       end
     end
 
-    should "raise if a list is redefined" do
-      assert_raise Ohm::Model::RedefinitionError do
+    should "not raise if a list is redefined" do
+      assert_nothing_raised do
         class RedefinedModel < Ohm::Model
           list :todo
           list :todo
@@ -126,8 +126,8 @@ class TestRedis < Test::Unit::TestCase
       end
     end
 
-    should "raise if a set is redefined" do
-      assert_raise Ohm::Model::RedefinitionError do
+    should "not raise if a set is redefined" do
+      assert_nothing_raised do
         class RedefinedModel < Ohm::Model
           set :friends
           set :friends
@@ -135,8 +135,8 @@ class TestRedis < Test::Unit::TestCase
       end
     end
 
-    should "raise if a collection is redefined" do
-      assert_raise Ohm::Model::RedefinitionError do
+    should "not raise if a collection is redefined" do
+      assert_nothing_raised do
         class RedefinedModel < Ohm::Model
           list :toys
           set :toys
@@ -144,8 +144,8 @@ class TestRedis < Test::Unit::TestCase
       end
     end
 
-    should "raise if a index is redefined" do
-      assert_raise Ohm::Model::RedefinitionError do
+    should "not raise if a index is redefined" do
+      assert_nothing_raised do
         class RedefinedModel < Ohm::Model
           attribute :color
           index :color
