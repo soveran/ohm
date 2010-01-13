@@ -137,13 +137,13 @@ module Ohm
       # socket instead will be supported anyway.
       if @timeout != 0 and RedisTimer
         begin
-          @sock = TCPSocket.new(host, port, 0)
+          @sock = TCPSocket.new(host, port)
         rescue Timeout::Error
           @sock = nil
           raise Timeout::Error, "Timeout connecting to the server"
         end
       else
-        @sock = TCPSocket.new(host, port, 0)
+        @sock = TCPSocket.new(host, port)
       end
 
       @sock.setsockopt Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1
