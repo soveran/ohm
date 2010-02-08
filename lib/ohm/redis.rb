@@ -33,7 +33,6 @@ module Ohm
       :lpush => true,
       :lrem => true,
       :lset => true,
-      :rpoplpush => true,
       :rpush => true,
       :sadd => true,
       :set => true,
