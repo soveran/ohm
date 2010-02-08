@@ -232,7 +232,7 @@ module Ohm
     #   company.employees << "Albert"
     #   company.employees << "Benoit"
     #   company.employees.all       #=> ["Albert", "Benoit"]
-    #   company.include?("Albert")  #=> true
+    #   company.employees.include?("Albert")  #=> true
     class Set < Collection
 
       # @param value [#to_s] Adds value to the list.
