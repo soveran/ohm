@@ -710,4 +710,51 @@ class TestRedis < Test::Unit::TestCase
       assert_equal "Foobar", Baz[baz.id].name
     end
   end
+
+  context "References to other objects" do
+    class ::Note < Ohm::Model
+      attribute :content
+      reference :post => Post
+    end
+
+    class ::Post < Ohm::Model
+      reference :author => Person
+      collection :notes => [Note, :post_id]
+    end
+
+    setup do
+      @post = Post.create
+    end
+
+    context "a reference to another object" do
+      should "return an instance of Person if author_id has a valid id" do
+        @post.author_id = Person.create(:name => "Michel").id
+        @post.save
+        assert_equal "Michel", Post[@post.id].author.name
+      end
+
+      should "assign author_id if author is sent a valid instance" do
+        @post.author = Person.create(:name => "Michel")
+        @post.save
+        assert_equal "Michel", Post[@post.id].author.name
+      end
+
+      should "assign nil if nil is passed to author" do
+        @post.author = nil
+        @post.save
+        assert_nil Post[@post.id].author
+      end
+    end
+
+    context "a collection of other objects" do
+      setup do
+        @note = Note.create(:content => "Interesting stuff", :post => @post)
+      end
+
+      should "return a set of notes" do
+        assert_equal @note.post, @post
+        assert_equal @note, @post.notes.first
+      end
+    end
+  end
 end

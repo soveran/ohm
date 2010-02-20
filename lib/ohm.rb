@@ -432,17 +432,85 @@ module Ohm
       indices << att unless indices.include?(att)
     end
 
-    def self.attr_list_reader(name, model = nil)
-      define_method(name) do
-        instance_variable_get("@#{name}") ||
-          instance_variable_set("@#{name}", Attributes::List.new(db, key(name), model))
+    # Define a reference to another object.
+    #
+    # @example
+    #   class Comment < Ohm::Model
+    #     attribute :content
+    #     reference :post => Post
+    #   end
+    #
+    #   @post = Post.create :content => "Interesting stuff"
+    #
+    #   # Now this is possible:
+    #   @comment = Comment.create(:content => "Indeed!", :post => @post)
+    #   assert_equal "Interesting stuff", @comment.post.content
+    #
+    #   @comment.post = Post.create(:content => "Wonderful stuff")
+    #   assert_equal "Wonderful stuff", @comment.post.content
+    #
+    #   @comment.post.content = "Magnific stuff"
+    #   @comment.post.save
+    #   assert_equal "Magnific stuff", @comment.post.content
+    #
+    #   @comment.post = nil
+    #   assert_nil @comment.post
+    def self.reference(references)
+      references.each do |name, model|
+        reader = :"#{name}_id"
+        writer = :"#{name}_id="
+
+        attribute reader
+        index reader
+
+        define_method(name) do
+          model[send(reader)]
+        end
+
+        define_method(:"#{name}=") do |value|
+          send(writer, value ? value.id : nil)
+        end
       end
     end
 
+    # Define a collection of objects.
+    #
+    # @example
+    #   class Comment < Ohm::Model
+    #     attribute :content
+    #     reference :post => Post
+    #   end
+    #
+    #   class Post < Ohm::Model
+    #     attribute :content
+    #     collection :comments => [Comment, :post]
+    #   end
+    #
+    #   @post = Post.create :content => "Interesting stuff"
+    #   @comment = Comment.create :content => "Indeed!", :post => @post
+    #
+    #   # Now this is possible:
+    #   assert_equal "Indeed!", @post.comments.first.content
+    def self.collection(collections)
+      collections.each do |name, index|
+        model, foreign_key = index
+
+        define_method(name) { model.find(foreign_key => send(:id)) }
+      end
+    end
+
+    def self.attr_list_reader(name, model = nil)
+      attr_collection_reader(name, model, Attributes::List)
+    end
+
     def self.attr_set_reader(name, model)
+      attr_collection_reader(name, model, Attributes::Set)
+    end
+
+    def self.attr_collection_reader(name, model, collection)
       define_method(name) do
         instance_variable_get("@#{name}") ||
-          instance_variable_set("@#{name}", Attributes::Set.new(db, key(name), model))
+          instance_variable_set("@#{name}", collection.new(db, key(name), model))
       end
     end
 
