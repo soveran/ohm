@@ -9,11 +9,15 @@ module Ohm
 
   # Provides access to the Redis database. This is shared accross all models and instances.
   def redis
-    Thread.current[:redis] ||= Ohm::Redis.new(*options)
+    threaded[:redis] ||= connection(*options)
   end
 
   def redis=(connection)
-    Thread.current[:redis] = connection
+    threaded[:redis] = connection
+  end
+
+  def threaded
+    Thread.current[:ohm] ||= {}
   end
 
   # Connect to a redis database.
@@ -30,6 +34,13 @@ module Ohm
     @options = options
   end
 
+  # Return a connection to Redis.
+  #
+  # This is a wapper around Ohm::Redis.new(options)
+  def connection(*options)
+    Ohm::Redis.new(*options)
+  end
+
   def options
     @options
   end
@@ -44,7 +55,7 @@ module Ohm
     args.join(":")
   end
 
-  module_function :key, :connect, :flush, :redis, :redis=, :options
+  module_function :key, :connect, :connection, :flush, :redis, :redis=, :options, :threaded
 
   module Attributes
     class Collection
@@ -442,19 +453,27 @@ module Ohm
     #
     #   @post = Post.create :content => "Interesting stuff"
     #
-    #   # Now this is possible:
     #   @comment = Comment.create(:content => "Indeed!", :post => @post)
-    #   assert_equal "Interesting stuff", @comment.post.content
+    #
+    #   @comment.post.content
+    #   # => "Interesting stuff"
     #
     #   @comment.post = Post.create(:content => "Wonderful stuff")
-    #   assert_equal "Wonderful stuff", @comment.post.content
     #
-    #   @comment.post.content = "Magnific stuff"
-    #   @comment.post.save
-    #   assert_equal "Magnific stuff", @comment.post.content
+    #   @comment.post.content
+    #   # => "Wonderful stuff"
+    #
+    #   @comment.post.update(:content => "Magnific stuff")
+    #
+    #   @comment.post.content
+    #   # => "Magnific stuff"
     #
     #   @comment.post = nil
-    #   assert_nil @comment.post
+    #
+    #   @comment.post
+    #   # => nil
+    #
+    # @see Ohm::Model::collection
     def self.reference(name, model)
       reader = :"#{name}_id"
       writer = :"#{name}_id="
@@ -477,10 +496,9 @@ module Ohm
       end
     end
 
-    # Define a collection of objects which have a +reference+
+    # Define a collection of objects which have a {Ohm::Model::reference reference}
     # to this model.
     #
-    # @example
     #   class Comment < Ohm::Model
     #     attribute :content
     #     reference :post, Post
@@ -494,8 +512,12 @@ module Ohm
     #   @post = Post.create :content => "Interesting stuff"
     #   @comment = Comment.create :content => "Indeed!", :post => @post
     #
-    #   # Now this is possible:
-    #   assert_equal "Indeed!", @post.comments.first.content
+    #   @post.comments.first.content
+    #   # => "Indeed!"
+    #
+    # *Important*: please note that a collection is simply a {Ohm::Attributes::Set Set}.
+    # You won't be able to add or remove objects from this collection directly.
+    #
     # @see Ohm::Model::reference
     def self.collection(name, model, reference = to_reference)
       define_method(name) { model.find(:"#{reference}_id" => send(:id)) }
@@ -662,8 +684,9 @@ module Ohm
     def mutex
       lock!
       yield
-      unlock!
       self
+    ensure
+      unlock!
     end
 
     def inspect
@@ -678,6 +701,25 @@ module Ohm
       end
 
       "#<#{self.class}:#{new? ? "?" : id} #{everything.map {|e| e.join("=") }.join(" ")}>"
+    end
+
+    # Makes the model connect to a different Redis instance.
+    #
+    # @example
+    #
+    #   class Post < Ohm::Model
+    #     connect :port => 6380, :db => 2
+    #
+    #     attribute :body
+    #   end
+    #
+    #   # Since these settings are usually environment-specific,
+    #   # you may want to call this method from outside of the class
+    #   # definition:
+    #   Post.connect(:port => 6380, :db => 2)
+    #
+    def self.connect(*options)
+      self.db = Ohm.connection(*options)
     end
 
   protected
@@ -716,8 +758,13 @@ module Ohm
 
   private
 
+    # Provides access to the Redis database. This is shared accross all models and instances.
     def self.db
-      Ohm.redis
+      Ohm.threaded[self] || Ohm.redis
+    end
+
+    def self.db=(connection)
+      Ohm.threaded[self] = connection
     end
 
     def self.key(*args)
@@ -733,7 +780,7 @@ module Ohm
     end
 
     def db
-      Ohm.redis
+      self.class.db
     end
 
     def delete_attributes(atts)

@@ -778,6 +778,46 @@ class TestRedis < Test::Unit::TestCase
         assert_equal @note.source, @post
         assert_equal @note, @post.notes.first
       end
+
+      should "default to the current class name" do
+        @editor = Editor.create(:name => "Albert", :post => @post)
+
+        assert_equal @editor, @post.editors.first
+      end
+    end
+  end
+
+  context "Models connected to different databases" do
+    class ::Car < Ohm::Model
+      attribute :name
+    end
+
+    class ::Make < Ohm::Model
+      attribute :name
+    end
+
+    setup do
+      Car.connect(port: 6381, db: 2)
+    end
+
+    teardown do
+      Car.db.flushdb
+    end
+
+    should "save to the selected database" do
+      car = Car.create(name: "Twingo")
+      make = Make.create(name: "Renault")
+
+      assert_equal 1, Make.db.instance_variable_get("@db")
+      assert_equal 2, Car.db.instance_variable_get("@db")
+
+      assert_equal car, Car[1]
+      assert_equal make, Make[1]
+
+      Make.db.flushdb
+
+      assert_equal car, Car[1]
+      assert_nil Make[1]
     end
   end
 end
