@@ -714,12 +714,18 @@ class TestRedis < Test::Unit::TestCase
   context "References to other objects" do
     class ::Note < Ohm::Model
       attribute :content
-      reference :post => Post
+      reference :source, Post
+    end
+
+    class ::Editor < Ohm::Model
+      attribute :name
+      reference :post, Post
     end
 
     class ::Post < Ohm::Model
-      reference :author => Person
-      collection :notes => [Note, :post_id]
+      reference :author, Person
+      collection :notes, Note, :source
+      collection :editors, Editor
     end
 
     setup do
@@ -728,15 +734,15 @@ class TestRedis < Test::Unit::TestCase
 
     context "a reference to another object" do
       should "return an instance of Person if author_id has a valid id" do
-        @post.author_id = Person.create(:name => "Michel").id
+        @post.author_id = Person.create(:name => "Albert").id
         @post.save
-        assert_equal "Michel", Post[@post.id].author.name
+        assert_equal "Albert", Post[@post.id].author.name
       end
 
       should "assign author_id if author is sent a valid instance" do
-        @post.author = Person.create(:name => "Michel")
+        @post.author = Person.create(:name => "Albert")
         @post.save
-        assert_equal "Michel", Post[@post.id].author.name
+        assert_equal "Albert", Post[@post.id].author.name
       end
 
       should "assign nil if nil is passed to author" do
@@ -744,15 +750,32 @@ class TestRedis < Test::Unit::TestCase
         @post.save
         assert_nil Post[@post.id].author
       end
+
+      should "be cached in an instance variable" do
+        @author = Person.create(:name => "Albert")
+        @post.update(:author => @author)
+
+        assert_equal @author, @post.author
+        assert @post.author.object_id == @post.author.object_id
+
+        @post.update(:author => Person.create(:name => "Bertrand"))
+
+        assert_equal "Bertrand", @post.author.name
+        assert @post.author.object_id == @post.author.object_id
+
+        @post.update(:author_id => Person.create(:name => "Charles").id)
+
+        assert_equal "Charles", @post.author.name
+      end
     end
 
     context "a collection of other objects" do
       setup do
-        @note = Note.create(:content => "Interesting stuff", :post => @post)
+        @note = Note.create(:content => "Interesting stuff", :source => @post)
       end
 
       should "return a set of notes" do
-        assert_equal @note.post, @post
+        assert_equal @note.source, @post
         assert_equal @note, @post.notes.first
       end
     end

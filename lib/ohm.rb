@@ -437,7 +437,7 @@ module Ohm
     # @example
     #   class Comment < Ohm::Model
     #     attribute :content
-    #     reference :post => Post
+    #     reference :post, Post
     #   end
     #
     #   @post = Post.create :content => "Interesting stuff"
@@ -455,35 +455,40 @@ module Ohm
     #
     #   @comment.post = nil
     #   assert_nil @comment.post
-    def self.reference(references)
-      references.each do |name, model|
-        reader = :"#{name}_id"
-        writer = :"#{name}_id="
+    def self.reference(name, model)
+      reader = :"#{name}_id"
+      writer = :"#{name}_id="
 
-        attribute reader
-        index reader
+      attribute reader
+      index reader
 
-        define_method(name) do
-          model[send(reader)]
-        end
+      define_memoized_method(name) do
+        model[send(reader)]
+      end
 
-        define_method(:"#{name}=") do |value|
-          send(writer, value ? value.id : nil)
-        end
+      define_method(:"#{name}=") do |value|
+        instance_variable_set("@#{name}", nil)
+        send(writer, value ? value.id : nil)
+      end
+
+      define_method(writer) do |value|
+        instance_variable_set("@#{name}", nil)
+        write_local(reader, value)
       end
     end
 
-    # Define a collection of objects.
+    # Define a collection of objects which have a +reference+
+    # to this model.
     #
     # @example
     #   class Comment < Ohm::Model
     #     attribute :content
-    #     reference :post => Post
+    #     reference :post, Post
     #   end
     #
     #   class Post < Ohm::Model
     #     attribute :content
-    #     collection :comments => [Comment, :post]
+    #     collection :comments, Comment
     #   end
     #
     #   @post = Post.create :content => "Interesting stuff"
@@ -491,26 +496,27 @@ module Ohm
     #
     #   # Now this is possible:
     #   assert_equal "Indeed!", @post.comments.first.content
-    def self.collection(collections)
-      collections.each do |name, index|
-        model, foreign_key = index
-
-        define_method(name) { model.find(foreign_key => send(:id)) }
-      end
+    # @see Ohm::Model::reference
+    def self.collection(name, model, reference = to_reference)
+      define_method(name) { model.find(:"#{reference}_id" => send(:id)) }
     end
 
-    def self.attr_list_reader(name, model = nil)
-      attr_collection_reader(name, model, Attributes::List)
+    def self.to_reference
+      name.to_s.gsub(/([a-z\d])([A-Z])/, '\1_\2').downcase.to_sym
+    end
+
+    def self.attr_list_reader(name, model)
+      define_memoized_method(name) { Attributes::List.new(db, key(name), model) }
     end
 
     def self.attr_set_reader(name, model)
-      attr_collection_reader(name, model, Attributes::Set)
+      define_memoized_method(name) { Attributes::Set.new(db, key(name), model) }
     end
 
-    def self.attr_collection_reader(name, model, collection)
+    def self.define_memoized_method(name, &block)
       define_method(name) do
         instance_variable_get("@#{name}") ||
-          instance_variable_set("@#{name}", collection.new(db, key(name), model))
+          instance_variable_set("@#{name}", instance_eval(&block))
       end
     end
 
