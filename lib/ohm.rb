@@ -403,20 +403,36 @@ module Ohm
     #   end
     #
     #   class Post < Ohm::Model
-    #     attribute :content
+    #     attribute  :content
     #     collection :comments, Comment
+    #     reference  :author, Person
     #   end
     #
-    #   @post = Post.create :content => "Interesting stuff"
+    #   class Person < Ohm::Model
+    #     attribute  :name
+    #
+    #     # When the name of the reference cannot be inferred,
+    #     # you need to specify it in the third param.
+    #     collection :posts, Post, :author
+    #   end
+    #
+    #   @person = Person.create :name => "Albert"
+    #   @post = Post.create :content => "Interesting stuff", :author => @person
     #   @comment = Comment.create :content => "Indeed!", :post => @post
     #
     #   @post.comments.first.content
     #   # => "Indeed!"
     #
-    # *Important*: please note that a collection is simply a {Ohm::Set Set}.
-    # You won't be able to add or remove objects from this collection directly.
+    #   @post.author.name
+    #   # => "Albert"
+    #
+    # *Important*: please note that even though a collection is a {Ohm::Set Set},
+    # you should not add or remove objects from this collection directly.
     #
     # @see Ohm::Model::reference
+    # @param name      [Symbol]   Name of the collection.
+    # @param model     [Constant] Model where the reference is defined.
+    # @param reference [Symbol]   Reference as defined in the associated model.
     def self.collection(name, model, reference = to_reference)
       define_method(name) { model.find(:"#{reference}_id" => send(:id)) }
     end
