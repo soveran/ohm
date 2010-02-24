@@ -33,13 +33,29 @@ class IndicesTest < Test::Unit::TestCase
 
   context "A model with an indexed attribute" do
     setup do
-      @user1 = User.create(:email => "foo")
+      @user1 = User.create(:email => "foo", :activation_code => "bar")
       @user2 = User.create(:email => "bar")
       @user3 = User.create(:email => "baz qux")
     end
 
     should "be able to find by the given attribute" do
       assert_equal @user1, User.find(:email => "foo").first
+    end
+
+    should "avoid intersections with the all collection" do
+      assert_equal "IndicesTest::User:email:#{Ohm::Model.encode "foo"}", User.find(:email => "foo").key.to_s
+
+      assert_equal "~:IndicesTest::User:email:Zm9v+IndicesTest::User:activation_code:",
+        User.find(:email => "foo").find(:activation_code => "").key.to_s
+
+      assert_equal "~:IndicesTest::User:email:Zm9v+IndicesTest::User:activation_code:+IndicesTest::User:working_days:",
+        User.find(:email => "foo").find(:activation_code => "").find(:working_days => "").key.to_s
+    end
+
+    should "use a special namespace for set operations" do
+      assert_match /^~:/, User.find(:email => "foo", :activation_code => "bar").key.to_s
+
+      assert Ohm.redis.keys("~:*").size > 0
     end
 
     should "raise if the field is not indexed" do
@@ -69,16 +85,6 @@ class IndicesTest < Test::Unit::TestCase
 
     should "work with attributes that contain spaces" do
       assert_equal [@user3], User.find(:email => "baz qux")
-    end
-
-    should "not allow to manually clear an index" do
-      assert_raise Ohm::Model::CannotDeleteIndex do
-        User.find(:email => "bar").clear
-      end
-
-      assert_raise Ohm::Model::CannotDeleteIndex do
-        User.find(:email => "bar").find(:email => "baz").clear
-      end
     end
   end
 

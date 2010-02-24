@@ -4,6 +4,7 @@ require "base64"
 require File.join(File.dirname(__FILE__), "ohm", "redis")
 require File.join(File.dirname(__FILE__), "ohm", "validations")
 require File.join(File.dirname(__FILE__), "ohm", "compat-1.8.6")
+require File.join(File.dirname(__FILE__), "ohm", "key")
 
 module Ohm
 
@@ -52,7 +53,7 @@ module Ohm
 
   # Join the parameters with ":" to create a key.
   def key(*args)
-    args.join(":")
+    Key[*args]
   end
 
   module_function :key, :connect, :connection, :flush, :redis, :redis=, :options, :threaded
@@ -296,10 +297,9 @@ module Ohm
 
       # Apply a redis operation on a collection of sets.
       def apply(operation, hash, glue)
-        indices = keys(hash).unshift(key).uniq
-        target = indices.join(glue)
-        db.send(operation, target, *indices)
-        self.class.new(db, target, model)
+        target = key.volatile.group(glue).append(*keys(hash))
+        db.send(operation, target, *target.parts)
+        Set.new(db, target, model)
       end
 
       # Transform a hash of attribute/values into an array of keys.
@@ -313,12 +313,12 @@ module Ohm
     end
 
     class Index < Set
-      def inspect
-        "#<Index: #{raw.inspect}>"
-      end
-
-      def clear
-        raise Ohm::Model::CannotDeleteIndex
+      def apply(operation, hash, glue)
+        if hash.keys.size == 1
+          return Set.new(db, keys(hash).first, model)
+        else
+          super
+        end
       end
     end
   end
@@ -347,12 +347,6 @@ module Ohm
     class MissingID < Error
       def message
         "You tried to perform an operation that needs the model ID, but it's not present."
-      end
-    end
-
-    class CannotDeleteIndex < Error
-      def message
-        "You tried to delete an internal index used by Ohm."
       end
     end
 

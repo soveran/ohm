@@ -154,21 +154,28 @@ If you are saving the object, this will suffice:
 Associations
 ------------
 
-Ohm lets you use collections (lists and sets) to represent associations.
-For this, you only need to provide a second parameter when declaring a
-list or a set:
+Ohm lets you declare `references` and `collections` to represent associations.
 
-    set :attendees, Person
+    class Post < Ohm::Model
+      attribute :title
+      attribute :body
+      collection :comments, Comment
+    end
 
-After this, every time you refer to `event.attendees` you will be talking
-about instances of the model `Person`. If you want to get the raw values
-of the set, you can use `event.attendees.raw`.
+    class Comment < Ohm::Model
+      attribute :body
+      reference :post, Post
+    end
 
-The `attendees` collection also exposes two sorting methods: `sort`
-returns the elements ordered by `id`, and `sort_by` receives a parameter
-with an attribute name, which will determine the sorting order. Both
-methods receive an options hash which is explained in the documentation
-for {Ohm::Attributes::Collection#sort}.
+After this, every time you refer to `post.comments` you will be talking
+about instances of the model `Comment`. If you want to get a list of IDs
+you can use `post.comments.raw`.
+
+Since `comments` is a {Ohm::Attributes::Set Set}, it exposes two sorting
+methods: `sort` returns the elements ordered by `id`, and `sort_by`
+receives a parameter with an attribute name, which will determine the
+sorting order. Both methods receive an options hash which is explained
+in the documentation for {Ohm::Attributes::Collection#sort sort}.
 
 Adding instances of `Person` to the attendees hash is done with the
 `add` method:
