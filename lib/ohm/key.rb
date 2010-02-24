@@ -40,8 +40,7 @@ module Ohm
     end
 
     def group(glue = self.glue)
-      Key.new([self], glue, namespace.pop(namespace.size))
+      Key.new([self], glue, namespace.slice!(0, namespace.size))
     end
   end
-
 end

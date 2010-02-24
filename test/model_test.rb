@@ -331,7 +331,7 @@ class TestRedis < Test::Unit::TestCase
       Person.create :name => "B"
       Person.create :name => "A"
 
-      assert_equal "A", Person.all.sort_by(:name, :get => "Person:*:name", :order => "ALPHA").first
+      assert_equal "A", Person.all.sort_by(:name, :get => :name, :order => "ALPHA").first
     end
   end
 
@@ -360,62 +360,58 @@ class TestRedis < Test::Unit::TestCase
 
   context "Attributes of type Set" do
     setup do
+      Ohm.flush
+
+      @person1 = Person.create(:name => "Albert")
+      @person2 = Person.create(:name => "Bertrand")
+      @person3 = Person.create(:name => "Charles")
+
       @event = Event.new
       @event.name = "Ruby Tuesday"
     end
 
     should "not be available if the model is new" do
       assert_raise Ohm::Model::MissingID do
-        @event.attendees << 1
+        @event.attendees << Person.new
       end
     end
 
     should "remove an element if sent :delete" do
       @event.create
-      @event.attendees << "1"
-      @event.attendees << "2"
-      @event.attendees << "3"
+      @event.attendees << @person1
+      @event.attendees << @person2
+      @event.attendees << @person3
       assert_equal ["1", "2", "3"], @event.attendees.raw.sort
-      @event.attendees.delete("2")
+      @event.attendees.delete(@person2)
       assert_equal ["1", "3"], Event[@event.id].attendees.raw.sort
     end
 
     should "return true if the set includes some member" do
       @event.create
-      @event.attendees << "1"
-      @event.attendees << "2"
-      @event.attendees << "3"
-      assert @event.attendees.include?("2")
-      assert_equal false, @event.attendees.include?("4")
+      @event.attendees << @person1
+      @event.attendees << @person2
+      assert @event.attendees.include?(@person2)
+      assert !@event.attendees.include?(@person3)
     end
 
     should "return instances of the passed model if the call to all includes a class" do
       @event.create
-      @person = Person.create :name => "albert"
-      @event.attendees << @person.id
+      @event.attendees << @person1
 
-      assert_equal [@person], @event.attendees.all
-    end
-
-    should "insert the model instance id instead of the object if using add" do
-      @event.create
-      @person = Person.create :name => "albert"
-      @event.attendees.add(@person)
-
-      assert_equal [@person.id.to_s], @event.attendees.raw
+      assert_equal [@person1], @event.attendees.all
     end
 
     should "return the size of the set" do
       @event.create
-      @event.attendees << "1"
-      @event.attendees << "2"
-      @event.attendees << "3"
+      @event.attendees << @person1
+      @event.attendees << @person2
+      @event.attendees << @person3
       assert_equal 3, @event.attendees.size
     end
 
     should "empty the set" do
       @event.create
-      @event.attendees << "1"
+      @event.attendees << @person1
 
       @event.attendees.clear
 
@@ -424,21 +420,23 @@ class TestRedis < Test::Unit::TestCase
 
     should "replace the values in the set" do
       @event.create
-      @event.attendees << "1"
+      @event.attendees << @person1
 
-      @event.attendees.replace(["2", "3"])
+      assert_equal [@person1], @event.attendees.all
 
-      assert_equal ["2", "3"], @event.attendees.raw.sort
+      @event.attendees.replace([@person2, @person3])
+
+      assert_equal [@person2, @person3], @event.attendees.sort
     end
 
     should "filter elements" do
       @event.create
-      @event.attendees.add(Person.create(:name => "Albert"))
-      @event.attendees.add(Person.create(:name => "Marie"))
+      @event.attendees.add(@person1)
+      @event.attendees.add(@person2)
 
-      assert_equal ["1"], @event.attendees.find(:initial => "A").raw
-      assert_equal ["2"], @event.attendees.find(:initial => "M").raw
-      assert_equal [],    @event.attendees.find(:initial => "Z").raw
+      assert_equal [@person1], @event.attendees.find(:initial => "A").all
+      assert_equal [@person2], @event.attendees.find(:initial => "B").all
+      assert_equal [],    @event.attendees.find(:initial => "Z").all
     end
   end
 
@@ -528,7 +526,7 @@ class TestRedis < Test::Unit::TestCase
     should "replace the values in the list" do
       @post.comments.replace(["1", "2"])
 
-      assert_equal ["1", "2"], @post.comments.raw
+      assert_equal ["1", "2"], @post.comments
     end
 
     should "add models" do
@@ -542,26 +540,46 @@ class TestRedis < Test::Unit::TestCase
 
       @post.related.add(another_post)
 
-      assert  @post.related.include?(another_post.id)
-      assert !@post.related.include?("-1")
+      assert  @post.related.include?(another_post)
+      assert !@post.related.include?(Post.create)
     end
   end
 
   context "Applying arbitrary transformations" do
     require "date"
 
+    class MyActiveRecordModel
+      def self.find(id)
+        return new if id.to_i == 1
+      end
+
+      def id
+        1
+      end
+
+      def ==(other)
+        id == other.id
+      end
+    end
+
     class Calendar < Ohm::Model
       list :holidays, lambda { |v| Date.parse(v) }
+      list :subscribers, lambda { |id| MyActiveRecordModel.find(id) }
     end
 
     setup do
       @calendar = Calendar.create
-      @calendar.holidays << "2009-05-25"
-      @calendar.holidays << "2009-07-09"
+      @calendar.holidays.raw << "2009-05-25"
+      @calendar.holidays.raw << "2009-07-09"
+
+      @calendar.subscribers << MyActiveRecordModel.find(1)
     end
 
     should "apply a transformation" do
-      assert_equal [Date.new(2009, 5, 25), Date.new(2009, 7, 9)], @calendar.holidays
+      assert_equal [Date.new(2009, 5, 25), Date.new(2009, 7, 9)], @calendar.holidays.all
+
+      assert_equal ["1"], @calendar.subscribers.raw.all
+      assert_equal [MyActiveRecordModel.find(1)], @calendar.subscribers.all
     end
   end
 
@@ -581,10 +599,10 @@ class TestRedis < Test::Unit::TestCase
   context "Sorting lists and sets by model attributes" do
     setup do
       @event = Event.create(:name => "Ruby Tuesday")
-      @event.attendees << Person.create(:name => "D").id
-      @event.attendees << Person.create(:name => "C").id
-      @event.attendees << Person.create(:name => "B").id
-      @event.attendees << Person.create(:name => "A").id
+      @event.attendees << Person.create(:name => "D")
+      @event.attendees << Person.create(:name => "C")
+      @event.attendees << Person.create(:name => "B")
+      @event.attendees << Person.create(:name => "A")
     end
 
     should "sort the model instances by the values provided" do
@@ -797,7 +815,7 @@ class TestRedis < Test::Unit::TestCase
     end
 
     setup do
-      Car.connect(port: 6381, db: 2)
+      Car.connect(:port => 6381, :db => 2)
     end
 
     teardown do
@@ -805,8 +823,8 @@ class TestRedis < Test::Unit::TestCase
     end
 
     should "save to the selected database" do
-      car = Car.create(name: "Twingo")
-      make = Make.create(name: "Renault")
+      car = Car.create(:name => "Twingo")
+      make = Make.create(:name => "Renault")
 
       assert_equal 1, Make.db.instance_variable_get("@db")
       assert_equal 2, Car.db.instance_variable_get("@db")

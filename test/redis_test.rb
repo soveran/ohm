@@ -398,7 +398,7 @@ class RedisTest < Test::Unit::TestCase
       assert_equal "11", @r.zscore("league", "foo")
 
       @r.set "bar", "2"
-      assert_raises do
+      assert_raises(RuntimeError) do
         @r.zincrby "bar", 2, "baz"
       end
     end

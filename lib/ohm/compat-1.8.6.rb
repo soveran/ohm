@@ -13,3 +13,12 @@ unless "".respond_to?(:lines)
     end
   end
 end
+
+unless Object.new.respond_to?(:tap)
+  class Object
+    def tap
+      yield(self)
+      self
+    end
+  end
+end
