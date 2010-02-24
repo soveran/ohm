@@ -227,7 +227,7 @@ Indexes
 An index is a set that's handled automatically by Ohm. For any index declared,
 Ohm maintains different sets of objects IDs for quick lookups.
 
-For example, in the `Event` example, the index on the name attribute will
+In the `Event` example, the index on the name attribute will
 allow for searches like `Event.find(name: "some value")`.
 
 Note that the `assert_unique` validation and the methods `find` and `except` need a
