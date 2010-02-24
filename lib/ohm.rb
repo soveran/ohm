@@ -97,6 +97,10 @@ module Ohm
         end
       end
 
+      def [](index)
+        model[raw[index]]
+      end
+
       def sort(*args)
         raw.sort(*args).map(&model)
       end

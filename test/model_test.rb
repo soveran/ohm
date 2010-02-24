@@ -394,11 +394,12 @@ class TestRedis < Test::Unit::TestCase
       assert !@event.attendees.include?(@person3)
     end
 
-    should "return instances of the passed model if the call to all includes a class" do
+    should "return instances of the passed model" do
       @event.create
       @event.attendees << @person1
 
       assert_equal [@person1], @event.attendees.all
+      assert_equal @person1, @event.attendees[0]
     end
 
     should "return the size of the set" do

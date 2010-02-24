@@ -48,6 +48,10 @@ module Ohm
       sort(options).first
     end
 
+    def [](index)
+      first(:start => index)
+    end
+
     def to_ary
       all
     end
