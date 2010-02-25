@@ -653,7 +653,8 @@ module Ohm
     # This method will be removed once MSET becomes standard.
     def write_with_set
       attributes.each do |att|
-        (value = send(att)) ?
+        value = send(att)
+        value.to_s.empty? ?
           db.set(key(att), value) :
           db.del(key(att))
       end
@@ -664,7 +665,7 @@ module Ohm
     # available once MSET becomes standard.
     def write_with_mset
       unless attributes.empty?
-        rems, adds = attributes.map { |a| [key(a), send(a)] }.partition { |t| t.last.nil? }
+        rems, adds = attributes.map { |a| [key(a), send(a)] }.partition { |t| t.last.to_s.empty? }
         db.del(*rems.flatten.compact) unless rems.empty?
         db.mset(adds.flatten)         unless adds.empty?
       end

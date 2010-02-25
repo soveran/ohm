@@ -96,6 +96,13 @@ class TestRedis < Test::Unit::TestCase
       assert event.update(:location => nil)
       assert_equal nil, Meetup[event.id].location
     end
+
+    should "delete the attribute if set to an empty string" do
+      event = Meetup.create(:name => "Ruby Tuesday", :location => "Los Angeles")
+      assert_equal "Los Angeles", Meetup[event.id].location
+      assert event.update(:location => "")
+      assert_equal nil, Meetup[event.id].location
+    end
   end
 
   context "Model definition" do
