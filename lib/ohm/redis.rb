@@ -53,7 +53,7 @@ module Ohm
 
     PROCESSOR_IDENTITY = lambda { |reply| reply }
     PROCESSOR_CONVERT_TO_BOOL = lambda { |reply| reply == 0 ? false : reply }
-    PROCESSOR_SPLIT_KEYS = lambda { |reply| reply.split(" ") }
+    PROCESSOR_SPLIT_KEYS = lambda { |reply| reply.respond_to?(:split) ? reply.split(" ") : reply }
     PROCESSOR_INFO = lambda { |reply| Hash[*(reply.lines.map { |l| l.chomp.split(":", 2) }.flatten)] }
 
     REPLY_PROCESSOR = {
