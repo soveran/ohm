@@ -195,7 +195,7 @@ module Ohm
       # Apply a redis operation on a collection of sets.
       def apply(operation, hash, glue)
         target = key.volatile.group(glue).append(*keys(hash))
-        model.db.send(operation, target, *target.parts)
+        model.db.send(operation, target, *target.sub_keys)
         Set.new(target, model)
       end
 

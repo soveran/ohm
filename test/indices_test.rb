@@ -33,7 +33,7 @@ class IndicesTest < Test::Unit::TestCase
 
   context "A model with an indexed attribute" do
     setup do
-      @user1 = User.create(:email => "foo", :activation_code => "bar")
+      @user1 = User.create(:email => "foo", :activation_code => "bar", :update => "baz")
       @user2 = User.create(:email => "bar")
       @user3 = User.create(:email => "baz qux")
     end
@@ -48,14 +48,18 @@ class IndicesTest < Test::Unit::TestCase
       assert_equal "~:IndicesTest::User:email:Zm9v+IndicesTest::User:activation_code:",
         User.find(:email => "foo").find(:activation_code => "").key.to_s
 
-      assert_equal "~:IndicesTest::User:email:Zm9v+IndicesTest::User:activation_code:+IndicesTest::User:working_days:",
-        User.find(:email => "foo").find(:activation_code => "").find(:working_days => "").key.to_s
+      assert_equal "~:IndicesTest::User:email:Zm9v+IndicesTest::User:activation_code:YmFy+IndicesTest::User:update:YmF6",
+        result = User.find(:email => "foo").find(:activation_code => "bar").find(:update => "baz").key.to_s
     end
 
     should "use a special namespace for set operations" do
       assert_match /^~:/, User.find(:email => "foo", :activation_code => "bar").key.to_s
 
       assert Ohm.redis.keys("~:*").size > 0
+    end
+
+    should "allow multiple chained finds" do
+      assert_equal 1, User.find(:email => "foo").find(:activation_code => "bar").find(:update => "baz").size
     end
 
     should "raise if the field is not indexed" do

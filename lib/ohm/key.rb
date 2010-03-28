@@ -16,6 +16,10 @@ module Ohm
       @namespace = namespace
     end
 
+    def sub_keys
+      parts.map {|k| k.glue == ":" ? k : k.volatile }
+    end
+
     def append(*parts)
       @parts += parts
       self
