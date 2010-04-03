@@ -17,25 +17,4 @@ class Ohm < Thor
   def deploy
     system "rsync -az doc/* ohm.keyvalue.org:deploys/ohm.keyvalue.org/"
   end
-
-  desc "test", "Run all tests"
-  def test
-    invoke "ohm:redis:start"
-
-    Dir["test/**/*_test.rb"].each do |file|
-      load file
-    end
-  end
-
-  class Redis < Thor
-    desc "start", "Start Redis server"
-    def start
-      %x{dtach -n /tmp/ohm.dtach redis-server test/test.conf}
-    end
-
-    desc "attach", "Attach to Redis server"
-    def attach
-      %x{dtach -a /tmp/ohm.dtach}
-    end
-  end
 end
