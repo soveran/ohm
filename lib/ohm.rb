@@ -216,6 +216,22 @@ module Ohm
     class List < Collection
       Raw = Ohm::List
 
+      def shift
+        if id = raw.shift
+          model[id]
+        end
+      end
+
+      def pop
+        if id = raw.pop
+          model[id]
+        end
+      end
+
+      def unshift(model)
+        raw.unshift(model.id)
+      end
+
       def inspect
         "#<List (#{model}): #{all.inspect}>"
       end

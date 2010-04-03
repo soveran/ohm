@@ -450,6 +450,8 @@ class TestRedis < Test::Unit::TestCase
 
   context "Attributes of type List" do
     setup do
+      Ohm.flush
+
       @post = Post.new
       @post.body = "Hello world!"
       @post.create
@@ -550,6 +552,19 @@ class TestRedis < Test::Unit::TestCase
 
       assert  @post.related.include?(another_post)
       assert !@post.related.include?(Post.create)
+    end
+
+    should "unshift models" do
+      @post.related.unshift(Post.create(:body => "Hello"))
+      @post.related.unshift(Post.create(:body => "Goodbye"))
+
+      assert_equal ["3", "2"], @post.related.raw
+
+      assert_equal "3", @post.related.shift.id
+
+      assert_equal "2", @post.related.pop.id
+
+      assert_nil @post.related.pop
     end
   end
 
