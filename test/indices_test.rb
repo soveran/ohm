@@ -48,7 +48,7 @@ class IndicesTest < Test::Unit::TestCase
       assert_equal "~:IndicesTest::User:email:Zm9v+IndicesTest::User:activation_code:",
         User.find(:email => "foo").find(:activation_code => "").key.to_s
 
-      assert_equal "~:IndicesTest::User:email:Zm9v+IndicesTest::User:activation_code:YmFy+IndicesTest::User:update:YmF6",
+      assert_equal "~:~:IndicesTest::User:email:Zm9v+IndicesTest::User:activation_code:YmFy+IndicesTest::User:update:YmF6",
         result = User.find(:email => "foo").find(:activation_code => "bar").find(:update => "baz").key.to_s
     end
 
