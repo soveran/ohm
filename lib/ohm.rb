@@ -1,7 +1,8 @@
 # encoding: UTF-8
 
 require "base64"
-require File.join(File.dirname(__FILE__), "ohm", "redis")
+require "redis"
+
 require File.join(File.dirname(__FILE__), "ohm", "validations")
 require File.join(File.dirname(__FILE__), "ohm", "compat-1.8.6")
 require File.join(File.dirname(__FILE__), "ohm", "key")
@@ -39,9 +40,9 @@ module Ohm
 
   # Return a connection to Redis.
   #
-  # This is a wapper around Ohm::Redis.new(options)
+  # This is a wapper around Redis.new(options)
   def connection(*options)
-    Ohm::Redis.new(*options)
+    Redis.new(*options)
   end
 
   def options
@@ -659,32 +660,12 @@ module Ohm
       self.class.key(id, *args)
     end
 
-    # Use MSET if possible, SET otherwise.
-    def write
-      db.support_mset? ?
-        write_with_mset :
-        write_with_set
-    end
-
-    # Write attributes using SET
-    # This method will be removed once MSET becomes standard.
-    def write_with_set
-      attributes.each do |att|
-        value = send(att)
-        value.to_s.empty? ?
-          db.set(key(att), value) :
-          db.del(key(att))
-      end
-    end
-
     # Write attributes using MSET
-    # This is the preferred method, and will be the only option
-    # available once MSET becomes standard.
-    def write_with_mset
+    def write
       unless attributes.empty?
         rems, adds = attributes.map { |a| [key(a), send(a)] }.partition { |t| t.last.to_s.empty? }
         db.del(*rems.flatten.compact) unless rems.empty?
-        db.mset(adds.flatten)         unless adds.empty?
+        db.mapped_mset(adds.flatten)         unless adds.empty?
       end
     end
 
@@ -771,7 +752,12 @@ module Ohm
     end
 
     def read_remote(att)
-      db.get(key(att)) unless new?
+      unless new?
+        value = db.get(key(att))
+        value.respond_to?(:force_encoding) ?
+          value.force_encoding("UTF-8") :
+          value
+      end
     end
 
     def read_locals(attrs)
