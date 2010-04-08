@@ -14,11 +14,26 @@ unless "".respond_to?(:lines)
   end
 end
 
-unless Object.new.respond_to?(:tap)
+unless respond_to?(:tap)
   class Object
     def tap
       yield(self)
       self
+    end
+  end
+end
+
+module Ohm
+  if defined?(BasicObject)
+    BasicObject = ::BasicObject
+  elsif defined?(BlankSlate)
+    BasicObject = ::BlankSlate
+  else
+
+    # If neither BasicObject (Ruby 1.9) nor BlankSlate (typically provided by Builder)
+    # are present, define our simple implementation inside the Ohm module.
+    class BasicObject
+      instance_methods.each { |meth| undef_method(meth) unless meth =~ /\A(__|instance_eval)/ }
     end
   end
 end

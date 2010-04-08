@@ -54,7 +54,6 @@ module Ohm
     redis.flushdb
   end
 
-  # Join the parameters with ":" to create a key.
   def key(*args)
     Key[*args]
   end
@@ -64,6 +63,30 @@ module Ohm
   Error = Class.new(StandardError)
 
   class Model
+
+    # Wraps a model name for lazy evaluation.
+    class Wrapper < BasicObject
+      def initialize(name, &block)
+        @name = name
+        @caller = ::Kernel.caller[2]
+        @block = block
+
+        class << self
+          def method_missing(method_id, *args)
+            raise NoMethodError, "You tried to call #{@name}##{method_id}, but #{@name} is not defined on #{@caller}"
+          end
+        end
+      end
+
+      def [](*args)
+        call[*args]
+      end
+
+      def call
+        @model ||= @block.call
+      end
+    end
+
     class Collection
       include Enumerable
 
@@ -398,7 +421,7 @@ module Ohm
       index reader
 
       define_memoized_method(name) do
-        model[send(reader)]
+        model.call[send(reader)]
       end
 
       define_method(:"#{name}=") do |value|
@@ -452,7 +475,7 @@ module Ohm
     # @param model     [Constant] Model where the reference is defined.
     # @param reference [Symbol]   Reference as defined in the associated model.
     def self.collection(name, model, reference = to_reference)
-      define_method(name) { model.find(:"#{reference}_id" => send(:id)) }
+      define_method(name) { model.call.find(:"#{reference}_id" => send(:id)) }
     end
 
     def self.to_reference
@@ -668,6 +691,27 @@ module Ohm
         db.del(*rems.flatten.compact) unless rems.empty?
         db.mapped_mset(adds.flatten)  unless adds.empty?
       end
+    end
+
+    if RUBY_VERSION > "1.9"
+      # In Ruby 1.9, caller tells us which class is triggering the const_missing call.
+      # It's safer to check it.
+
+      def self.const_missing(name)
+        caller[0] =~ /<class:#{self}>/ ? Wrapper.new(name) { const_get(name) } : super
+      end
+    else
+      # In Ruby 1.8, caller does not inform the class, so we always wrap missing
+      # constants (in the context of Ohm::Model). If we catch a constant by error,
+      # Wrapper will be in charge of failing early.
+
+      def self.const_missing(name)
+        Wrapper.new(name) { const_get(name) }
+      end
+    end
+
+    def self.call
+      self
     end
 
   private

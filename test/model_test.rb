@@ -704,6 +704,18 @@ class TestRedis < Test::Unit::TestCase
       counter :visits
       set :friends
       list :comments
+
+      def foo
+        bar.foo
+      end
+
+      def baz
+        bar.new.foo
+      end
+
+      def bar
+        SomeMissingConstant
+      end
     end
 
     should "provide a meaningful inspect" do
@@ -719,9 +731,32 @@ class TestRedis < Test::Unit::TestCase
 
       assert_equal %Q{#<Bar:#{bar.id} name="Albert" friends=#<Set: ["1", "2"]> comments=#<List: ["A"]> visits=1>}, Bar[bar.id].inspect
     end
+
+    if RUBY_VERSION > "1.9"
+      def assert_wrapper_exception(&block)
+        assert_raises(NameError, &block)
+      end
+    else
+      def assert_wrapper_exception(&block)
+        begin
+          block.call
+        rescue NoMethodError => exception_raised
+        end
+
+        assert_match /You tried to call SomeMissingConstant#\w+, but SomeMissingConstant is not defined on #{__FILE__}:\d+:in `bar'/, exception_raised.message
+      end
+    end
+
+    should "inform about a miscatch by Wrapper when calling class methods" do
+      assert_wrapper_exception { Bar.new.baz }
+    end
+
+    should "inform about a miscatch by Wrapper when calling instance methods" do
+      assert_wrapper_exception { Bar.new.foo }
+    end
   end
 
-  context "Overwritting write" do
+  context "Overwriting write" do
     class ::Baz < Ohm::Model
       attribute :name
 
@@ -745,6 +780,16 @@ class TestRedis < Test::Unit::TestCase
     class ::Note < Ohm::Model
       attribute :content
       reference :source, Post
+      collection :comments, Comment
+      list :ratings, Rating
+    end
+
+    class ::Comment < Ohm::Model
+      reference :note, Note
+    end
+
+    class ::Rating < Ohm::Model
+      attribute :value
     end
 
     class ::Editor < Ohm::Model
@@ -802,11 +847,23 @@ class TestRedis < Test::Unit::TestCase
     context "a collection of other objects" do
       setup do
         @note = Note.create(:content => "Interesting stuff", :source => @post)
+        @comment = Comment.create(:note => @note)
       end
 
       should "return a set of notes" do
         assert_equal @note.source, @post
         assert_equal @note, @post.notes.first
+      end
+
+      should "return a set of comments" do
+        assert_equal @comment, @note.comments.first
+      end
+
+      should "return a list of ratings" do
+        @rating = Rating.create(:value => 5)
+        @note.ratings << @rating
+
+        assert_equal @rating, @note.ratings.first
       end
 
       should "default to the current class name" do
