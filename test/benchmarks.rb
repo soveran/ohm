@@ -7,55 +7,33 @@ Ohm.flush
 
 class Event < Ohm::Model
   attribute :name
-  set :attendees
+  attribute :location
+
+  index :name
+  index :location
 
   def validate
     assert_present :name
+    assert_present :location
   end
 end
 
-event = Event.create(:name => "Ruby Tuesday")
-array = []
+i = 0
 
-benchmark "add to set with ohm redis" do
-  Ohm.redis.sadd("foo", 1)
+benchmark "Create Events" do
+  Event.create(:name => "Redis Meetup #{i}", :location => "London #{i}")
 end
 
-benchmark "add to set with ohm" do
-  event.attendees << 1
+benchmark "Find by indexed attribute" do
+  Event.find(:name => "Redis Meetup #{i}").first
 end
 
-Ohm.redis.sadd("bar", 1)
-Ohm.redis.sadd("bar", 2)
-
-benchmark "retrieve a set of two members with ohm redis" do
-  Ohm.redis.sadd("bar", 3)
-  Ohm.redis.srem("bar", 3)
-  Ohm.redis.smembers("bar")
+benchmark "Mass update" do
+  Event[1].update(:name => "Redis Meetup II")
 end
 
-Ohm.redis.del("Event:#{event.id}:attendees")
-
-event.attendees << 1
-event.attendees << 2
-
-benchmark "retrieve a set of two members with ohm" do
-  event.attendees << 3
-  event.attendees.delete(3)
-  event.attendees
+benchmark "Load events" do
+  Event[1].name
 end
 
-benchmark "retrieve membership status and set count" do
-  Ohm.redis.scard("bar")
-  Ohm.redis.sismember("bar", "1")
-end
-
-benchmark "retrieve set count" do
-  Ohm.redis.scard("bar").zero?
-end
-
-benchmark "retrieve membership status" do
-  Ohm.redis.sismember("bar", "1")
-end
-
-run 10_000
+run 5000
