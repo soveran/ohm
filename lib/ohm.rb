@@ -785,6 +785,7 @@ module Ohm
     def delete_from_indices
       db.smembers(key(:_indices)).each do |index|
         db.srem(index, id)
+        db.srem(key(:_indices), index)
       end
     end
 

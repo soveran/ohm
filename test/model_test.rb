@@ -259,20 +259,18 @@ class TestRedis < Test::Unit::TestCase
   end
 
   context "Delete" do
-    class ModelToBeDeleted < Ohm::Model
-      attribute :name
-      set :foos
-      list :bars
-    end
+    should "delete an existing model" do
+      class ModelToBeDeleted < Ohm::Model
+        attribute :name
+        set :foos
+        list :bars
+      end
 
-    setup do
       @model = ModelToBeDeleted.create(:name => "Lorem")
 
       @model.foos << "foo"
       @model.bars << "bar"
-    end
 
-    should "delete an existing model" do
       id = @model.id
 
       @model.delete
@@ -283,6 +281,23 @@ class TestRedis < Test::Unit::TestCase
       assert_equal Array.new, Ohm.redis.lrange(ModelToBeDeleted.key(id, :bars), 0, -1)
 
       assert ModelToBeDeleted.all.empty?
+    end
+
+    should "be no leftover keys" do
+      class ::Foo < Ohm::Model
+        attribute :name
+        index :name
+      end
+
+      assert_equal [], Ohm.redis.keys("*")
+
+      Foo.create(name: "Bar")
+
+      assert_equal ["Foo:1:_indices", "Foo:1:name", "Foo:all", "Foo:id", "Foo:name:QmFy"], Ohm.redis.keys("*").sort
+
+      Foo[1].delete
+
+      assert_equal ["Foo:id"], Ohm.redis.keys("*")
     end
   end
 
