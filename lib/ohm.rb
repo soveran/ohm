@@ -664,8 +664,9 @@ module Ohm
     def write
       unless attributes.empty?
         rems, adds = attributes.map { |a| [key(a), send(a)] }.partition { |t| t.last.to_s.empty? }
+
         db.del(*rems.flatten.compact) unless rems.empty?
-        db.mapped_mset(adds.flatten)         unless adds.empty?
+        db.mapped_mset(adds.flatten)  unless adds.empty?
       end
     end
 

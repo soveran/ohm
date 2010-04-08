@@ -41,6 +41,10 @@ class Event < Ohm::Model
 end
 
 class TestRedis < Test::Unit::TestCase
+  setup do
+    Ohm.flush
+  end
+
   context "An event initialized with a hash of attributes" do
     should "assign the passed attributes" do
       event = Event.new(:name => "Ruby Tuesday")
@@ -50,8 +54,6 @@ class TestRedis < Test::Unit::TestCase
 
   context "An event created from a hash of attributes" do
     should "assign an id and save the object" do
-      Ohm.flush
-
       event1 = Event.create(:name => "Ruby Tuesday")
       event2 = Event.create(:name => "Ruby Meetup")
 
@@ -218,8 +220,6 @@ class TestRedis < Test::Unit::TestCase
 
   context "Creating a new model" do
     should "assign a new id to the event" do
-      Ohm.flush
-
       event1 = Event.new
       event1.create
 
@@ -305,7 +305,6 @@ class TestRedis < Test::Unit::TestCase
 
   context "Sorting" do
     should "sort all" do
-      Ohm.flush
       Person.create :name => "D"
       Person.create :name => "C"
       Person.create :name => "B"
@@ -315,26 +314,22 @@ class TestRedis < Test::Unit::TestCase
     end
 
     should "return an empty array if there are no elements to sort" do
-      Ohm.flush
       assert_equal [], Person.all.sort_by(:name)
     end
 
     should "return the first element sorted by id when using first" do
-      Ohm.flush
       Person.create :name => "A"
       Person.create :name => "B"
       assert_equal "A", Person.all.first.name
     end
 
     should "return the first element sorted by name if first receives a sorting option" do
-      Ohm.flush
       Person.create :name => "B"
       Person.create :name => "A"
       assert_equal "A", Person.all.first(:by => :name, :order => "ALPHA").name
     end
 
     should "return attribute values when the get parameter is specified" do
-      Ohm.flush
       Person.create :name => "B"
       Person.create :name => "A"
 
@@ -344,8 +339,6 @@ class TestRedis < Test::Unit::TestCase
 
   context "Loading attributes" do
     setup do
-      Ohm.flush
-
       event = Event.new
       event.name = "Ruby Tuesday"
       @id = event.create.id
@@ -367,8 +360,6 @@ class TestRedis < Test::Unit::TestCase
 
   context "Attributes of type Set" do
     setup do
-      Ohm.flush
-
       @person1 = Person.create(:name => "Albert")
       @person2 = Person.create(:name => "Bertrand")
       @person3 = Person.create(:name => "Charles")
@@ -450,8 +441,6 @@ class TestRedis < Test::Unit::TestCase
 
   context "Attributes of type List" do
     setup do
-      Ohm.flush
-
       @post = Post.new
       @post.body = "Hello world!"
       @post.create
