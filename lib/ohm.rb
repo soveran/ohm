@@ -78,12 +78,20 @@ module Ohm
         end
       end
 
-      def [](*args)
-        call[*args]
+      def self.wrap(object)
+        object.class == self ? object : new(object.inspect) { object }
       end
 
-      def call
-        @model ||= @block.call
+      def unwrap
+        @block.call
+      end
+
+      def class
+        Wrapper
+      end
+
+      def inspect
+        "<Wrapper for #{@name} (in #{@caller})>"
       end
     end
 
@@ -93,9 +101,9 @@ module Ohm
       attr :raw
       attr :model
 
-      def initialize(key, model, db = model.db)
-        @raw = self.class::Raw.new(key, db)
-        @model = model
+      def initialize(key, model, db = nil)
+        @model = model.unwrap
+        @raw = self.class::Raw.new(key, db || @model.db)
       end
 
       def <<(model)
@@ -221,7 +229,7 @@ module Ohm
       def apply(operation, hash, glue)
         target = key.volatile.group(glue).append(*keys(hash))
         model.db.send(operation, target, *target.sub_keys)
-        Set.new(target, model)
+        Set.new(target, Wrapper.wrap(model))
       end
 
       # Transform a hash of attribute/values into an array of keys.
@@ -264,7 +272,7 @@ module Ohm
     class Index < Set
       def apply(operation, hash, glue)
         if hash.keys.size == 1
-          return Set.new(keys(hash).first, model)
+          return Set.new(keys(hash).first, Wrapper.wrap(model))
         else
           super
         end
@@ -414,6 +422,8 @@ module Ohm
     #
     # @see Ohm::Model::collection
     def self.reference(name, model)
+      model = Wrapper.wrap(model)
+
       reader = :"#{name}_id"
       writer = :"#{name}_id="
 
@@ -421,7 +431,7 @@ module Ohm
       index reader
 
       define_memoized_method(name) do
-        model.call[send(reader)]
+        model.unwrap[send(reader)]
       end
 
       define_method(:"#{name}=") do |value|
@@ -475,7 +485,8 @@ module Ohm
     # @param model     [Constant] Model where the reference is defined.
     # @param reference [Symbol]   Reference as defined in the associated model.
     def self.collection(name, model, reference = to_reference)
-      define_method(name) { model.call.find(:"#{reference}_id" => send(:id)) }
+      model = Wrapper.wrap(model)
+      define_method(name) { model.unwrap.find(:"#{reference}_id" => send(:id)) }
     end
 
     def self.to_reference
@@ -484,6 +495,7 @@ module Ohm
 
     def self.attr_collection_reader(name, type, model)
       if model
+        model = Wrapper.wrap(model)
         define_memoized_method(name) { Ohm::Model::const_get(type).new(key(name), model, db) }
       else
         define_memoized_method(name) { Ohm::const_get(type).new(key(name), db) }
@@ -506,7 +518,7 @@ module Ohm
     end
 
     def self.all
-      @all ||= Ohm::Model::Index.new(key(:all), self)
+      @all ||= Ohm::Model::Index.new(key(:all), Wrapper.wrap(self))
     end
 
     def self.attributes
@@ -693,25 +705,8 @@ module Ohm
       end
     end
 
-    if RUBY_VERSION > "1.9"
-      # In Ruby 1.9, caller tells us which class is triggering the const_missing call.
-      # It's safer to check it.
-
-      def self.const_missing(name)
-        caller[0] =~ /<class:#{self}>/ ? Wrapper.new(name) { const_get(name) } : super
-      end
-    else
-      # In Ruby 1.8, caller does not inform the class, so we always wrap missing
-      # constants (in the context of Ohm::Model). If we catch a constant by error,
-      # Wrapper will be in charge of failing early.
-
-      def self.const_missing(name)
-        Wrapper.new(name) { const_get(name) }
-      end
-    end
-
-    def self.call
-      self
+    def self.const_missing(name)
+      Wrapper.new(name) { const_get(name) }
     end
 
   private

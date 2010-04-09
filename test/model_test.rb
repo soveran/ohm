@@ -291,7 +291,7 @@ class TestRedis < Test::Unit::TestCase
 
       assert_equal [], Ohm.redis.keys("*")
 
-      Foo.create(name: "Bar")
+      Foo.create(:name => "Bar")
 
       assert_equal ["Foo:1:_indices", "Foo:1:name", "Foo:all", "Foo:id", "Foo:name:QmFy"], Ohm.redis.keys("*").sort
 
@@ -589,13 +589,19 @@ class TestRedis < Test::Unit::TestCase
       end
     end
 
-    class Calendar < Ohm::Model
+    class ::Calendar < Ohm::Model
       list :holidays, lambda { |v| Date.parse(v) }
       list :subscribers, lambda { |id| MyActiveRecordModel.find(id) }
+      list :appointments, Appointment
+    end
+
+    class ::Appointment < Ohm::Model
+      attribute :text
     end
 
     setup do
       @calendar = Calendar.create
+
       @calendar.holidays.raw << "2009-05-25"
       @calendar.holidays.raw << "2009-07-09"
 
@@ -607,6 +613,12 @@ class TestRedis < Test::Unit::TestCase
 
       assert_equal ["1"], @calendar.subscribers.raw.all
       assert_equal [MyActiveRecordModel.find(1)], @calendar.subscribers.all
+    end
+
+    should "work with models too" do
+      @calendar.appointments.add(Appointment.create(:text => "Meet with Bertrand"))
+
+      assert_equal [Appointment[1]], Calendar[1].appointments.sort
     end
   end
 
@@ -747,19 +759,13 @@ class TestRedis < Test::Unit::TestCase
       assert_equal %Q{#<Bar:#{bar.id} name="Albert" friends=#<Set: ["1", "2"]> comments=#<List: ["A"]> visits=1>}, Bar[bar.id].inspect
     end
 
-    if RUBY_VERSION > "1.9"
-      def assert_wrapper_exception(&block)
-        assert_raises(NameError, &block)
+    def assert_wrapper_exception(&block)
+      begin
+        block.call
+      rescue NoMethodError => exception_raised
       end
-    else
-      def assert_wrapper_exception(&block)
-        begin
-          block.call
-        rescue NoMethodError => exception_raised
-        end
 
-        assert_match /You tried to call SomeMissingConstant#\w+, but SomeMissingConstant is not defined on #{__FILE__}:\d+:in `bar'/, exception_raised.message
-      end
+      assert_match /You tried to call SomeMissingConstant#\w+, but SomeMissingConstant is not defined on #{__FILE__}:\d+:in `bar'/, exception_raised.message
     end
 
     should "inform about a miscatch by Wrapper when calling class methods" do
