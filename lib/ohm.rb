@@ -73,7 +73,7 @@ module Ohm
 
         class << self
           def method_missing(method_id, *args)
-            raise NoMethodError, "You tried to call #{@name}##{method_id}, but #{@name} is not defined on #{@caller}"
+            raise ::NoMethodError, "You tried to call #{@name}##{method_id}, but #{@name} is not defined on #{@caller}"
           end
         end
       end
