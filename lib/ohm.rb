@@ -602,9 +602,7 @@ module Ohm
 
     def delete
       delete_from_indices
-      delete_attributes(attributes)
-      delete_attributes(counters)
-      delete_attributes(collections)
+      delete_attributes(attributes + counters + collections)
       delete_model_membership
       self
     end
@@ -737,9 +735,7 @@ module Ohm
     end
 
     def delete_attributes(atts)
-      atts.each do |att|
-        db.del(key(att))
-      end
+      db.del(*atts.map { |att| key(att) })
     end
 
     def create_model_membership
@@ -780,8 +776,9 @@ module Ohm
     def delete_from_indices
       db.smembers(key(:_indices)).each do |index|
         db.srem(index, id)
-        db.srem(key(:_indices), index)
       end
+
+      db.del(key(:_indices))
     end
 
     def read_local(att)
