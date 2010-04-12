@@ -597,6 +597,7 @@ class TestRedis < Test::Unit::TestCase
 
     class ::Appointment < Ohm::Model
       attribute :text
+      reference :subscriber, lambda { |id| MyActiveRecordModel.find(id) }
     end
 
     setup do
@@ -613,6 +614,11 @@ class TestRedis < Test::Unit::TestCase
 
       assert_equal ["1"], @calendar.subscribers.raw.all
       assert_equal [MyActiveRecordModel.find(1)], @calendar.subscribers.all
+    end
+
+    should "allow lambdas in references" do
+      appointment = Appointment.create(:subscriber => MyActiveRecordModel.find(1))
+      assert_equal MyActiveRecordModel.find(1), appointment.subscriber
     end
 
     should "work with models too" do
@@ -905,7 +911,7 @@ class TestRedis < Test::Unit::TestCase
     end
 
     setup do
-      Car.connect(:port => 6381, :db => 2)
+      Car.connect(:port => 6379, :db => 14)
     end
 
     teardown do
@@ -916,8 +922,8 @@ class TestRedis < Test::Unit::TestCase
       car = Car.create(:name => "Twingo")
       make = Make.create(:name => "Renault")
 
-      assert_equal 1, Make.db.instance_variable_get("@db")
-      assert_equal 2, Car.db.instance_variable_get("@db")
+      assert_equal 15, Make.db.instance_variable_get("@db")
+      assert_equal 14, Car.db.instance_variable_get("@db")
 
       assert_equal car, Car[1]
       assert_equal make, Make[1]
