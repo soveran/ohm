@@ -602,7 +602,7 @@ module Ohm
 
     def delete
       delete_from_indices
-      delete_attributes(attributes + counters + collections)
+      delete_attributes(collections) unless collections.empty?
       delete_model_membership
       self
     end
@@ -610,17 +610,16 @@ module Ohm
     # Increment the counter denoted by :att.
     #
     # @param att [Symbol] Attribute to increment.
-    def incr(att)
+    def incr(att, count = 1)
       raise ArgumentError, "#{att.inspect} is not a counter." unless counters.include?(att)
-      write_local(att, db.incr(key(att)))
+      write_local(att, db.hincrby(key, att, count))
     end
 
     # Decrement the counter denoted by :att.
     #
     # @param att [Symbol] Attribute to decrement.
-    def decr(att)
-      raise ArgumentError, "#{att.inspect} is not a counter." unless counters.include?(att)
-      write_local(att, db.decr(key(att)))
+    def decr(att, count = 1)
+      incr(att, -count)
     end
 
     def attributes
@@ -693,13 +692,17 @@ module Ohm
       self.class.key(id, *args)
     end
 
-    # Write attributes using MSET
     def write
       unless attributes.empty?
-        rems, adds = attributes.map { |a| [key(a), send(a)] }.partition { |t| t.last.to_s.empty? }
+        attributes.each_with_index do |att, index|
+          value = send(att).to_s
 
-        db.del(*rems.flatten.compact) unless rems.empty?
-        db.mapped_mset(adds.flatten)  unless adds.empty?
+          if value.empty?
+            db.hdel(key, att)
+          else
+            db.hset(key, att, value)
+          end
+        end
       end
     end
 
@@ -743,6 +746,7 @@ module Ohm
     end
 
     def delete_model_membership
+      db.del(key)
       db.srem(self.class.key(:all), id)
     end
 
@@ -791,7 +795,7 @@ module Ohm
 
     def read_remote(att)
       unless new?
-        value = db.get(key(att))
+        value = db.hget(key, att)
         value.respond_to?(:force_encoding) ?
           value.force_encoding("UTF-8") :
           value
