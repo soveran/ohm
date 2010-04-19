@@ -742,12 +742,12 @@ module Ohm
     end
 
     def create_model_membership
-      db.sadd(self.class.key(:all), id)
+      self.class.all << self
     end
 
     def delete_model_membership
       db.del(key)
-      db.srem(self.class.key(:all), id)
+      self.class.all.delete(self)
     end
 
     def update_indices
