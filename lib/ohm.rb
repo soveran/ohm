@@ -149,10 +149,10 @@ module Ohm
       #   user.name == "A"
       #   # => true
       def sort_by(att, options = {})
-        options.merge!(:by => model.key("*", att))
+        options.merge!(:by => model.key("*->#{att}"))
 
         if options[:get]
-          raw.sort(options.merge(:get => model.key("*", options[:get])))
+          raw.sort(options.merge(:get => model.key("*->#{options[:get]}")))
         else
           sort(options)
         end
