@@ -42,7 +42,7 @@ module Model
   end
 end
 
-class TestRedis < Test::Unit::TestCase
+class ScopedModelsTest < Test::Unit::TestCase
   setup do
     Ohm.flush
   end
