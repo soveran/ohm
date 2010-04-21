@@ -490,7 +490,7 @@ module Ohm
     end
 
     def self.to_reference
-      name.to_s.gsub(/([a-z\d])([A-Z])/, '\1_\2').downcase.to_sym
+      name.to_s.match(/^(?:.*::)*(.*)$/)[1].gsub(/([a-z\d])([A-Z])/, '\1_\2').downcase.to_sym
     end
 
     def self.attr_collection_reader(name, type, model)
