@@ -933,8 +933,11 @@ class ScopedModelsTest < Test::Unit::TestCase
       car = Model::Car.create(:name => "Twingo")
       make = Model::Make.create(:name => "Renault")
 
-      assert_equal 15, Model::Make.db.instance_variable_get("@db")
-      assert_equal 14, Model::Car.db.instance_variable_get("@db")
+      assert_equal ["1"], Redis.new(:db => 15).smembers("Model::Make:all")
+      assert_equal [], Redis.new(:db => 15).smembers("Model::Car:all")
+
+      assert_equal ["1"], Redis.new(:db => 14).smembers("Model::Car:all")
+      assert_equal [], Redis.new(:db => 14).smembers("Model::Make:all")
 
       assert_equal car, Model::Car[1]
       assert_equal make, Model::Make[1]
