@@ -212,7 +212,7 @@ module Ohm
       #   # You can combine the result with sort and other set operations:
       #   @events.sort_by(:name)
       def find(hash)
-        apply(:sinterstore, hash, "+")
+        apply(:sinterstore, hash, :+)
       end
 
       # Returns the difference between the receiver and the passed sets.
@@ -220,15 +220,16 @@ module Ohm
       # @example
       #   @events = Event.find(public: true).except(status: "sold_out")
       def except(hash)
-        apply(:sdiffstore, hash, "-")
+        apply(:sdiffstore, hash, :-)
       end
 
     private
 
-      # Apply a redis operation on a collection of sets.
+      # Apply a Redis operation on a collection of sets.
       def apply(operation, hash, glue)
-        target = key.volatile.group(glue).append(*keys(hash))
-        model.db.send(operation, target, *target.sub_keys)
+        keys = keys(hash)
+        target = key.volatile.send(glue, Key[*keys])
+        model.db.send(operation, target, key, *keys)
         Set.new(target, Wrapper.wrap(model))
       end
 
