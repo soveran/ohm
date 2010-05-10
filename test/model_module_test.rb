@@ -169,7 +169,7 @@ class ScopedModelsTest < Test::Unit::TestCase
   context "Finding an event" do
     setup do
       Ohm.redis.sadd("Model::Event:all", 1)
-      Ohm.redis.set("Model::Event:1:name", "Concert")
+      Ohm.redis.hset("Model::Event:1", "name", "Concert")
     end
 
     should "return an instance of Event" do
@@ -182,7 +182,7 @@ class ScopedModelsTest < Test::Unit::TestCase
   context "Finding a user" do
     setup do
       Ohm.redis.sadd("Model::User:all", 1)
-      Ohm.redis.set("Model::User:1:email", "albert@example.com")
+      Ohm.redis.hset("Model::User:1", "email", "albert@example.com")
     end
 
     should "return an instance of User" do
@@ -295,7 +295,7 @@ class ScopedModelsTest < Test::Unit::TestCase
 
       Model::Foo.create(:name => "Bar")
 
-      assert_equal ["Model::Foo:1:_indices", "Model::Foo:1:name", "Model::Foo:all", "Model::Foo:id", "Model::Foo:name:QmFy"], Ohm.redis.keys("*").sort
+      assert_equal ["Model::Foo:1", "Model::Foo:1:_indices", "Model::Foo:all", "Model::Foo:id", "Model::Foo:name:QmFy"], Ohm.redis.keys("*").sort
 
       Model::Foo[1].delete
 
