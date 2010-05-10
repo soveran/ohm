@@ -40,7 +40,7 @@ class Event < Ohm::Model
   end
 end
 
-class TestRedis < Test::Unit::TestCase
+class ModelTest < Test::Unit::TestCase
   setup do
     Ohm.flush
   end
@@ -167,7 +167,7 @@ class TestRedis < Test::Unit::TestCase
   context "Finding an event" do
     setup do
       Ohm.redis.sadd("Event:all", 1)
-      Ohm.redis.set("Event:1:name", "Concert")
+      Ohm.redis.hset("Event:1", "name", "Concert")
     end
 
     should "return an instance of Event" do
@@ -180,7 +180,7 @@ class TestRedis < Test::Unit::TestCase
   context "Finding a user" do
     setup do
       Ohm.redis.sadd("User:all", 1)
-      Ohm.redis.set("User:1:email", "albert@example.com")
+      Ohm.redis.hset("User:1", "email", "albert@example.com")
     end
 
     should "return an instance of User" do
@@ -293,7 +293,7 @@ class TestRedis < Test::Unit::TestCase
 
       Foo.create(:name => "Bar")
 
-      assert_equal ["Foo:1:_indices", "Foo:1:name", "Foo:all", "Foo:id", "Foo:name:QmFy"], Ohm.redis.keys("*").sort
+      assert_equal ["Foo:1:_indices", "Foo:1", "Foo:all", "Foo:id", "Foo:name:QmFy"].sort, Ohm.redis.keys("*").sort
 
       Foo[1].delete
 
@@ -698,11 +698,17 @@ class TestRedis < Test::Unit::TestCase
     should "be able to increment a counter" do
       @event.incr(:votes)
       assert_equal 1, @event.votes
+
+      @event.incr(:votes, 2)
+      assert_equal 3, @event.votes
     end
 
     should "be able to decrement a counter" do
       @event.decr(:votes)
       assert_equal -1, @event.votes
+
+      @event.decr(:votes, 2)
+      assert_equal -3, @event.votes
     end
   end
 
@@ -935,6 +941,22 @@ class TestRedis < Test::Unit::TestCase
 
       assert_equal car, Car[1]
       assert_nil Make[1]
+    end
+  end
+
+  context "Persistence" do
+    should "persist attributes to a hash" do
+      event = Event.create(:name => "Redis Meetup")
+      event.incr(:votes)
+
+      assert_equal "hash", Ohm.redis.type("Event:1")
+
+      assert_equal [
+        "Event:1", "Event:all", "Event:id"
+      ].sort, Ohm.redis.keys("Event:*").sort
+
+      assert_equal "Redis Meetup", Event[1].name
+      assert_equal 1, Event[1].votes
     end
   end
 end
