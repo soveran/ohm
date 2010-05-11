@@ -228,7 +228,7 @@ An index is a set that's handled automatically by Ohm. For any index declared,
 Ohm maintains different sets of objects IDs for quick lookups.
 
 In the `Event` example, the index on the name attribute will
-allow for searches like `Event.find(name: "some value")`.
+allow for searches like `Event.find(:name => "some value")`.
 
 Note that the `assert_unique` validation and the methods `find` and `except` need a
 corresponding index in order to work.
@@ -238,18 +238,18 @@ corresponding index in order to work.
 You can find a collection of records with the `find` method:
 
     # This returns a collection of users with the username "Albert"
-    User.find(username: "Albert")
+    User.find(:username => "Albert")
 
 ### Filtering results
 
     # Find all users from Argentina
-    User.find(country: "Argentina")
+    User.find(:country => "Argentina")
 
     # Find all activated users from Argentina
-    User.find(country: "Argentina", status: "activated")
+    User.find(:country => "Argentina", :status => "activated")
 
     # Find all users from Argentina, except those with a suspended account.
-    User.find(country: "Argentina").except(status: "suspended")
+    User.find(:country => "Argentina").except(:status => "suspended")
 
 Note that calling these methods results in new sets being created
 on the fly. This is important so that you can perform further operations
