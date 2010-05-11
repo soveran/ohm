@@ -364,3 +364,28 @@ values. The result of the block is used as the error message:
 
     error_messages
     # => ["The email foo@example.com is already registered."]
+
+Versions
+========
+
+Ohm uses features from Redis > 1.3.10. If you are stuck in previous
+versions, please use Ohm 0.0.35 instead.
+
+Upgrading from 0.0.x to 0.1
+---------------------------
+
+Since Ohm 0.1 changes the persistence strategy (from 1-key-per-attribute
+to Hashes), you'll need to run a script to upgrade your old data set.
+Fortunately, it is built in:
+
+    require "ohm/utils/upgrade"
+
+    Ohm.connect :port => 6380
+
+    Ohm::Utils::Upgrade.new([:User, :Post, :Comment]).run
+
+Yes, you need to provide the model names. The good part is that you
+don't have to load your application environment. Since we assume it's
+very likely that you have a bunch of data, the script uses
+[Batch](http://github.com/djanowski/batch) to show you some progress
+while the process runs.
