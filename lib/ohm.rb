@@ -9,7 +9,7 @@ require File.join(File.dirname(__FILE__), "ohm", "key")
 require File.join(File.dirname(__FILE__), "ohm", "collection")
 
 module Ohm
-  VERSION = "0.0.35"
+  VERSION = "0.1.0.rc1"
 
   # Provides access to the Redis database. This is shared accross all models and instances.
   def redis
