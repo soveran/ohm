@@ -371,8 +371,7 @@ Versions
 Ohm uses features from Redis > 1.3.10. If you are stuck in previous
 versions, please use Ohm 0.0.35 instead.
 
-Upgrading from 0.0.x to 0.1
----------------------------
+<h2 id="upgrade">Upgrading from 0.0.x to 0.1</h2>
 
 Since Ohm 0.1 changes the persistence strategy (from 1-key-per-attribute
 to Hashes), you'll need to run a script to upgrade your old data set.
