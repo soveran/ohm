@@ -695,7 +695,7 @@ module Ohm
 
     def write
       unless attributes.empty?
-        attributes.each_with_index do |att, index|
+        attributes.each do |att|
           value = send(att).to_s
 
           if value.empty?
