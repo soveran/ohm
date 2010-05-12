@@ -623,6 +623,48 @@ module Ohm
       incr(att, -count)
     end
 
+    # Export the id and errors of the object. The `to_hash` takes the opposite
+    # approach of providing all the attributes and instead favors a 
+    # white listed approach.
+    #
+    # @example
+    #
+    #   person = Person.create(:name => "John Doe")
+    #   person.to_hash == { :id => '1' }
+    #   # => true
+    #
+    #   # if the person asserts presence of name, the errors will be included
+    #   person = Person.create(:name => "John Doe")
+    #   person.name = nil
+    #   person.valid?
+    #   # => false
+    #
+    #   person.to_hash == { :id => '1', :errors => [[:name, :not_present]] }
+    #   # => true
+    #
+    #   # for cases where you want to provide white listed attributes just do:
+    #   
+    #   class Person < Ohm::Model
+    #     def to_hash
+    #       super.merge(:name => name) 
+    #     end
+    #   end
+    #
+    #   # now we have the name when doing a to_hash
+    #   person = Person.create(:name => "John Doe")
+    #   person.to_hash == { :id => '1', :name => "John Doe" }
+    #   # => true
+    def to_hash
+      attrs = {}
+      attrs[:id] = id unless new?
+      attrs[:errors] = errors unless errors.empty?
+      attrs
+    end
+
+    def to_json(*args)
+      to_hash.to_json(*args) 
+    end
+
     def attributes
       self.class.attributes
     end

@@ -2,6 +2,7 @@
 
 require File.join(File.dirname(__FILE__), "test_helper")
 require "ostruct"
+require "json"
 
 class Post < Ohm::Model
   attribute :body
@@ -957,6 +958,82 @@ class ModelTest < Test::Unit::TestCase
 
       assert_equal "Redis Meetup", Event[1].name
       assert_equal 1, Event[1].votes
+    end
+  end
+
+  context "Exporting" do
+    class Person < Ohm::Model
+      attribute :name
+
+      def validate
+        assert_present :name  
+      end
+    end
+    
+    context "a new model without errors" do
+      should "export an empty hash via to_hash" do
+        person = Person.new
+        assert_equal({}, person.to_hash)
+      end
+    end
+    
+    context "a new model with some errors" do
+      should "export a hash with the errors" do
+        person = Person.new
+        person.valid?
+
+        assert_equal({ :errors => [[:name, :not_present]] }, person.to_hash)
+      end
+    end
+
+    context "an existing model" do
+      should "export a hash with the its id" do
+        person = Person.create(:name => "John Doe")
+        assert_equal({ :id => '1' }, person.to_hash)
+      end
+    end
+  
+    context "an existing model with validation errors" do
+      should "export a hash with its id and the errors" do
+        person = Person.create(:name => "John Doe")
+        person.name = nil
+        person.valid?
+        
+        expected_hash = { :id => '1', :errors => [[:name, :not_present]] }
+
+        assert_equal expected_hash, person.to_hash
+      end
+    end
+
+    class Programmer < Person
+      attribute :language
+
+      def validate
+        super
+        assert_present :language
+      end
+
+      def to_hash
+        super.merge(:language => language)
+      end
+    end
+
+    context "a subclassed to_hash" do
+      should "return the merged attributes" do
+        programmer = Programmer.create(:name => "Matz", :language => "Ruby")
+        expected_hash = { :id => '1', :language => 'Ruby' }
+
+        assert_equal expected_hash, programmer.to_hash
+      end
+    end
+
+    context "the JSON representation of an object" do
+      should "just be the to_hash of a model" do
+        programmer = Programmer.create(:name => "Matz", :language => "Ruby")
+        expected_json = %({"id":"1","language":"Ruby"})
+
+        assert_equal expected_json, programmer.to_json
+      end
     end
   end
 end
