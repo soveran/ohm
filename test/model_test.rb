@@ -1005,11 +1005,10 @@ class ModelTest < Test::Unit::TestCase
       end
     end
 
-    class Programmer < Person
+    class Programmer < Ohm::Model
       attribute :language
 
       def validate
-        super
         assert_present :language
       end
 
@@ -1020,7 +1019,7 @@ class ModelTest < Test::Unit::TestCase
 
     context "a subclassed to_hash" do
       should "return the merged attributes" do
-        programmer = Programmer.create(:name => "Matz", :language => "Ruby")
+        programmer = Programmer.create(:language => "Ruby")
         expected_hash = { :id => '1', :language => 'Ruby' }
 
         assert_equal expected_hash, programmer.to_hash
@@ -1029,7 +1028,7 @@ class ModelTest < Test::Unit::TestCase
 
     context "the JSON representation of an object" do
       should "just be the to_hash of a model" do
-        programmer = Programmer.create(:name => "Matz", :language => "Ruby")
+        programmer = Programmer.create(:language => "Ruby")
         expected_json = %({"id":"1","language":"Ruby"})
 
         assert_equal expected_json, programmer.to_json
