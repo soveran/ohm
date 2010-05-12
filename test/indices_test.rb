@@ -42,6 +42,12 @@ class IndicesTest < Test::Unit::TestCase
       assert_equal @user1, User.find(:email => "foo").first
     end
 
+    should "raise an error if the parameter supplied is not a hash" do
+      assert_raises ArgumentError.new("You need to supply a hash with filters. If you want to find by ID, use IndicesTest::User[id] instead.") do
+        User.find(1)
+      end
+    end
+
     should "avoid intersections with the all collection" do
       assert_equal "IndicesTest::User:email:#{Ohm::Model.encode "foo"}", User.find(:email => "foo").key.to_s
 

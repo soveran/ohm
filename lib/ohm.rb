@@ -552,6 +552,7 @@ module Ohm
     #
     #   assert_equal [event1], Event.find(author: "Albert", day: "2009-09-09")
     def self.find(hash)
+      raise ArgumentError, "You need to supply a hash with filters. If you want to find by ID, use #{self}[id] instead." unless hash.kind_of?(Hash)
       all.find(hash)
     end
 
