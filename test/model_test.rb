@@ -390,7 +390,7 @@ class ModelTest < Test::Unit::TestCase
       end
     end
 
-    should "remove an element if sent :delete" do
+    should "remove an element if sent delete" do
       @event.create
       @event.attendees << @person1
       @event.attendees << @person2
@@ -546,7 +546,6 @@ class ModelTest < Test::Unit::TestCase
 
     should "add models" do
       @post.related.add(Post.create(:body => "Hello"))
-
       assert_equal ["2"], @post.related.ids
     end
 

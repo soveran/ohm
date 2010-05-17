@@ -207,11 +207,11 @@ module Ohm
         @key = key
         @model = model.unwrap
         @db = db || @model.db
-        @ids = Oor::Set.new(@key, @db)
+        @ids = Oor::Key.new(@key, @db)
       end
 
       def each(&block)
-        ids.each { |id| block.call(model[id]) }
+        ids.smembers.each { |id| block.call(model[id]) }
       end
 
       def [](id)
@@ -219,7 +219,7 @@ module Ohm
       end
 
       def << model
-        ids << model.id
+        ids.sadd(model.id)
       end
 
       alias add <<
@@ -246,7 +246,7 @@ module Ohm
 
       def replace(models)
         ids.del
-        models.each { |model| ids << model.id }
+        models.each { |model| ids.sadd(model.id) }
         self
       end
 
@@ -265,7 +265,7 @@ module Ohm
       def find(options)
         source = keys(options)
 
-        target = Oor::Set.new(key.volatile + Key[*source], model.db)
+        target = Oor::Key.new(key.volatile + Key[*source], model.db)
         target.sinterstore(ids, *source)
         Set.new(Key[target.key], Wrapper.wrap(model))
       end
@@ -276,7 +276,7 @@ module Ohm
           keys << model.index_key_for(k, v)
         end
 
-        target = Oor::Set.new(key.volatile - Key[*keys], model.db)
+        target = Oor::Key.new(key.volatile - Key[*keys], model.db)
         target.sdiffstore(ids, *keys)
         Set.new(Key[target.key], Wrapper.wrap(model))
       end
@@ -350,7 +350,7 @@ module Ohm
         if source.size == 1
           Set.new(source.first, Wrapper.wrap(model))
         else
-          target = Oor::Set.new(Key[*source].volatile, model.db)
+          target = Oor::Key.new(Key[*source].volatile, model.db)
           target.sinterstore(*source)
           Set.new(Key[target.key], Wrapper.wrap(model))
         end

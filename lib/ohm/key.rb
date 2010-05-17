@@ -24,5 +24,4 @@ module Ohm
       self.class.new("#{self}-#{other}")
     end
   end
-
 end

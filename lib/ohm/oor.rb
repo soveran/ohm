@@ -16,7 +16,7 @@ module Oor
     @redis = redis
   end
 
-  class Key < BasicObject
+  class Key
     attr :key
 
     def self.[](key)
@@ -28,12 +28,10 @@ module Oor
       @redis = redis
     end
 
-    def method_missing(meth, *args)
-      redis.send(meth, key, *args)
-    end
-
-    def class
-      Key
+    [:exists, :del, :scard, :sinterstore, :sdiffstore, :sort, :srem, :sismember, :sadd, :smembers].each do |meth|
+      define_method(meth) do |*args|
+        redis.send(meth, key, *args)
+      end
     end
 
     alias to_s key
@@ -43,82 +41,6 @@ module Oor
 
     def redis
       @redis
-    end
-  end
-
-  class String < Key
-    def << (value)
-      append(value)
-    end
-
-    def [] (start, stop = 0)
-      substr(start, stop)
-    end
-
-    def class
-      String
-    end
-  end
-
-  class Set < Key
-    def << (value)
-      sadd(value)
-    end
-
-    def + (other)
-      sunion(other)
-    end
-
-    def - (other)
-      sdiff(other)
-    end
-
-    def & (other)
-      sinter(other)
-    end
-
-    def each
-      smembers.each do |member|
-        yield member
-      end
-    end
-
-    def include?(member)
-      sismember(member)
-    end
-
-    def class
-      Set
-    end
-  end
-
-  class List < Key
-    def << (value)
-      rpush(value)
-    end
-
-    alias push <<
-
-    def pop
-      rpop
-    end
-
-    def shift
-      lpop
-    end
-
-    def unshift(value)
-      lpush(value)
-    end
-
-    def each
-      lrange[0, -1].each do |member|
-        yield member
-      end
-    end
-
-    def class
-      List
     end
   end
 end
