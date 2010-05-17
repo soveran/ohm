@@ -396,9 +396,9 @@ class ScopedModelsTest < Test::Unit::TestCase
       @event.attendees << @person1
       @event.attendees << @person2
       @event.attendees << @person3
-      assert_equal ["1", "2", "3"], @event.attendees.raw.sort
+      assert_equal ["1", "2", "3"], @event.attendees.ids.sort
       @event.attendees.delete(@person2)
-      assert_equal ["1", "3"], Model::Event[@event.id].attendees.raw.sort
+      assert_equal ["1", "3"], Model::Event[@event.id].attendees.ids.sort
     end
 
     should "return true if the set includes some member" do
@@ -414,7 +414,7 @@ class ScopedModelsTest < Test::Unit::TestCase
       @event.attendees << @person1
 
       assert_equal [@person1], @event.attendees.all
-      assert_equal @person1, @event.attendees[0]
+      assert_equal @person1, @event.attendees[@person1.id]
     end
 
     should "return the size of the set" do
@@ -548,7 +548,7 @@ class ScopedModelsTest < Test::Unit::TestCase
     should "add models" do
       @post.related.add(Model::Post.create(:body => "Hello"))
 
-      assert_equal ["2"], @post.related.raw
+      assert_equal ["2"], @post.related.ids
     end
 
     should "find elements in the list" do
@@ -564,7 +564,7 @@ class ScopedModelsTest < Test::Unit::TestCase
       @post.related.unshift(Model::Post.create(:body => "Hello"))
       @post.related.unshift(Model::Post.create(:body => "Goodbye"))
 
-      assert_equal ["3", "2"], @post.related.raw
+      assert_equal ["3", "2"], @post.related.ids
 
       assert_equal "3", @post.related.shift.id
 
@@ -608,8 +608,8 @@ class ScopedModelsTest < Test::Unit::TestCase
     setup do
       @calendar = Model::Calendar.create
 
-      @calendar.holidays.raw << "2009-05-25"
-      @calendar.holidays.raw << "2009-07-09"
+      @calendar.holidays.ids << "2009-05-25"
+      @calendar.holidays.ids << "2009-07-09"
 
       @calendar.subscribers << MyActiveRecordModel.find(1)
     end
@@ -617,7 +617,7 @@ class ScopedModelsTest < Test::Unit::TestCase
     should "apply a transformation" do
       assert_equal [Date.new(2009, 5, 25), Date.new(2009, 7, 9)], @calendar.holidays.all
 
-      assert_equal ["1"], @calendar.subscribers.raw.all
+      assert_equal ["1"], @calendar.subscribers.ids.all
       assert_equal [MyActiveRecordModel.find(1)], @calendar.subscribers.all
     end
 

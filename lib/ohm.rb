@@ -3,6 +3,7 @@
 require "base64"
 require "redis"
 
+require File.join(File.dirname(__FILE__), "ohm", "oor")
 require File.join(File.dirname(__FILE__), "ohm", "validations")
 require File.join(File.dirname(__FILE__), "ohm", "compat-1.8.6")
 require File.join(File.dirname(__FILE__), "ohm", "key")
@@ -97,44 +98,44 @@ module Ohm
     class Collection
       include Enumerable
 
-      attr :raw
+      attr :ids
       attr :model
 
       def initialize(key, model, db = nil)
         @model = model.unwrap
-        @raw = self.class::Raw.new(key, db || @model.db)
+        @ids = self.class::Raw.new(key, db || @model.db)
       end
 
       def <<(model)
-        raw << model.id
+        ids << model.id
       end
 
       alias add <<
 
       def each(&block)
-        raw.each do |id|
+        ids.each do |id|
           block.call(model[id])
         end
       end
 
       def key
-        raw.key
+        ids.key
       end
 
       def first(options = {})
         if options[:by]
           sort_by(options.delete(:by), options.merge(:limit => 1)).first
         else
-          model[raw.first(options)]
+          model[ids.first(options)]
         end
       end
 
       def [](index)
-        model[raw[index]]
+        model[ids[index]]
       end
 
       def sort(*args)
-        raw.sort(*args).map(&model)
+        ids.sort(*args).map(&model)
       end
 
       # Sort the model instances by the given attribute.
@@ -151,85 +152,102 @@ module Ohm
         options.merge!(:by => model.key("*->#{att}"))
 
         if options[:get]
-          raw.sort(options.merge(:get => model.key("*->#{options[:get]}")))
+          ids.sort(options.merge(:get => model.key("*->#{options[:get]}")))
         else
           sort(options)
         end
       end
 
       def delete(model)
-        raw.delete(model.id)
+        ids.delete(model.id)
         model
       end
 
       def clear
-        raw.clear
+        ids.clear
       end
 
       def concat(models)
-        raw.concat(models.map { |model| model.id })
+        ids.concat(models.map { |model| model.id })
         self
       end
 
       def replace(models)
-        raw.replace(models.map { |model| model.id })
+        ids.replace(models.map { |model| model.id })
         self
       end
 
       def include?(model)
-        raw.include?(model.id)
+        ids.include?(model.id)
       end
 
       def empty?
-        raw.empty?
+        ids.empty?
       end
 
       def size
-        raw.size
+        ids.size
       end
 
       def all
-        raw.to_a.map(&model)
+        ids.to_a.map(&model)
       end
 
       alias to_a all
     end
 
-    class Set < Collection
-      Raw = Ohm::Set
+    class Set
+      include Enumerable
 
-      def inspect
-        "#<Set (#{model}): #{all.inspect}>"
+      attr :key
+      attr :ids
+      attr :model
+
+      def initialize(key, model, db = nil)
+        @key = key
+        @model = model.unwrap
+        @db = db || @model.db
+        @ids = Oor::Set.new(@key, @db)
       end
 
-      # Returns an intersection with the sets generated from the passed hash.
-      #
-      # @see Ohm::Model.find
-      # @example
-      #   @events = Event.find(public: true)
-      #
-      #   # You can combine the result with sort and other set operations:
-      #   @events.sort_by(:name)
-      def find(hash)
-        apply(:sinterstore, hash, :+)
+      def each(&block)
+        ids.each { |id| block.call(model[id]) }
       end
 
-      # Returns the difference between the receiver and the passed sets.
-      #
-      # @example
-      #   @events = Event.find(public: true).except(status: "sold_out")
-      def except(hash)
-        apply(:sdiffstore, hash, :-)
+      def [](id)
+        model[id] if ids.sismember(id)
       end
 
-    private
+      def << model
+        ids << model.id
+      end
 
-      # Apply a Redis operation on a collection of sets.
-      def apply(operation, hash, glue)
-        keys = keys(hash)
-        target = key.volatile.send(glue, Key[*keys])
-        model.db.send(operation, target, key, *keys)
-        Set.new(target, Wrapper.wrap(model))
+      alias add <<
+
+      def size
+        ids.scard
+      end
+
+      def clear
+        ids.del
+      end
+
+      def empty?
+        ! ids.exists
+      end
+
+      def delete(member)
+        ids.srem(member.id)
+      end
+
+      def all
+        ids.smembers.map(&model)
+      end
+
+      def replace(models)
+        ids.del
+        models.each { |model| ids << model.id }
+        self
       end
 
       # Transform a hash of attribute/values into an array of keys.
@@ -243,29 +261,65 @@ module Ohm
           end
         end
       end
-    end
 
-    class List < Collection
-      Raw = Ohm::List
+      def find(options)
+        source = keys(options)
 
-      def shift
-        if id = raw.shift
-          model[id]
+        target = Oor::Set.new(key.volatile + Key[*source], model.db)
+        target.sinterstore(ids, *source)
+        Set.new(Key[target.key], Wrapper.wrap(model))
+      end
+
+      def except(options)
+        keys = []
+        options.each do |k, v|
+          keys << model.index_key_for(k, v)
+        end
+
+        target = Oor::Set.new(key.volatile - Key[*keys], model.db)
+        target.sdiffstore(ids, *keys)
+        Set.new(Key[target.key], Wrapper.wrap(model))
+      end
+
+      def sort(options = {})
+        return [] unless ids.exists
+
+        options[:start] ||= 0
+        options[:limit] = [options[:start], options[:limit]] if options[:limit]
+
+        ids.sort(options).map(&model)
+      end
+
+      # Sort the model instances by the given attribute.
+      #
+      # @example Sorting elements by name:
+      #
+      #   User.create :name => "B"
+      #   User.create :name => "A"
+      #
+      #   user = User.all.sort_by(:name, :order => "ALPHA").first
+      #   user.name == "A"
+      #   # => true
+      def sort_by(att, options = {})
+        return [] unless ids.exists
+
+        options.merge!(:by => model.key("*->#{att}"))
+
+        if options[:get]
+          ids.sort(options.merge(:get => model.key("*->#{options[:get]}")))
+        else
+          sort(options)
         end
       end
 
-      def pop
-        if id = raw.pop
-          model[id]
+      def first(options = {})
+        options.merge!(:limit => 1)
+
+        if options[:by]
+          sort_by(options.delete(:by), options).first
+        else
+          sort(options).first
         end
-      end
-
-      def unshift(model)
-        raw.unshift(model.id)
-      end
-
-      def inspect
-        "#<List (#{model}): #{all.inspect}>"
       end
     end
 
@@ -276,6 +330,54 @@ module Ohm
         else
           super
         end
+      end
+
+      # Transform a hash of attribute/values into an array of keys.
+      def keys(hash)
+        [].tap do |keys|
+          hash.each do |key, values|
+            values = [values] unless values.kind_of?(Array) # Yes, Array() is different in 1.8.x.
+            values.each do |v|
+              keys << model.index_key_for(key, v)
+            end
+          end
+        end
+      end
+
+      def find(options)
+        source = keys(options)
+
+        if source.size == 1
+          Set.new(source.first, Wrapper.wrap(model))
+        else
+          target = Oor::Set.new(Key[*source].volatile, model.db)
+          target.sinterstore(*source)
+          Set.new(Key[target.key], Wrapper.wrap(model))
+        end
+      end
+    end
+
+    class List < Collection
+      Raw = Ohm::List
+
+      def shift
+        if id = ids.shift
+          model[id]
+        end
+      end
+
+      def pop
+        if id = ids.pop
+          model[id]
+        end
+      end
+
+      def unshift(model)
+        ids.unshift(model.id)
+      end
+
+      def inspect
+        "#<List (#{model}): #{all.inspect}>"
       end
     end
 

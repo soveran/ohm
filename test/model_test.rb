@@ -395,9 +395,9 @@ class ModelTest < Test::Unit::TestCase
       @event.attendees << @person1
       @event.attendees << @person2
       @event.attendees << @person3
-      assert_equal ["1", "2", "3"], @event.attendees.raw.sort
+      assert_equal ["1", "2", "3"], @event.attendees.ids.sort
       @event.attendees.delete(@person2)
-      assert_equal ["1", "3"], Event[@event.id].attendees.raw.sort
+      assert_equal ["1", "3"], Event[@event.id].attendees.ids.sort
     end
 
     should "return true if the set includes some member" do
@@ -413,7 +413,7 @@ class ModelTest < Test::Unit::TestCase
       @event.attendees << @person1
 
       assert_equal [@person1], @event.attendees.all
-      assert_equal @person1, @event.attendees[0]
+      assert_equal @person1, @event.attendees[@person1.id]
     end
 
     should "return the size of the set" do
@@ -441,7 +441,7 @@ class ModelTest < Test::Unit::TestCase
 
       @event.attendees.replace([@person2, @person3])
 
-      assert_equal [@person2, @person3], @event.attendees.sort
+      assert_equal [@person2, @person3], @event.attendees.all.sort_by(&:id)
     end
 
     should "filter elements" do
@@ -547,7 +547,7 @@ class ModelTest < Test::Unit::TestCase
     should "add models" do
       @post.related.add(Post.create(:body => "Hello"))
 
-      assert_equal ["2"], @post.related.raw
+      assert_equal ["2"], @post.related.ids
     end
 
     should "find elements in the list" do
@@ -563,7 +563,7 @@ class ModelTest < Test::Unit::TestCase
       @post.related.unshift(Post.create(:body => "Hello"))
       @post.related.unshift(Post.create(:body => "Goodbye"))
 
-      assert_equal ["3", "2"], @post.related.raw
+      assert_equal ["3", "2"], @post.related.ids
 
       assert_equal "3", @post.related.shift.id
 
@@ -604,8 +604,8 @@ class ModelTest < Test::Unit::TestCase
     setup do
       @calendar = Calendar.create
 
-      @calendar.holidays.raw << "2009-05-25"
-      @calendar.holidays.raw << "2009-07-09"
+      @calendar.holidays.ids << "2009-05-25"
+      @calendar.holidays.ids << "2009-07-09"
 
       @calendar.subscribers << MyActiveRecordModel.find(1)
     end
@@ -613,7 +613,7 @@ class ModelTest < Test::Unit::TestCase
     should "apply a transformation" do
       assert_equal [Date.new(2009, 5, 25), Date.new(2009, 7, 9)], @calendar.holidays.all
 
-      assert_equal ["1"], @calendar.subscribers.raw.all
+      assert_equal ["1"], @calendar.subscribers.ids.all
       assert_equal [MyActiveRecordModel.find(1)], @calendar.subscribers.all
     end
 
