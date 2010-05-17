@@ -965,10 +965,10 @@ class ModelTest < Test::Unit::TestCase
       attribute :name
 
       def validate
-        assert_present :name  
+        assert_present :name
       end
     end
-    
+
     context "a new model without errors" do
       should "export an empty hash via to_hash" do
         person = Person.new

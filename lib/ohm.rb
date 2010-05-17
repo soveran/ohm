@@ -3,7 +3,6 @@
 require "base64"
 require "redis"
 
-require File.join(File.dirname(__FILE__), "ohm", "oor")
 require File.join(File.dirname(__FILE__), "ohm", "validations")
 require File.join(File.dirname(__FILE__), "ohm", "compat-1.8.6")
 require File.join(File.dirname(__FILE__), "ohm", "key")
@@ -119,7 +118,7 @@ module Ohm
       end
 
       def key
-        ids.key
+        ids
       end
 
       def first(options = {})
@@ -207,7 +206,7 @@ module Ohm
         @key = key
         @model = model.unwrap
         @db = db || @model.db
-        @ids = Oor::Key.new(@key, @db)
+        @ids = Key.new(@key, @db)
       end
 
       def each(&block)
@@ -265,9 +264,9 @@ module Ohm
       def find(options)
         source = keys(options)
 
-        target = Oor::Key.new(key.volatile + Key[*source], model.db)
+        target = Key.new(key.volatile + Key[*source], model.db)
         target.sinterstore(ids, *source)
-        Set.new(Key[target.key], Wrapper.wrap(model))
+        Set.new(target, Wrapper.wrap(model))
       end
 
       def except(options)
@@ -276,9 +275,9 @@ module Ohm
           keys << model.index_key_for(k, v)
         end
 
-        target = Oor::Key.new(key.volatile - Key[*keys], model.db)
+        target = Key.new(key.volatile - Key[*keys], model.db)
         target.sdiffstore(ids, *keys)
-        Set.new(Key[target.key], Wrapper.wrap(model))
+        Set.new(target, Wrapper.wrap(model))
       end
 
       def sort(options = {})
@@ -350,9 +349,9 @@ module Ohm
         if source.size == 1
           Set.new(source.first, Wrapper.wrap(model))
         else
-          target = Oor::Key.new(Key[*source].volatile, model.db)
+          target = Key.new(Key[*source].volatile, model.db)
           target.sinterstore(*source)
-          Set.new(Key[target.key], Wrapper.wrap(model))
+          Set.new(target, Wrapper.wrap(model))
         end
       end
     end
