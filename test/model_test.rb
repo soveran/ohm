@@ -1035,4 +1035,27 @@ class ModelTest < Test::Unit::TestCase
       end
     end
   end
+
+  describe "a Model with individual attribute writing needs" do
+    class Order < Ohm::Model
+      attribute :state
+
+      def authorize!
+        write_remote :state, 'authorized'
+      end
+    end
+
+    test "writes locally" do
+      order = Order.create(:state => "pending")
+      order.authorize!
+      assert_equal 'authorized', order.state
+    end
+
+    test "writes remotely" do
+      order = Order.create(:state => "pending")
+      order.authorize!
+      order = Order[order.id]
+      assert_equal 'authorized', order.state
+    end
+  end
 end

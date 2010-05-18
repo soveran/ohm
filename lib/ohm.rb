@@ -749,6 +749,16 @@ module Ohm
       end
     end
 
+    def write_remote(att, value)
+      write_local(att, value)
+
+      if value.to_s.empty?
+        db.hdel(key, att)
+      else
+        db.hset(key, att, value)
+      end
+    end
+
     def self.const_missing(name)
       Wrapper.new(name) { const_get(name) }
     end
