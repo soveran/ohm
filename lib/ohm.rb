@@ -737,14 +737,16 @@ module Ohm
 
     def write
       unless attributes.empty?
-        attributes.each do |att|
+        atts = attributes.inject([]) { |ret, att|
           value = send(att).to_s
+          
+          ret.push(att, value)  if not value.empty?
+          ret
+        }
 
-          if value.empty?
-            db.hdel(key, att)
-          else
-            db.hset(key, att, value)
-          end
+        db.multi do
+          db.del(key)
+          db.hmset(key, *atts.flatten)  if atts.any?
         end
       end
     end
