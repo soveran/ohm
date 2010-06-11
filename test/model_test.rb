@@ -978,17 +978,17 @@ class ModelTest < Test::Unit::TestCase
       attribute :name
 
       def validate
-        assert_present :name  
+        assert_present :name
       end
     end
-    
+
     context "a new model without errors" do
       should "export an empty hash via to_hash" do
         person = Person.new
         assert_equal({}, person.to_hash)
       end
     end
-    
+
     context "a new model with some errors" do
       should "export a hash with the errors" do
         person = Person.new
@@ -1004,13 +1004,13 @@ class ModelTest < Test::Unit::TestCase
         assert_equal({ :id => '1' }, person.to_hash)
       end
     end
-  
+
     context "an existing model with validation errors" do
       should "export a hash with its id and the errors" do
         person = Person.create(:name => "John Doe")
         person.name = nil
         person.valid?
-        
+
         expected_hash = { :id => '1', :errors => [[:name, :not_present]] }
 
         assert_equal expected_hash, person.to_hash

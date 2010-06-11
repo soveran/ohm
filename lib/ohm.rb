@@ -624,7 +624,7 @@ module Ohm
     end
 
     # Export the id and errors of the object. The `to_hash` takes the opposite
-    # approach of providing all the attributes and instead favors a 
+    # approach of providing all the attributes and instead favors a
     # white listed approach.
     #
     # @example
@@ -643,10 +643,10 @@ module Ohm
     #   # => true
     #
     #   # for cases where you want to provide white listed attributes just do:
-    #   
+    #
     #   class Person < Ohm::Model
     #     def to_hash
-    #       super.merge(:name => name) 
+    #       super.merge(:name => name)
     #     end
     #   end
     #
@@ -662,7 +662,7 @@ module Ohm
     end
 
     def to_json(*args)
-      to_hash.to_json(*args) 
+      to_hash.to_json(*args)
     end
 
     def attributes
@@ -739,7 +739,7 @@ module Ohm
       unless attributes.empty?
         atts = attributes.inject([]) { |ret, att|
           value = send(att).to_s
-          
+
           ret.push(att, value)  if not value.empty?
           ret
         }
