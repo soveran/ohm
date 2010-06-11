@@ -974,7 +974,7 @@ class ModelTest < Test::Unit::TestCase
   end
 
   context "Exporting" do
-    class Person < Ohm::Model
+    class Venue < Ohm::Model
       attribute :name
 
       def validate
@@ -984,14 +984,14 @@ class ModelTest < Test::Unit::TestCase
 
     context "a new model without errors" do
       should "export an empty hash via to_hash" do
-        person = Person.new
+        person = Venue.new
         assert_equal({}, person.to_hash)
       end
     end
 
     context "a new model with some errors" do
       should "export a hash with the errors" do
-        person = Person.new
+        person = Venue.new
         person.valid?
 
         assert_equal({ :errors => [[:name, :not_present]] }, person.to_hash)
@@ -1000,14 +1000,14 @@ class ModelTest < Test::Unit::TestCase
 
     context "an existing model" do
       should "export a hash with the its id" do
-        person = Person.create(:name => "John Doe")
+        person = Venue.create(:name => "John Doe")
         assert_equal({ :id => '1' }, person.to_hash)
       end
     end
 
     context "an existing model with validation errors" do
       should "export a hash with its id and the errors" do
-        person = Person.create(:name => "John Doe")
+        person = Venue.create(:name => "John Doe")
         person.name = nil
         person.valid?
 
