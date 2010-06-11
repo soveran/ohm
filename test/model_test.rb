@@ -1,6 +1,6 @@
 # encoding: UTF-8
 
-require File.join(File.dirname(__FILE__), "test_helper")
+require File.expand_path(File.join(File.dirname(__FILE__), "test_helper"))
 require "ostruct"
 require "json"
 
