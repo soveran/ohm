@@ -943,6 +943,18 @@ class ModelTest < Test::Unit::TestCase
       assert_equal car, Car[1]
       assert_nil Make[1]
     end
+
+    should "allow changing the database" do
+      Car.create(:name => "Twingo")
+
+      assert_equal ["1"], Car.all.raw
+
+      Car.connect :db => 15
+      assert_equal [], Car.all.raw
+
+      Car.connect :db => 14
+      assert_equal ["1"], Car.all.raw
+    end
   end
 
   context "Persistence" do

@@ -518,7 +518,7 @@ module Ohm
     end
 
     def self.all
-      @all ||= Ohm::Model::Index.new(key(:all), Wrapper.wrap(self))
+      Ohm::Model::Index.new(key(:all), Wrapper.wrap(self))
     end
 
     def self.attributes
