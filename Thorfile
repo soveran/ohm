@@ -36,6 +36,6 @@ class OhmTasks < Thor
 
   desc "deploy", "Deploy documentation"
   def deploy
-    system "rsync -az doc/* ohm.keyvalue.org:deploys/ohm.keyvalue.org/"
+    system "rsync --del -avz doc/* ohm.keyvalue.org:deploys/ohm.keyvalue.org/"
   end
 end
