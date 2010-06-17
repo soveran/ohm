@@ -26,4 +26,5 @@ end
 
 Rake::TestTask.new(:test) do |t|
   t.pattern = 'test/**/*_test.rb'
+  t.ruby_opts = ["-rubygems"] if RUBY_VERSION < "1.9"
 end
