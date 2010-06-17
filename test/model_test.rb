@@ -1040,10 +1040,11 @@ class ModelTest < Test::Unit::TestCase
 
     context "the JSON representation of an object" do
       should "just be the to_hash of a model" do
-        programmer = Programmer.create(:language => "Ruby")
-        expected_json = %({"id":"1","language":"Ruby"})
+        json = JSON.parse(Programmer.create(:language => "Ruby").to_json)
 
-        assert_equal expected_json, programmer.to_json
+        assert_equal ["id", "language"], json.keys.sort
+        assert_equal "1", json["id"]
+        assert_equal "Ruby", json["language"]
       end
     end
   end
