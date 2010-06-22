@@ -13,7 +13,10 @@ class HashKeyTest < Test::Unit::TestCase
   
   test "using a new record as a hash key" do
     tag = Tag.new
-    assert_equal 'name', { tag => "name" }[tag]
+    hash = { tag => "Ruby" }
+
+    assert_equal "Ruby", hash[tag]
+    assert_nil hash[Tag.new]
   end
   
   test "on a persisted model" do
