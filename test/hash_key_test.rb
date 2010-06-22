@@ -12,22 +12,22 @@ class HashKeyTest < Test::Unit::TestCase
   end
   
   test "using a new record as a hash key" do
-    assert_raise Ohm::Model::MissingID do
-      { Tag.new => "name" }
-    end
+    tag = Tag.new
+    assert_equal 'name', { tag => "name" }[tag]
   end
   
   test "on a persisted model" do
     tag = Tag.create(:name => "Ruby")
-    reload = Tag[tag.id]
 
+    assert_equal "Ruby", { tag => "Ruby" }[tag]
+  end
+
+  test "on a reloaded model" do
+    tag = Tag.create(:name => "Ruby")
     hash = { tag => "Ruby" }
-    hash[reload] = "Ruby"
-    
-    assert_equal 1, hash.keys.size
-    assert_equal tag, hash.keys.first
+
+    tag = Tag[tag.id]
     assert_equal "Ruby", hash[tag]
-    assert_equal "Ruby", hash[reload]
   end
 end
 
