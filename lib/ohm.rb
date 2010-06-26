@@ -93,38 +93,33 @@ module Ohm
       include Enumerable
 
       attr :key
-      attr :ids
       attr :model
 
       def initialize(key, model, db = nil)
         @key = key
         @model = model.unwrap
         @db = db || @model.db
-        @ids = Key.new(@key, @db)
+        @key = Key.new(@key, @db)
       end
 
       def add(model)
         self << model
       end
 
-      def key
-        ids
-      end
-
       def first(options = {})
         if options[:by]
           sort_by(options.delete(:by), options.merge(:limit => 1)).first
         else
-          model[ids.first(options)]
+          model[key.first(options)]
         end
       end
 
       def [](index)
-        model[ids[index]]
+        model[key[index]]
       end
 
       def sort(*args)
-        ids.sort(*args).map(&model)
+        key.sort(*args).map(&model)
       end
 
       # Sort the model instances by the given attribute.
@@ -141,14 +136,14 @@ module Ohm
         options.merge!(:by => model.key("*->#{att}"))
 
         if options[:get]
-          ids.sort(options.merge(:get => model.key("*->#{options[:get]}")))
+          key.sort(options.merge(:get => model.key("*->#{options[:get]}")))
         else
           sort(options)
         end
       end
 
       def clear
-        ids.del
+        key.del
       end
 
       def concat(models)
@@ -162,7 +157,7 @@ module Ohm
       end
 
       def empty?
-        !ids.exists
+        !key.exists
       end
 
       def to_a
@@ -172,34 +167,34 @@ module Ohm
 
     class Set < Collection
       def each(&block)
-        ids.smembers.each { |id| block.call(model[id]) }
+        key.smembers.each { |id| block.call(model[id]) }
       end
 
       def [](id)
-        model[id] if ids.sismember(id)
+        model[id] if key.sismember(id)
       end
 
       def << model
-        ids.sadd(model.id)
+        key.sadd(model.id)
       end
 
       alias add <<
 
       def size
-        ids.scard
+        key.scard
       end
 
       def delete(member)
-        ids.srem(member.id)
+        key.srem(member.id)
       end
 
       def all
-        ids.smembers.map(&model)
+        key.smembers.map(&model)
       end
 
       def replace(models)
-        ids.del
-        models.each { |model| ids.sadd(model.id) }
+        key.del
+        models.each { |model| key.sadd(model.id) }
         self
       end
 
@@ -219,7 +214,7 @@ module Ohm
         source = keys(options)
 
         target = source.inject(key.volatile) { |chain, key| chain + key }
-        target.sinterstore(ids, *source)
+        target.sinterstore(key, *source)
         Set.new(target, Wrapper.wrap(model))
       end
 
@@ -230,17 +225,17 @@ module Ohm
         end
 
         target = keys.inject(key.volatile) { |chain, key| chain + key }
-        target.sdiffstore(ids, *keys)
+        target.sdiffstore(key, *keys)
         Set.new(target, Wrapper.wrap(model))
       end
 
       def sort(options = {})
-        return [] unless ids.exists
+        return [] unless key.exists
 
         options[:start] ||= 0
         options[:limit] = [options[:start], options[:limit]] if options[:limit]
 
-        ids.sort(options).map(&model)
+        key.sort(options).map(&model)
       end
 
       # Sort the model instances by the given attribute.
@@ -254,12 +249,12 @@ module Ohm
       #   user.name == "A"
       #   # => true
       def sort_by(att, options = {})
-        return [] unless ids.exists
+        return [] unless key.exists
 
         options.merge!(:by => model.key["*->#{att}"])
 
         if options[:get]
-          ids.sort(options.merge(:get => model.key["*->#{options[:get]}"]))
+          key.sort(options.merge(:get => model.key["*->#{options[:get]}"]))
         else
           sort(options)
         end
@@ -276,11 +271,11 @@ module Ohm
       end
 
       def include?(model)
-        ids.sismember(model.id)
+        key.sismember(model.id)
       end
 
       def inspect
-        "#<Set (#{model}): #{ids.smembers.inspect}>"
+        "#<Set (#{model}): #{key.smembers.inspect}>"
       end
     end
 
@@ -320,48 +315,48 @@ module Ohm
 
     class List < Collection
       def each(&block)
-        ids.lrange(0, -1).each { |id| block.call(model[id]) }
+        key.lrange(0, -1).each { |id| block.call(model[id]) }
       end
 
       def <<(model)
-        ids.rpush(model.id)
+        key.rpush(model.id)
       end
 
       alias push <<
 
       def first
-        id = ids.lindex(0)
+        id = key.lindex(0)
         model[id] if id
       end
 
       def pop
-        id = ids.rpop
+        id = key.rpop
         model[id] if id
       end
 
       def shift
-        id = ids.lpop
+        id = key.lpop
         model[id] if id
       end
 
       def unshift(model)
-        ids.lpush(model.id)
+        key.lpush(model.id)
       end
 
       def all
-        ids.lrange(0, -1).map(&model)
+        key.lrange(0, -1).map(&model)
       end
 
       def size
-        ids.llen
+        key.llen
       end
 
       def include?(model)
-        ids.lrange(0, -1).include?(model.id)
+        key.lrange(0, -1).include?(model.id)
       end
 
       def inspect
-        "#<List (#{model}): #{ids.lrange(0, -1).inspect}>"
+        "#<List (#{model}): #{key.lrange(0, -1).inspect}>"
       end
     end
 

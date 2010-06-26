@@ -195,7 +195,7 @@ class ModelTest < Test::Unit::TestCase
       assert_equal "albert@example.com", User[1].email
     end
 
-    should "allow to map ids to models" do
+    should "allow to map key to models" do
       assert_equal [User[1]], [1].map(&User)
     end
   end
@@ -400,9 +400,9 @@ class ModelTest < Test::Unit::TestCase
       @event.attendees << @person1
       @event.attendees << @person2
       @event.attendees << @person3
-      assert_equal ["1", "2", "3"], @event.attendees.ids.sort
+      assert_equal ["1", "2", "3"], @event.attendees.key.sort
       @event.attendees.delete(@person2)
-      assert_equal ["1", "3"], Event[@event.id].attendees.ids.sort
+      assert_equal ["1", "3"], Event[@event.id].attendees.key.sort
     end
 
     should "return true if the set includes some member" do
@@ -608,8 +608,8 @@ class ModelTest < Test::Unit::TestCase
     setup do
       @calendar = Calendar.create
 
-      @calendar.holidays.ids.rpush "2009-05-25"
-      @calendar.holidays.ids.rpush "2009-07-09"
+      @calendar.holidays.key.rpush "2009-05-25"
+      @calendar.holidays.key.rpush "2009-07-09"
 
       @calendar.subscribers << MyActiveRecordModel.find(1)
     end
