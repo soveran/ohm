@@ -6,7 +6,6 @@ require "json"
 
 class Post < Ohm::Model
   attribute :body
-  list :comments
   list :related, Post
 end
 
@@ -38,6 +37,12 @@ class Event < Ohm::Model
   def write
     self.slug = name.to_s.downcase
     super
+  end
+end
+
+module SomeNamespace
+  class Foo < Ohm::Model
+    attribute :name
   end
 end
 
@@ -130,8 +135,8 @@ class ModelTest < Test::Unit::TestCase
     should "not raise if a list is redefined" do
       assert_nothing_raised do
         class RedefinedModel < Ohm::Model
-          list :todo
-          list :todo
+          list :todo, lambda { }
+          list :todo, lambda { }
         end
       end
     end
@@ -139,8 +144,8 @@ class ModelTest < Test::Unit::TestCase
     should "not raise if a set is redefined" do
       assert_nothing_raised do
         class RedefinedModel < Ohm::Model
-          set :friends
-          set :friends
+          set :friends, lambda { }
+          set :friends, lambda { }
         end
       end
     end
@@ -148,8 +153,8 @@ class ModelTest < Test::Unit::TestCase
     should "not raise if a collection is redefined" do
       assert_nothing_raised do
         class RedefinedModel < Ohm::Model
-          list :toys
-          set :toys
+          list :toys, lambda { }
+          set :toys, lambda { }
         end
       end
     end
@@ -263,14 +268,14 @@ class ModelTest < Test::Unit::TestCase
     should "delete an existing model" do
       class ModelToBeDeleted < Ohm::Model
         attribute :name
-        set :foos
-        list :bars
+        set :foos, Post
+        list :bars, Post
       end
 
       @model = ModelToBeDeleted.create(:name => "Lorem")
 
-      @model.foos << "foo"
-      @model.bars << "bar"
+      @model.foos << Post.create
+      @model.bars << Post.create
 
       id = @model.id
 
@@ -463,90 +468,90 @@ class ModelTest < Test::Unit::TestCase
     end
 
     should "return an array" do
-      assert @post.comments.all.kind_of?(Array)
+      assert @post.related.all.kind_of?(Array)
     end
 
     should "append elements with push" do
-      @post.comments.push "1"
-      @post.comments << "2"
+      @post.related.push Post.create
+      @post.related << Post.create
 
-      assert_equal ["1", "2"], @post.comments.all
+      assert_equal ["2", "3"], @post.related.all.map { |model| model.id }
     end
 
     should "keep the inserting order" do
-      @post.comments << "1"
-      @post.comments << "2"
-      @post.comments << "3"
-      assert_equal ["1", "2", "3"], @post.comments.all
+      @post.related << Post.create
+      @post.related << Post.create
+      @post.related << Post.create
+      assert_equal ["2", "3", "4"], @post.related.all.map { |model| model.id }
     end
 
     should "keep the inserting order after saving" do
-      @post.comments << "1"
-      @post.comments << "2"
-      @post.comments << "3"
+      @post.related << Post.create
+      @post.related << Post.create
+      @post.related << Post.create
       @post.save
-      assert_equal ["1", "2", "3"], Post[@post.id].comments.all
+      assert_equal ["2", "3", "4"], Post[@post.id].related.map { |model| model.id }
     end
 
     should "respond to each" do
-      @post.comments << "1"
-      @post.comments << "2"
-      @post.comments << "3"
+      @post.related << Post.create
+      @post.related << Post.create
+      @post.related << Post.create
 
-      i = 1
-      @post.comments.each do |c|
-        assert_equal i, c.to_i
+      i = 2
+      @post.related.each do |c|
+        assert_equal i, c.id.to_i
         i += 1
       end
     end
 
     should "return the size of the list" do
-      @post.comments << "1"
-      @post.comments << "2"
-      @post.comments << "3"
-      assert_equal 3, @post.comments.size
+      @post.related << Post.create
+      @post.related << Post.create
+      @post.related << Post.create
+      assert_equal 3, @post.related.size
     end
 
     should "return the last element with pop" do
-      @post.comments << "1"
-      @post.comments << "2"
-      assert_equal "2", @post.comments.pop
-      assert_equal "1", @post.comments.pop
-      assert @post.comments.empty?
+      @post.related << Post.create
+      @post.related << Post.create
+      assert_equal "3", @post.related.pop.id
+      assert_equal "2", @post.related.pop.id
+      assert @post.related.empty?
     end
 
     should "return the first element with shift" do
-      @post.comments << "1"
-      @post.comments << "2"
-      assert_equal "1", @post.comments.shift
-      assert_equal "2", @post.comments.shift
-      assert @post.comments.empty?
+      @post.related << Post.create
+      @post.related << Post.create
+      assert_equal "2", @post.related.shift.id
+      assert_equal "3", @post.related.shift.id
+      assert @post.related.empty?
     end
 
     should "push to the head of the list with unshift" do
-      @post.comments.unshift "1"
-      @post.comments.unshift "2"
-      assert_equal "1", @post.comments.pop
-      assert_equal "2", @post.comments.pop
-      assert @post.comments.empty?
+      @post.related.unshift Post.create
+      @post.related.unshift Post.create
+      assert_equal "2", @post.related.pop.id
+      assert_equal "3", @post.related.pop.id
+      assert @post.related.empty?
     end
 
     should "empty the list" do
-      @post.comments.unshift "1"
-      @post.comments.clear
+      @post.related.unshift Post.create
+      @post.related.clear
 
-      assert @post.comments.empty?
+      assert @post.related.empty?
     end
 
     should "replace the values in the list" do
-      @post.comments.replace(["1", "2"])
+      @post.related.replace([Post.create, Post.create])
 
-      assert_equal ["1", "2"], @post.comments
+      assert_equal ["2", "3"], @post.related.map { |model| model.id }
     end
 
     should "add models" do
       @post.related.add(Post.create(:body => "Hello"))
-      assert_equal ["2"], @post.related.ids
+      assert_equal ["2"], @post.related.map { |model| model.id }
     end
 
     should "find elements in the list" do
@@ -562,7 +567,7 @@ class ModelTest < Test::Unit::TestCase
       @post.related.unshift(Post.create(:body => "Hello"))
       @post.related.unshift(Post.create(:body => "Goodbye"))
 
-      assert_equal ["3", "2"], @post.related.ids
+      assert_equal ["3", "2"], @post.related.map { |model| model.id }
 
       assert_equal "3", @post.related.shift.id
 
@@ -603,8 +608,8 @@ class ModelTest < Test::Unit::TestCase
     setup do
       @calendar = Calendar.create
 
-      @calendar.holidays.ids << "2009-05-25"
-      @calendar.holidays.ids << "2009-07-09"
+      @calendar.holidays.ids.rpush "2009-05-25"
+      @calendar.holidays.ids.rpush "2009-07-09"
 
       @calendar.subscribers << MyActiveRecordModel.find(1)
     end
@@ -612,7 +617,7 @@ class ModelTest < Test::Unit::TestCase
     should "apply a transformation" do
       assert_equal [Date.new(2009, 5, 25), Date.new(2009, 7, 9)], @calendar.holidays.all
 
-      assert_equal ["1"], @calendar.subscribers.ids.all
+      assert_equal [1], @calendar.subscribers.all.map { |model| model.id }
       assert_equal [MyActiveRecordModel.find(1)], @calendar.subscribers.all
     end
 
@@ -631,13 +636,13 @@ class ModelTest < Test::Unit::TestCase
   context "Sorting lists and sets" do
     setup do
       @post = Post.create(:body => "Lorem")
-      @post.comments << 2
-      @post.comments << 3
-      @post.comments << 1
+      @post.related << Post.create
+      @post.related << Post.create
+      @post.related << Post.create
     end
 
     should "sort values" do
-      assert_equal %w{1 2 3}, @post.comments.sort
+      assert_equal %w{2 3 4}, @post.related.sort.map { |model| model.id }
     end
   end
 
@@ -741,8 +746,8 @@ class ModelTest < Test::Unit::TestCase
     class ::Bar < Ohm::Model
       attribute :name
       counter :visits
-      set :friends
-      list :comments
+      set :friends, self
+      list :comments, self
 
       def foo
         bar.foo
@@ -763,12 +768,12 @@ class ModelTest < Test::Unit::TestCase
       assert_equal "#<Bar:? name=nil friends=nil comments=nil visits=0>", bar.inspect
 
       bar.update(:name => "Albert")
-      bar.friends << 1
-      bar.friends << 2
-      bar.comments << "A"
+      bar.friends << Bar.create
+      bar.friends << Bar.create
+      bar.comments << Bar.create
       bar.incr(:visits)
 
-      assert_equal %Q{#<Bar:#{bar.id} name="Albert" friends=#<Set: ["1", "2"]> comments=#<List: ["A"]> visits=1>}, Bar[bar.id].inspect
+      assert_equal %Q{#<Bar:#{bar.id} name="Albert" friends=#<Set (Bar): ["3", "2"]> comments=#<List (Bar): ["4"]> visits=1>}, Bar[bar.id].inspect
     end
 
     def assert_wrapper_exception(&block)
@@ -975,7 +980,7 @@ class ModelTest < Test::Unit::TestCase
         assert_equal({}, person.to_hash)
       end
     end
-    
+
     context "a new model with some errors" do
       should "export a hash with the errors" do
         person = Person.new
@@ -991,13 +996,13 @@ class ModelTest < Test::Unit::TestCase
         assert_equal({ :id => '1' }, person.to_hash)
       end
     end
-  
+
     context "an existing model with validation errors" do
       should "export a hash with its id and the errors" do
         person = Person.create(:name => "John Doe")
         person.name = nil
         person.valid?
-        
+
         expected_hash = { :id => '1', :errors => [[:name, :not_present]] }
 
         assert_equal expected_hash, person.to_hash
@@ -1032,6 +1037,16 @@ class ModelTest < Test::Unit::TestCase
 
         assert_equal expected_json, programmer.to_json
       end
+    end
+  end
+
+  context "namespaced models" do
+    should "be persisted" do
+      SomeNamespace::Foo.create(:name => "foo")
+
+      assert_equal "hash", Ohm.redis.type("SomeNamespace::Foo:1")
+
+      assert_equal "foo", SomeNamespace::Foo[1].name
     end
   end
 end

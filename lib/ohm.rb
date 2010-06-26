@@ -6,7 +6,6 @@ require "redis"
 require File.join(File.dirname(__FILE__), "ohm", "validations")
 require File.join(File.dirname(__FILE__), "ohm", "compat-1.8.6")
 require File.join(File.dirname(__FILE__), "ohm", "key")
-require File.join(File.dirname(__FILE__), "ohm", "collection")
 
 module Ohm
 
@@ -93,24 +92,19 @@ module Ohm
     class Collection
       include Enumerable
 
+      attr :key
       attr :ids
       attr :model
 
       def initialize(key, model, db = nil)
+        @key = key
         @model = model.unwrap
-        @ids = self.class::Raw.new(key, db || @model.db)
+        @db = db || @model.db
+        @ids = Key.new(@key, @db)
       end
 
-      def <<(model)
-        ids << model.id
-      end
-
-      alias add <<
-
-      def each(&block)
-        ids.each do |id|
-          block.call(model[id])
-        end
+      def add(model)
+        self << model
       end
 
       def key
@@ -153,58 +147,30 @@ module Ohm
         end
       end
 
-      def delete(model)
-        ids.delete(model.id)
-        model
-      end
-
       def clear
-        ids.clear
+        ids.del
       end
 
       def concat(models)
-        ids.concat(models.map { |model| model.id })
+        models.each { |model| add(model) }
         self
       end
 
       def replace(models)
-        ids.replace(models.map { |model| model.id })
-        self
-      end
-
-      def include?(model)
-        ids.include?(model.id)
+        clear
+        concat(models)
       end
 
       def empty?
-        ids.empty?
+        !ids.exists
       end
 
-      def size
-        ids.size
+      def to_a
+        all
       end
-
-      def all
-        ids.to_a.map(&model)
-      end
-
-      alias to_a all
     end
 
-    class Set
-      include Enumerable
-
-      attr :key
-      attr :ids
-      attr :model
-
-      def initialize(key, model, db = nil)
-        @key = key
-        @model = model.unwrap
-        @db = db || @model.db
-        @ids = Key.new(@key, @db)
-      end
-
+    class Set < Collection
       def each(&block)
         ids.smembers.each { |id| block.call(model[id]) }
       end
@@ -221,14 +187,6 @@ module Ohm
 
       def size
         ids.scard
-      end
-
-      def clear
-        ids.del
-      end
-
-      def empty?
-        ! ids.exists
       end
 
       def delete(member)
@@ -260,7 +218,7 @@ module Ohm
       def find(options)
         source = keys(options)
 
-        target = Key.new(key.volatile + Key[*source], model.db)
+        target = source.inject(key.volatile) { |chain, key| chain + key }
         target.sinterstore(ids, *source)
         Set.new(target, Wrapper.wrap(model))
       end
@@ -271,7 +229,7 @@ module Ohm
           keys << model.index_key_for(k, v)
         end
 
-        target = Key.new(key.volatile - Key[*keys], model.db)
+        target = keys.inject(key.volatile) { |chain, key| chain + key }
         target.sdiffstore(ids, *keys)
         Set.new(target, Wrapper.wrap(model))
       end
@@ -316,6 +274,14 @@ module Ohm
           sort(options).first
         end
       end
+
+      def include?(model)
+        ids.sismember(model.id)
+      end
+
+      def inspect
+        "#<Set (#{model}): #{ids.smembers.inspect}>"
+      end
     end
 
     class Index < Set
@@ -345,7 +311,7 @@ module Ohm
         if source.size == 1
           Set.new(source.first, Wrapper.wrap(model))
         else
-          target = Key.new(Key[*source].volatile, model.db)
+          target = source.inject(key.volatile) { |chain, key| chain + key }
           target.sinterstore(*source)
           Set.new(target, Wrapper.wrap(model))
         end
@@ -353,26 +319,49 @@ module Ohm
     end
 
     class List < Collection
-      Raw = Ohm::List
+      def each(&block)
+        ids.lrange(0, -1).each { |id| block.call(model[id]) }
+      end
 
-      def shift
-        if id = ids.shift
-          model[id]
-        end
+      def <<(model)
+        ids.rpush(model.id)
+      end
+
+      alias push <<
+
+      def first
+        id = ids.lindex(0)
+        model[id] if id
       end
 
       def pop
-        if id = ids.pop
-          model[id]
-        end
+        id = ids.rpop
+        model[id] if id
+      end
+
+      def shift
+        id = ids.lpop
+        model[id] if id
       end
 
       def unshift(model)
-        ids.unshift(model.id)
+        ids.lpush(model.id)
+      end
+
+      def all
+        ids.lrange(0, -1).map(&model)
+      end
+
+      def size
+        ids.llen
+      end
+
+      def include?(model)
+        ids.lrange(0, -1).include?(model.id)
       end
 
       def inspect
-        "#<List (#{model}): #{all.inspect}>"
+        "#<List (#{model}): #{ids.lrange(0, -1).inspect}>"
       end
     end
 
@@ -453,8 +442,8 @@ module Ohm
     # is created.
     #
     # @param name [Symbol] Name of the list.
-    def self.list(name, model = nil)
-      attr_collection_reader(name, :List, model)
+    def self.list(name, model)
+      attr_collection_reader(name, List, model)
       collections << name unless collections.include?(name)
     end
 
@@ -463,8 +452,8 @@ module Ohm
     # operations like union, join, and membership checks are important.
     #
     # @param name [Symbol] Name of the set.
-    def self.set(name, model = nil)
-      attr_collection_reader(name, :Set, model)
+    def self.set(name, model)
+      attr_collection_reader(name, Set, model)
       collections << name unless collections.include?(name)
     end
 
@@ -591,12 +580,8 @@ module Ohm
     end
 
     def self.attr_collection_reader(name, type, model)
-      if model
-        model = Wrapper.wrap(model)
-        define_memoized_method(name) { Ohm::Model::const_get(type).new(key[name], model, db) }
-      else
-        define_memoized_method(name) { Ohm::const_get(type).new(key[name], db) }
-      end
+      model = Wrapper.wrap(model)
+      define_memoized_method(name) { type.new(key[name], model, db) }
     end
 
     def self.define_memoized_method(name, &block)
@@ -721,7 +706,7 @@ module Ohm
     end
 
     # Export the id and errors of the object. The `to_hash` takes the opposite
-    # approach of providing all the attributes and instead favors a 
+    # approach of providing all the attributes and instead favors a
     # white listed approach.
     #
     # @example
@@ -740,10 +725,10 @@ module Ohm
     #   # => true
     #
     #   # for cases where you want to provide white listed attributes just do:
-    #   
+    #
     #   class Person < Ohm::Model
     #     def to_hash
-    #       super.merge(:name => name) 
+    #       super.merge(:name => name)
     #     end
     #   end
     #
@@ -759,7 +744,7 @@ module Ohm
     end
 
     def to_json(*args)
-      to_hash.to_json(*args) 
+      to_hash.to_json(*args)
     end
 
     def attributes

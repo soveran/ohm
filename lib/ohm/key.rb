@@ -9,26 +9,20 @@ module Ohm
       super(name.to_s)
     end
 
-    Volatile = new("~")
-
-    def self.[](*args)
-      new(args.join(":"))
-    end
-
     def [](key)
-      self.class[self, key]
+      self.class.new("#{self}:#{key}", @redis)
     end
 
     def volatile
-      self.index(Volatile) == 0 ? self : Volatile[self]
+      self.index("~") == 0 ? self : self.class.new("~", @redis)[self]
     end
 
     def +(other)
-      self.class.new("#{self}+#{other}")
+      self.class.new("#{self}+#{other}", @redis)
     end
 
     def -(other)
-      self.class.new("#{self}-#{other}")
+      self.class.new("#{self}-#{other}", @redis)
     end
 
     [:append, :blpop, :brpop, :decr, :decrby, :del, :exists, :expire,
