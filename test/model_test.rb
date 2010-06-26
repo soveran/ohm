@@ -1,6 +1,6 @@
 # encoding: UTF-8
 
-require File.join(File.dirname(__FILE__), "test_helper")
+require File.expand_path(File.join(File.dirname(__FILE__), "test_helper"))
 require "ostruct"
 require "json"
 
@@ -947,6 +947,18 @@ class ModelTest < Test::Unit::TestCase
       assert_equal car, Car[1]
       assert_nil Make[1]
     end
+
+    should "allow changing the database" do
+      Car.create(:name => "Twingo")
+
+      assert_equal ["1"], Car.all.raw
+
+      Car.connect :db => 15
+      assert_equal [], Car.all.raw
+
+      Car.connect :db => 14
+      assert_equal ["1"], Car.all.raw
+    end
   end
 
   context "Persistence" do
@@ -966,7 +978,7 @@ class ModelTest < Test::Unit::TestCase
   end
 
   context "Exporting" do
-    class Person < Ohm::Model
+    class Venue < Ohm::Model
       attribute :name
 
       def validate
@@ -976,14 +988,14 @@ class ModelTest < Test::Unit::TestCase
 
     context "a new model without errors" do
       should "export an empty hash via to_hash" do
-        person = Person.new
+        person = Venue.new
         assert_equal({}, person.to_hash)
       end
     end
 
     context "a new model with some errors" do
       should "export a hash with the errors" do
-        person = Person.new
+        person = Venue.new
         person.valid?
 
         assert_equal({ :errors => [[:name, :not_present]] }, person.to_hash)
@@ -992,14 +1004,14 @@ class ModelTest < Test::Unit::TestCase
 
     context "an existing model" do
       should "export a hash with the its id" do
-        person = Person.create(:name => "John Doe")
+        person = Venue.create(:name => "John Doe")
         assert_equal({ :id => '1' }, person.to_hash)
       end
     end
 
     context "an existing model with validation errors" do
       should "export a hash with its id and the errors" do
-        person = Person.create(:name => "John Doe")
+        person = Venue.create(:name => "John Doe")
         person.name = nil
         person.valid?
 
@@ -1032,11 +1044,35 @@ class ModelTest < Test::Unit::TestCase
 
     context "the JSON representation of an object" do
       should "just be the to_hash of a model" do
-        programmer = Programmer.create(:language => "Ruby")
-        expected_json = %({"id":"1","language":"Ruby"})
+        json = JSON.parse(Programmer.create(:language => "Ruby").to_json)
 
-        assert_equal expected_json, programmer.to_json
+        assert_equal ["id", "language"], json.keys.sort
+        assert_equal "1", json["id"]
+        assert_equal "Ruby", json["language"]
       end
+    end
+  end
+
+  describe "a Model with individual attribute writing needs" do
+    class Order < Ohm::Model
+      attribute :state
+
+      def authorize!
+        write_remote :state, 'authorized'
+      end
+    end
+
+    test "writes locally" do
+      order = Order.create(:state => "pending")
+      order.authorize!
+      assert_equal 'authorized', order.state
+    end
+
+    test "writes remotely" do
+      order = Order.create(:state => "pending")
+      order.authorize!
+      order = Order[order.id]
+      assert_equal 'authorized', order.state
     end
   end
 

@@ -595,7 +595,7 @@ module Ohm
     end
 
     def self.all
-      @all ||= Ohm::Model::Index.new(key[:all], Wrapper.wrap(self))
+      Ohm::Model::Index.new(key[:all], Wrapper.wrap(self))
     end
 
     def self.attributes
@@ -814,15 +814,27 @@ module Ohm
 
     def write
       unless attributes.empty?
-        attributes.each do |att|
+        atts = attributes.inject([]) { |ret, att|
           value = send(att).to_s
 
-          if value.empty?
-            db.hdel(key, att)
-          else
-            db.hset(key, att, value)
-          end
+          ret.push(att, value)  if not value.empty?
+          ret
+        }
+
+        db.multi do
+          db.del(key)
+          db.hmset(key, *atts.flatten)  if atts.any?
         end
+      end
+    end
+
+    def write_remote(att, value)
+      write_local(att, value)
+
+      if value.to_s.empty?
+        db.hdel(key, att)
+      else
+        db.hset(key, att, value)
       end
     end
 

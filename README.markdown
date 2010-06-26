@@ -228,7 +228,7 @@ An index is a set that's handled automatically by Ohm. For any index declared,
 Ohm maintains different sets of objects IDs for quick lookups.
 
 In the `Event` example, the index on the name attribute will
-allow for searches like `Event.find(name: "some value")`.
+allow for searches like `Event.find(:name => "some value")`.
 
 Note that the `assert_unique` validation and the methods `find` and `except` need a
 corresponding index in order to work.
@@ -238,18 +238,18 @@ corresponding index in order to work.
 You can find a collection of records with the `find` method:
 
     # This returns a collection of users with the username "Albert"
-    User.find(username: "Albert")
+    User.find(:username => "Albert")
 
 ### Filtering results
 
     # Find all users from Argentina
-    User.find(country: "Argentina")
+    User.find(:country => "Argentina")
 
     # Find all activated users from Argentina
-    User.find(country: "Argentina", status: "activated")
+    User.find(:country => "Argentina", :status => "activated")
 
     # Find all users from Argentina, except those with a suspended account.
-    User.find(country: "Argentina").except(status: "suspended")
+    User.find(:country => "Argentina").except(:status => "suspended")
 
 Note that calling these methods results in new sets being created
 on the fly. This is important so that you can perform further operations
@@ -364,6 +364,13 @@ values. The result of the block is used as the error message:
 
     error_messages
     # => ["The email foo@example.com is already registered."]
+
+Ohm Extensions
+==============
+
+Ohm is rather small and can be extended in many ways.
+
+A lot of amazing contributions are available at [Ohm Contrib](http://labs.sinefunc.com/ohm-contrib/doc/), make sure to check them if you need to extend Ohm's functionality.
 
 Versions
 ========

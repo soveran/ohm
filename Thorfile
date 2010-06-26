@@ -8,7 +8,7 @@ class OhmTasks < Thor
   def doc
     require "yard"
 
-    opts = ["--protected", "--title", "Ohm – Object-hash mapping library for Redis"]
+    opts = ["--protected", "--title", "Ohm &mdash; Object-hash mapping library for Redis"]
 
     YARD::CLI::Yardoc.run(*opts)
 
@@ -36,6 +36,6 @@ class OhmTasks < Thor
 
   desc "deploy", "Deploy documentation"
   def deploy
-    system "rsync -az doc/* ohm.keyvalue.org:deploys/ohm.keyvalue.org/"
+    system "rsync --del -avz doc/* ohm.keyvalue.org:deploys/ohm.keyvalue.org/"
   end
 end
