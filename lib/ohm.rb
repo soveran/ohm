@@ -53,11 +53,7 @@ module Ohm
     redis.flushdb
   end
 
-  def key(*args)
-    Key[*args]
-  end
-
-  module_function :key, :connect, :connection, :flush, :redis, :redis=, :options, :threaded
+  module_function :connect, :connection, :flush, :redis, :redis=, :options, :threaded
 
   Error = Class.new(StandardError)
 
@@ -302,10 +298,10 @@ module Ohm
       def sort_by(att, options = {})
         return [] unless ids.exists
 
-        options.merge!(:by => model.key("*->#{att}"))
+        options.merge!(:by => model.key["*->#{att}"])
 
         if options[:get]
-          ids.sort(options.merge(:get => model.key("*->#{options[:get]}")))
+          ids.sort(options.merge(:get => model.key["*->#{options[:get]}"]))
         else
           sort(options)
         end
@@ -597,9 +593,9 @@ module Ohm
     def self.attr_collection_reader(name, type, model)
       if model
         model = Wrapper.wrap(model)
-        define_memoized_method(name) { Ohm::Model::const_get(type).new(key(name), model, db) }
+        define_memoized_method(name) { Ohm::Model::const_get(type).new(key[name], model, db) }
       else
-        define_memoized_method(name) { Ohm::const_get(type).new(key(name), db) }
+        define_memoized_method(name) { Ohm::const_get(type).new(key[name], db) }
       end
     end
 
@@ -619,7 +615,7 @@ module Ohm
     end
 
     def self.all
-      @all ||= Ohm::Model::Index.new(key(:all), Wrapper.wrap(self))
+      @all ||= Ohm::Model::Index.new(key[:all], Wrapper.wrap(self))
     end
 
     def self.attributes
@@ -832,8 +828,8 @@ module Ohm
 
   protected
 
-    def key(*args)
-      self.class.key(id, *args)
+    def key
+      self.class.key[id]
     end
 
     def write
@@ -865,16 +861,16 @@ module Ohm
       Ohm.threaded[self] = connection
     end
 
-    def self.key(*args)
-      Ohm.key(*args.unshift(self))
+    def self.key
+      Key.new(self, db)
     end
 
     def self.exists?(id)
-      db.sismember(key(:all), id)
+      db.sismember(key[:all], id)
     end
 
     def initialize_id
-      self.id = db.incr(self.class.key("id")).to_s
+      self.id = db.incr(self.class.key[:id]).to_s
     end
 
     def db
@@ -882,7 +878,7 @@ module Ohm
     end
 
     def delete_attributes(atts)
-      db.del(*atts.map { |att| key(att) })
+      db.del(*atts.map { |att| key[att] })
     end
 
     def create_model_membership
@@ -918,15 +914,15 @@ module Ohm
     def add_to_index(att, value = send(att))
       index = index_key_for(att, value)
       db.sadd(index, id)
-      db.sadd(key(:_indices), index)
+      db.sadd(key[:_indices], index)
     end
 
     def delete_from_indices
-      db.smembers(key(:_indices)).each do |index|
+      db.smembers(key[:_indices]).each do |index|
         db.srem(index, id)
       end
 
-      db.del(key(:_indices))
+      db.del(key[:_indices])
     end
 
     def read_local(att)
@@ -960,7 +956,7 @@ module Ohm
 
     def self.index_key_for(att, value)
       raise IndexNotFound, att unless indices.include?(att)
-      key(att, encode(value))
+      key[att][encode(value)]
     end
 
     def index_key_for(att, value)
@@ -973,11 +969,11 @@ module Ohm
     #
     # @see Model#mutex
     def lock!
-      until db.setnx(key(:_lock), lock_timeout)
-        next unless lock = db.get(key(:_lock))
+      until db.setnx(key[:_lock], lock_timeout)
+        next unless lock = db.get(key[:_lock])
         sleep(0.5) and next unless lock_expired?(lock)
 
-        break unless lock = db.getset(key(:_lock), lock_timeout)
+        break unless lock = db.getset(key[:_lock], lock_timeout)
         break if lock_expired?(lock)
       end
     end
@@ -985,7 +981,7 @@ module Ohm
     # Release the lock.
     # @see Model#mutex
     def unlock!
-      db.del(key(:_lock))
+      db.del(key[:_lock])
     end
 
     def lock_timeout

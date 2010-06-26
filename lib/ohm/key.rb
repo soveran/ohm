@@ -6,7 +6,7 @@ module Ohm
 
     def initialize(name, redis = nil)
       @redis = redis
-      super(name)
+      super(name.to_s)
     end
 
     Volatile = new("~")

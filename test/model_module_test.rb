@@ -277,10 +277,10 @@ class ScopedModelsTest < Test::Unit::TestCase
 
       @model.delete
 
-      assert_nil Ohm.redis.get(Model::ModelToBeDeleted.key(id))
-      assert_nil Ohm.redis.get(Model::ModelToBeDeleted.key(id, :name))
-      assert_equal Array.new, Ohm.redis.smembers(Model::ModelToBeDeleted.key(id, :foos))
-      assert_equal Array.new, Ohm.redis.lrange(Model::ModelToBeDeleted.key(id, :bars), 0, -1)
+      assert_nil Ohm.redis.get(Model::ModelToBeDeleted.key[id])
+      assert_nil Ohm.redis.get(Model::ModelToBeDeleted.key[id][:name])
+      assert_equal Array.new, Ohm.redis.smembers(Model::ModelToBeDeleted.key[id][:foos])
+      assert_equal Array.new, Ohm.redis.lrange(Model::ModelToBeDeleted.key[id][:bars], 0, -1)
 
       assert Model::ModelToBeDeleted.all.empty?
     end
