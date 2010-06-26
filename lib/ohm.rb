@@ -192,41 +192,18 @@ module Ohm
         key.smembers.map(&model)
       end
 
-      def replace(models)
-        key.del
-        models.each { |model| key.sadd(model.id) }
-        self
-      end
-
-      # Transform a hash of attribute/values into an array of keys.
-      def keys(hash)
-        [].tap do |keys|
-          hash.each do |key, values|
-            values = [values] unless values.kind_of?(Array) # Yes, Array() is different in 1.8.x.
-            values.each do |v|
-              keys << model.index_key_for(key, v)
-            end
-          end
-        end
-      end
-
       def find(options)
         source = keys(options)
 
-        target = source.inject(key.volatile) { |chain, key| chain + key }
-        target.sinterstore(key, *source)
-        Set.new(target, Wrapper.wrap(model))
+        apply(:sinterstore, key, source)
       end
 
       def except(options)
-        keys = []
-        options.each do |k, v|
-          keys << model.index_key_for(k, v)
+        keys = options.map do |k, v|
+          model.index_key_for(k, v)
         end
 
-        target = keys.inject(key.volatile) { |chain, key| chain + key }
-        target.sdiffstore(key, *keys)
-        Set.new(target, Wrapper.wrap(model))
+        apply(:sdiffstore, key, keys)
       end
 
       def sort(options = {})
@@ -277,15 +254,13 @@ module Ohm
       def inspect
         "#<Set (#{model}): #{key.smembers.inspect}>"
       end
-    end
 
-    class Index < Set
-      def apply(operation, hash, glue)
-        if hash.keys.size == 1
-          return Set.new(keys(hash).first, Wrapper.wrap(model))
-        else
-          super
-        end
+    protected
+
+      def apply(operation, key, keys)
+        target = keys.inject(key.volatile) { |chain, key| chain + key }
+        target.send(operation, key, *keys)
+        Set.new(target, Wrapper.wrap(model))
       end
 
       # Transform a hash of attribute/values into an array of keys.
@@ -300,16 +275,13 @@ module Ohm
         end
       end
 
-      def find(options)
-        source = keys(options)
+    end
 
-        if source.size == 1
-          Set.new(source.first, Wrapper.wrap(model))
-        else
-          target = source.inject(key.volatile) { |chain, key| chain + key }
-          target.sinterstore(*source)
-          Set.new(target, Wrapper.wrap(model))
-        end
+    class Index < Set
+      def find(options)
+        return super(options) if options.size > 1
+
+        Set.new(keys(options).first, Wrapper.wrap(model))
       end
     end
 
