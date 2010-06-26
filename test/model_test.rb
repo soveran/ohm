@@ -951,13 +951,13 @@ class ModelTest < Test::Unit::TestCase
     should "allow changing the database" do
       Car.create(:name => "Twingo")
 
-      assert_equal ["1"], Car.all.raw
+      assert_equal ["1"], Car.all.key.smembers
 
       Car.connect :db => 15
-      assert_equal [], Car.all.raw
+      assert_equal [], Car.all.key.smembers
 
       Car.connect :db => 14
-      assert_equal ["1"], Car.all.raw
+      assert_equal ["1"], Car.all.key.smembers
     end
   end
 
