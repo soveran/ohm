@@ -262,6 +262,16 @@ class ModelTest < Test::Unit::TestCase
 
       assert_equal "foo", event.slug
     end
+
+    should "save counters" do
+      event = Event.create(:name => "Foo")
+
+      event.incr(:votes)
+      event.save
+
+      assert_equal 1, Event[event.id].votes
+    end
+
   end
 
   context "Delete" do

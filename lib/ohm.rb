@@ -786,8 +786,8 @@ module Ohm
     end
 
     def write
-      unless attributes.empty?
-        atts = attributes.inject([]) { |ret, att|
+      unless (attributes + counters).empty?
+        atts = (attributes + counters).inject([]) { |ret, att|
           value = send(att).to_s
 
           ret.push(att, value)  if not value.empty?
