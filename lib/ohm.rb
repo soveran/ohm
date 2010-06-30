@@ -687,7 +687,7 @@ module Ohm
       false
     end
     alias :eql? :==
-    
+
     def hash
       new? ? super : key.hash
     end

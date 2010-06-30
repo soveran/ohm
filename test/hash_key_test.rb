@@ -10,7 +10,7 @@ class HashKeyTest < Test::Unit::TestCase
   setup do
     Ohm.flush
   end
-  
+
   test "using a new record as a hash key" do
     tag = Tag.new
     hash = { tag => "Ruby" }
@@ -18,7 +18,7 @@ class HashKeyTest < Test::Unit::TestCase
     assert_equal "Ruby", hash[tag]
     assert_nil hash[Tag.new]
   end
-  
+
   test "on a persisted model" do
     tag = Tag.create(:name => "Ruby")
 
