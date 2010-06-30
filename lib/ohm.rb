@@ -686,6 +686,11 @@ module Ohm
     rescue MissingID
       false
     end
+    alias :eql? :==
+    
+    def hash
+      new? ? super : key.hash
+    end
 
     # Lock the object before executing the block, and release it once the block is done.
     def mutex
