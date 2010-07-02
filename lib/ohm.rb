@@ -271,8 +271,9 @@ module Ohm
 
     class Index < Set
       def apply(operation, hash, glue)
-        if hash.keys.size == 1
-          return Set.new(keys(hash).first, Wrapper.wrap(model))
+        keys = keys(hash)
+        if keys.size == 1
+          return Set.new(keys.first, Wrapper.wrap(model))
         else
           super
         end
