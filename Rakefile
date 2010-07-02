@@ -24,7 +24,14 @@ task :stop do
   end
 end
 
-Rake::TestTask.new(:test) do |t|
-  t.pattern = 'test/**/*_test.rb'
-  t.ruby_opts = ["-rubygems"] if RUBY_VERSION < "1.9"
+task :test do
+  Dir["test/**/*_test.rb"].each do |file|
+    fork do
+      load file
+    end
+
+    Process.wait
+
+    exit $?.exitstatus unless $?.success?
+  end
 end

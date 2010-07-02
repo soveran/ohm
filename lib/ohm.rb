@@ -767,7 +767,15 @@ module Ohm
     end
 
     def self.const_missing(name)
-      Wrapper.new(name) { const_get(name) }
+      wrapper = Wrapper.new(name) { const_get(name) }
+
+      # Allow others to hook to const_missing.
+      begin
+        super(name)
+      rescue NameError
+      end
+
+      wrapper
     end
 
   private
