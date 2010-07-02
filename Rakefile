@@ -24,6 +24,14 @@ task :stop do
   end
 end
 
-Rake::TestTask.new(:test) do |t|
-  t.pattern = 'test/**/*_test.rb'
+task :test do
+  Dir["test/**/*_test.rb"].each do |file|
+    fork do
+      load file
+    end
+
+    Process.wait
+
+    exit $?.exitstatus unless $?.success?
+  end
 end
