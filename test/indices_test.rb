@@ -159,9 +159,11 @@ class IndicesTest < Test::Unit::TestCase
       @event1 = Event.create(:timeline => 1).update(:days => [1, 2])
       @event2 = Event.create(:timeline => 1).update(:days => [2, 3])
       @event3 = Event.create(:timeline => 2).update(:days => [3, 4])
+      @event4 = Event.create(:timeline => 2).update(:days => [1, 3])
     end
 
     should "intersect multiple sets of results" do
+      assert_equal [@event1], Event.find(:days => [1, 2]).all
       assert_equal [@event1], Event.find(:timeline => 1, :days => [1, 2]).all
       assert_equal [@event1], Event.find(:timeline => 1).find(:days => [1, 2]).all
     end

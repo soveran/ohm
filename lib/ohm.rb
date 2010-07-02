@@ -279,9 +279,10 @@ module Ohm
 
     class Index < Set
       def find(options)
-        return super(options) if options.size > 1
+        keys = keys(options)
+        return super(options) if keys.size > 1
 
-        Set.new(keys(options).first, Wrapper.wrap(model))
+        Set.new(keys.first, Wrapper.wrap(model))
       end
     end
 
