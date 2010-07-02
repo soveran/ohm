@@ -916,8 +916,8 @@ class TestRedis < Test::Unit::TestCase
       car = Car.create(:name => "Twingo")
       make = Make.create(:name => "Renault")
 
-      assert_equal 1, Make.db.instance_variable_get("@db")
-      assert_equal 2, Car.db.instance_variable_get("@db")
+      assert_equal 1, Make.db.client.instance_variable_get("@db")
+      assert_equal 2, Car.db.client.instance_variable_get("@db")
 
       assert_equal car, Car[1]
       assert_equal make, Make[1]
