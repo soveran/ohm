@@ -95,11 +95,9 @@ module Ohm
       attr :key
       attr :model
 
-      def initialize(key, model, db = nil)
+      def initialize(key, model)
         @key = key
         @model = model.unwrap
-        @db = db || @model.db
-        @key = Key.new(@key, @db)
       end
 
       def add(model)
@@ -548,7 +546,7 @@ module Ohm
 
     def self.attr_collection_reader(name, type, model)
       model = Wrapper.wrap(model)
-      define_memoized_method(name) { type.new(key[name], model, db) }
+      define_memoized_method(name) { type.new(key[name], model) }
     end
 
     def self.define_memoized_method(name, &block)
