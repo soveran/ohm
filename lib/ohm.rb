@@ -256,7 +256,7 @@ module Ohm
     protected
 
       def apply(operation, key, keys)
-        target = keys.inject(key.volatile) { |chain, key| chain + key }
+        target = keys.inject(key.volatile) { |chain, other| chain + other }
         target.send(operation, key, *keys)
         Set.new(target, Wrapper.wrap(model))
       end
@@ -408,7 +408,7 @@ module Ohm
     #
     # @param name [Symbol] Name of the list.
     def self.list(name, model)
-      attr_collection_reader(name, List, model)
+      define_memoized_method(name) { List.new(key[name], Wrapper.wrap(model)) }
       collections << name unless collections.include?(name)
     end
 
@@ -418,7 +418,7 @@ module Ohm
     #
     # @param name [Symbol] Name of the set.
     def self.set(name, model)
-      attr_collection_reader(name, Set, model)
+      define_memoized_method(name) { Set.new(key[name], Wrapper.wrap(model)) }
       collections << name unless collections.include?(name)
     end
 
@@ -478,7 +478,8 @@ module Ohm
       reader = :"#{name}_id"
       writer = :"#{name}_id="
 
-      attribute reader
+      attributes << reader unless attributes.include?(reader)
+
       index reader
 
       define_memoized_method(name) do
@@ -486,12 +487,16 @@ module Ohm
       end
 
       define_method(:"#{name}=") do |value|
-        instance_variable_set("@#{name}", nil)
+        @_memo.delete(name)
         send(writer, value ? value.id : nil)
       end
 
+      define_method(reader) do
+        read_local(reader)
+      end
+
       define_method(writer) do |value|
-        instance_variable_set("@#{name}", nil)
+        @_memo.delete(name)
         write_local(reader, value)
       end
     end
@@ -544,15 +549,9 @@ module Ohm
       name.to_s.match(/^(?:.*::)*(.*)$/)[1].gsub(/([a-z\d])([A-Z])/, '\1_\2').downcase.to_sym
     end
 
-    def self.attr_collection_reader(name, type, model)
-      model = Wrapper.wrap(model)
-      define_memoized_method(name) { type.new(key[name], model) }
-    end
-
     def self.define_memoized_method(name, &block)
       define_method(name) do
-        instance_variable_get("@#{name}") ||
-          instance_variable_set("@#{name}", instance_eval(&block))
+        @_memo[name] ||= instance_eval(&block)
       end
     end
 
@@ -608,6 +607,8 @@ module Ohm
     end
 
     def initialize(attrs = {})
+      @id = nil
+      @_memo = {}
       @_attributes = Hash.new { |hash, key| hash[key] = read_remote(key) }
       update_attributes(attrs)
     end

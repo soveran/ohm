@@ -49,6 +49,7 @@ end
 class ModelTest < Test::Unit::TestCase
   setup do
     Ohm.flush
+    Logger.current.clear
   end
 
   context "An event initialized with a hash of attributes" do
@@ -118,7 +119,10 @@ class ModelTest < Test::Unit::TestCase
       assert_nothing_raised do
         class RedefinedModel < Ohm::Model
           attribute :name
-          attribute :name
+
+          silence_warnings do
+            attribute :name
+          end
         end
       end
     end
@@ -127,7 +131,10 @@ class ModelTest < Test::Unit::TestCase
       assert_nothing_raised do
         class RedefinedModel < Ohm::Model
           counter :age
-          counter :age
+
+          silence_warnings do
+            counter :age
+          end
         end
       end
     end
@@ -136,7 +143,10 @@ class ModelTest < Test::Unit::TestCase
       assert_nothing_raised do
         class RedefinedModel < Ohm::Model
           list :todo, lambda { }
-          list :todo, lambda { }
+
+          silence_warnings do
+            list :todo, lambda { }
+          end
         end
       end
     end
@@ -145,7 +155,10 @@ class ModelTest < Test::Unit::TestCase
       assert_nothing_raised do
         class RedefinedModel < Ohm::Model
           set :friends, lambda { }
-          set :friends, lambda { }
+
+          silence_warnings do
+            set :friends, lambda { }
+          end
         end
       end
     end
@@ -154,7 +167,10 @@ class ModelTest < Test::Unit::TestCase
       assert_nothing_raised do
         class RedefinedModel < Ohm::Model
           list :toys, lambda { }
-          set :toys, lambda { }
+
+          silence_warnings do
+            set :toys, lambda { }
+          end
         end
       end
     end
@@ -378,8 +394,15 @@ class ModelTest < Test::Unit::TestCase
     should "load attributes lazily" do
       event = Event[@id]
 
-      assert_nil event.send(:instance_variable_get, "@name")
+      Logger.current.clear
+
+      assert Logger.current.commands.empty?
       assert_equal "Ruby Tuesday", event.name
+      assert !Logger.current.commands.empty?
+
+      Logger.current.clear
+      assert_equal "Ruby Tuesday", event.name
+      assert Logger.current.commands.empty?
     end
 
     should "load attributes as a strings" do
