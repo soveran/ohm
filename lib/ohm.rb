@@ -6,7 +6,6 @@ require "redis"
 require File.join(File.dirname(__FILE__), "ohm", "validations")
 require File.join(File.dirname(__FILE__), "ohm", "compat-1.8.6")
 require File.join(File.dirname(__FILE__), "ohm", "key")
-require File.join(File.dirname(__FILE__), "ohm", "collection")
 
 module Ohm
 
@@ -53,11 +52,7 @@ module Ohm
     redis.flushdb
   end
 
-  def key(*args)
-    Key[*args]
-  end
-
-  module_function :key, :connect, :connection, :flush, :redis, :redis=, :options, :threaded
+  module_function :connect, :connection, :flush, :redis, :redis=, :options, :threaded
 
   Error = Class.new(StandardError)
 
@@ -97,44 +92,34 @@ module Ohm
     class Collection
       include Enumerable
 
-      attr :raw
+      attr :key
       attr :model
 
       def initialize(key, model, db = nil)
+        @key = key
         @model = model.unwrap
-        @raw = self.class::Raw.new(key, db || @model.db)
+        @db = db || @model.db
+        @key = Key.new(@key, @db)
       end
 
-      def <<(model)
-        raw << model.id
-      end
-
-      alias add <<
-
-      def each(&block)
-        raw.each do |id|
-          block.call(model[id])
-        end
-      end
-
-      def key
-        raw.key
+      def add(model)
+        self << model
       end
 
       def first(options = {})
         if options[:by]
           sort_by(options.delete(:by), options.merge(:limit => 1)).first
         else
-          model[raw.first(options)]
+          model[key.first(options)]
         end
       end
 
       def [](index)
-        model[raw[index]]
+        model[key[index]]
       end
 
       def sort(*args)
-        raw.sort(*args).map(&model)
+        key.sort(*args).map(&model)
       end
 
       # Sort the model instances by the given attribute.
@@ -151,84 +136,130 @@ module Ohm
         options.merge!(:by => model.key("*->#{att}"))
 
         if options[:get]
-          raw.sort(options.merge(:get => model.key("*->#{options[:get]}")))
+          key.sort(options.merge(:get => model.key("*->#{options[:get]}")))
         else
           sort(options)
         end
       end
 
-      def delete(model)
-        raw.delete(model.id)
-        model
-      end
-
       def clear
-        raw.clear
+        key.del
       end
 
       def concat(models)
-        raw.concat(models.map { |model| model.id })
+        models.each { |model| add(model) }
         self
       end
 
       def replace(models)
-        raw.replace(models.map { |model| model.id })
-        self
-      end
-
-      def include?(model)
-        raw.include?(model.id)
+        clear
+        concat(models)
       end
 
       def empty?
-        raw.empty?
+        !key.exists
       end
 
-      def size
-        raw.size
+      def to_a
+        all
       end
-
-      def all
-        raw.to_a.map(&model)
-      end
-
-      alias to_a all
     end
 
     class Set < Collection
-      Raw = Ohm::Set
+      def each(&block)
+        key.smembers.each { |id| block.call(model[id]) }
+      end
+
+      def [](id)
+        model[id] if key.sismember(id)
+      end
+
+      def << model
+        key.sadd(model.id)
+      end
+
+      alias add <<
+
+      def size
+        key.scard
+      end
+
+      def delete(member)
+        key.srem(member.id)
+      end
+
+      def all
+        key.smembers.map(&model)
+      end
+
+      def find(options)
+        source = keys(options)
+
+        apply(:sinterstore, key, source)
+      end
+
+      def except(options)
+        keys = options.map do |k, v|
+          model.index_key_for(k, v)
+        end
+
+        apply(:sdiffstore, key, keys)
+      end
+
+      def sort(options = {})
+        return [] unless key.exists
+
+        options[:start] ||= 0
+        options[:limit] = [options[:start], options[:limit]] if options[:limit]
+
+        key.sort(options).map(&model)
+      end
+
+      # Sort the model instances by the given attribute.
+      #
+      # @example Sorting elements by name:
+      #
+      #   User.create :name => "B"
+      #   User.create :name => "A"
+      #
+      #   user = User.all.sort_by(:name, :order => "ALPHA").first
+      #   user.name == "A"
+      #   # => true
+      def sort_by(att, options = {})
+        return [] unless key.exists
+
+        options.merge!(:by => model.key["*->#{att}"])
+
+        if options[:get]
+          key.sort(options.merge(:get => model.key["*->#{options[:get]}"]))
+        else
+          sort(options)
+        end
+      end
+
+      def first(options = {})
+        options.merge!(:limit => 1)
+
+        if options[:by]
+          sort_by(options.delete(:by), options).first
+        else
+          sort(options).first
+        end
+      end
+
+      def include?(model)
+        key.sismember(model.id)
+      end
 
       def inspect
-        "#<Set (#{model}): #{all.inspect}>"
+        "#<Set (#{model}): #{key.smembers.inspect}>"
       end
 
-      # Returns an intersection with the sets generated from the passed hash.
-      #
-      # @see Ohm::Model.find
-      # @example
-      #   @events = Event.find(public: true)
-      #
-      #   # You can combine the result with sort and other set operations:
-      #   @events.sort_by(:name)
-      def find(hash)
-        apply(:sinterstore, hash, :+)
-      end
+    protected
 
-      # Returns the difference between the receiver and the passed sets.
-      #
-      # @example
-      #   @events = Event.find(public: true).except(status: "sold_out")
-      def except(hash)
-        apply(:sdiffstore, hash, :-)
-      end
-
-    private
-
-      # Apply a Redis operation on a collection of sets.
-      def apply(operation, hash, glue)
-        keys = keys(hash)
-        target = key.volatile.send(glue, Key[*keys])
-        model.db.send(operation, target, key, *keys)
+      def apply(operation, key, keys)
+        target = keys.inject(key.volatile) { |chain, key| chain + key }
+        target.send(operation, key, *keys)
         Set.new(target, Wrapper.wrap(model))
       end
 
@@ -245,38 +276,59 @@ module Ohm
       end
     end
 
-    class List < Collection
-      Raw = Ohm::List
+    class Index < Set
+      def find(options)
+        keys = keys(options)
+        return super(options) if keys.size > 1
 
-      def shift
-        if id = raw.shift
-          model[id]
-        end
-      end
-
-      def pop
-        if id = raw.pop
-          model[id]
-        end
-      end
-
-      def unshift(model)
-        raw.unshift(model.id)
-      end
-
-      def inspect
-        "#<List (#{model}): #{all.inspect}>"
+        Set.new(keys.first, Wrapper.wrap(model))
       end
     end
 
-    class Index < Set
-      def apply(operation, hash, glue)
-        keys = keys(hash)
-        if keys.size == 1
-          return Set.new(keys.first, Wrapper.wrap(model))
-        else
-          super
-        end
+    class List < Collection
+      def each(&block)
+        key.lrange(0, -1).each { |id| block.call(model[id]) }
+      end
+
+      def <<(model)
+        key.rpush(model.id)
+      end
+
+      alias push <<
+
+      def first
+        id = key.lindex(0)
+        model[id] if id
+      end
+
+      def pop
+        id = key.rpop
+        model[id] if id
+      end
+
+      def shift
+        id = key.lpop
+        model[id] if id
+      end
+
+      def unshift(model)
+        key.lpush(model.id)
+      end
+
+      def all
+        key.lrange(0, -1).map(&model)
+      end
+
+      def size
+        key.llen
+      end
+
+      def include?(model)
+        key.lrange(0, -1).include?(model.id)
+      end
+
+      def inspect
+        "#<List (#{model}): #{key.lrange(0, -1).inspect}>"
       end
     end
 
@@ -357,8 +409,8 @@ module Ohm
     # is created.
     #
     # @param name [Symbol] Name of the list.
-    def self.list(name, model = nil)
-      attr_collection_reader(name, :List, model)
+    def self.list(name, model)
+      attr_collection_reader(name, List, model)
       collections << name unless collections.include?(name)
     end
 
@@ -367,8 +419,8 @@ module Ohm
     # operations like union, join, and membership checks are important.
     #
     # @param name [Symbol] Name of the set.
-    def self.set(name, model = nil)
-      attr_collection_reader(name, :Set, model)
+    def self.set(name, model)
+      attr_collection_reader(name, Set, model)
       collections << name unless collections.include?(name)
     end
 
@@ -495,12 +547,8 @@ module Ohm
     end
 
     def self.attr_collection_reader(name, type, model)
-      if model
-        model = Wrapper.wrap(model)
-        define_memoized_method(name) { Ohm::Model::const_get(type).new(key(name), model, db) }
-      else
-        define_memoized_method(name) { Ohm::const_get(type).new(key(name), db) }
-      end
+      model = Wrapper.wrap(model)
+      define_memoized_method(name) { type.new(key[name], model, db) }
     end
 
     def self.define_memoized_method(name, &block)
@@ -519,7 +567,7 @@ module Ohm
     end
 
     def self.all
-      Ohm::Model::Index.new(key(:all), Wrapper.wrap(self))
+      Ohm::Model::Index.new(key[:all], Wrapper.wrap(self))
     end
 
     def self.attributes
@@ -737,8 +785,8 @@ module Ohm
 
   protected
 
-    def key(*args)
-      self.class.key(id, *args)
+    def key
+      self.class.key[id]
     end
 
     def write
@@ -790,16 +838,16 @@ module Ohm
       Ohm.threaded[self] = connection
     end
 
-    def self.key(*args)
-      Ohm.key(*args.unshift(self))
+    def self.key
+      Key.new(self, db)
     end
 
     def self.exists?(id)
-      db.sismember(key(:all), id)
+      db.sismember(key[:all], id)
     end
 
     def initialize_id
-      self.id = db.incr(self.class.key("id")).to_s
+      self.id = db.incr(self.class.key[:id]).to_s
     end
 
     def db
@@ -807,7 +855,7 @@ module Ohm
     end
 
     def delete_attributes(atts)
-      db.del(*atts.map { |att| key(att) })
+      db.del(*atts.map { |att| key[att] })
     end
 
     def create_model_membership
@@ -843,15 +891,15 @@ module Ohm
     def add_to_index(att, value = send(att))
       index = index_key_for(att, value)
       db.sadd(index, id)
-      db.sadd(key(:_indices), index)
+      db.sadd(key[:_indices], index)
     end
 
     def delete_from_indices
-      db.smembers(key(:_indices)).each do |index|
+      db.smembers(key[:_indices]).each do |index|
         db.srem(index, id)
       end
 
-      db.del(key(:_indices))
+      db.del(key[:_indices])
     end
 
     def read_local(att)
@@ -885,7 +933,7 @@ module Ohm
 
     def self.index_key_for(att, value)
       raise IndexNotFound, att unless indices.include?(att)
-      key(att, encode(value))
+      key[att][encode(value)]
     end
 
     def index_key_for(att, value)
@@ -898,11 +946,11 @@ module Ohm
     #
     # @see Model#mutex
     def lock!
-      until db.setnx(key(:_lock), lock_timeout)
-        next unless lock = db.get(key(:_lock))
+      until db.setnx(key[:_lock], lock_timeout)
+        next unless lock = db.get(key[:_lock])
         sleep(0.5) and next unless lock_expired?(lock)
 
-        break unless lock = db.getset(key(:_lock), lock_timeout)
+        break unless lock = db.getset(key[:_lock], lock_timeout)
         break if lock_expired?(lock)
       end
     end
@@ -910,7 +958,7 @@ module Ohm
     # Release the lock.
     # @see Model#mutex
     def unlock!
-      db.del(key(:_lock))
+      db.del(key[:_lock])
     end
 
     def lock_timeout

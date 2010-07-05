@@ -21,11 +21,11 @@ module Ohm
 
       def run
         models.each do |model|
-          ns = Ohm::Key[model]
+          ns = Ohm::Key.new(model, redis)
 
           puts "Upgrading #{model}..."
 
-          Batch.each(redis.smembers(ns[:all])) do |id|
+          Batch.each(ns[:all].smembers) do |id|
             instance = ns[id]
 
             attrs = []

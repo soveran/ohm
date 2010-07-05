@@ -24,7 +24,7 @@ class UpgradeScriptTest < Test::Unit::TestCase
   setup do
     redis.flushdb
 
-    @users = Ohm::Key[:User]
+    @users = Ohm::Key.new(:User, Ohm.redis)
 
     10.times do
       @id = redis.incr(@users[:id])
