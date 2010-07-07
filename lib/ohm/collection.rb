@@ -124,7 +124,7 @@ module Ohm
 
     # @return [Array] Elements of the list.
     def all
-      db.lrange(key, 0, -1)
+      db.lrange(key, 0, -1) || []
     end
 
     # @return [Integer] Returns the number of elements in the list.
@@ -171,7 +171,7 @@ module Ohm
     end
 
     def all
-      db.smembers(key)
+      db.smembers(key) || []
     end
 
     # @return [Integer] Returns the number of elements in the set.

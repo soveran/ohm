@@ -277,8 +277,8 @@ class TestRedis < Test::Unit::TestCase
 
       assert_nil Ohm.redis.get(ModelToBeDeleted.key(id))
       assert_nil Ohm.redis.get(ModelToBeDeleted.key(id, :name))
-      assert_equal Array.new, Ohm.redis.smembers(ModelToBeDeleted.key(id, :foos))
-      assert_equal Array.new, Ohm.redis.lrange(ModelToBeDeleted.key(id, :bars), 0, -1)
+      assert !Ohm.redis.exists(ModelToBeDeleted.key(id, :foos))
+      assert !Ohm.redis.exists(ModelToBeDeleted.key(id, :bars))
 
       assert ModelToBeDeleted.all.empty?
     end
@@ -297,7 +297,12 @@ class TestRedis < Test::Unit::TestCase
 
       Foo[1].delete
 
-      assert_equal ["Foo:id"], Ohm.redis.keys("*")
+      keys = Ohm.redis.keys("*")
+
+      assert !keys.include?("Foo:1:_indices")
+      assert !keys.include?("Foo:1:name")
+
+      assert_equal "1", Ohm.redis.get("Foo:id")
     end
   end
 

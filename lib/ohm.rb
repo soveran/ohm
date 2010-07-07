@@ -290,7 +290,7 @@ module Ohm
       # @overload assert_unique [:street, :city]
       #   Validates that the :street and :city pair is unique.
       def assert_unique(attrs)
-        result = db.sinter(*Array(attrs).map { |att| index_key_for(att, send(att)) })
+        result = db.sinter(*Array(attrs).map { |att| index_key_for(att, send(att)) }) || []
         assert result.empty? || !new? && result.include?(id.to_s), [attrs, :not_unique]
       end
     end
@@ -786,10 +786,11 @@ module Ohm
     end
 
     def delete_from_indices
-      db.smembers(key(:_indices)).each do |index|
+      (db.smembers(key(:_indices)) || []).each do |index|
         db.srem(index, id)
-        db.srem(key(:_indices), index)
       end
+
+      db.del(key(:_indices))
     end
 
     def read_local(att)
