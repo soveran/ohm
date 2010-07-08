@@ -45,5 +45,9 @@ end
 
 require "ohm"
 
-Ohm.connect(:port => 6379, :db => 15, :timeout => 3, :logger => Logger.current)
-Ohm.flush
+class Test::Unit::TestCase
+  setup do
+    Ohm.redis = Redis.connect(:logger => Logger.current)
+    Ohm.flush
+  end
+end

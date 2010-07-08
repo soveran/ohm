@@ -25,13 +25,17 @@ task :stop do
 end
 
 task :test do
-  Dir["test/**/*_test.rb"].each do |file|
+  require File.expand_path(File.join(File.dirname(__FILE__), "test", "test_helper"))
+
+  Dir["test/**/*_test.rb"].each_with_index do |file, index|
+    ENV["REDIS_URL"] = "redis://127.0.0.1:6379/#{index}"
+
     fork do
       load file
     end
 
-    Process.wait
-
     exit $?.exitstatus unless $?.success?
   end
+
+  Process.waitall
 end

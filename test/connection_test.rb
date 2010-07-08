@@ -1,10 +1,6 @@
 require File.expand_path(File.join(File.dirname(__FILE__), "test_helper"))
 
 class ConnectionTest < Test::Unit::TestCase
-  setup do
-    @options = Ohm.options
-  end
-
   test "connects lazily" do
     assert_nothing_raised do
       Ohm.connect(:port => 9876)
@@ -32,10 +28,6 @@ class ConnectionTest < Test::Unit::TestCase
 
     threads.each { |t| t.join }
 
-    assert (conn1 != conn2)
-  end
-
-  teardown do
-    Ohm.connect(*@options)
+    assert(conn1 != conn2)
   end
 end

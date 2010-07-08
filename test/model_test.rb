@@ -955,10 +955,7 @@ class ModelTest < Test::Unit::TestCase
     end
 
     setup do
-      Car.connect(:port => 6379, :db => 14)
-    end
-
-    teardown do
+      Car.connect(:db => 15)
       Car.db.flushdb
     end
 
@@ -966,11 +963,11 @@ class ModelTest < Test::Unit::TestCase
       car = Car.create(:name => "Twingo")
       make = Make.create(:name => "Renault")
 
-      assert_equal ["1"], Redis.new(:db => 15).smembers("Make:all")
-      assert_equal [], Redis.new(:db => 15).smembers("Car:all")
+      assert_equal ["1"], Redis.connect.smembers("Make:all")
+      assert_equal [], Redis.connect.smembers("Car:all")
 
-      assert_equal ["1"], Redis.new(:db => 14).smembers("Car:all")
-      assert_equal [], Redis.new(:db => 14).smembers("Make:all")
+      assert_equal ["1"], Car.db.smembers("Car:all")
+      assert_equal [], Car.db.smembers("Make:all")
 
       assert_equal car, Car[1]
       assert_equal make, Make[1]
@@ -986,10 +983,10 @@ class ModelTest < Test::Unit::TestCase
 
       assert_equal ["1"], Car.all.key.smembers
 
-      Car.connect :db => 15
+      Car.connect
       assert_equal [], Car.all.key.smembers
 
-      Car.connect :db => 14
+      Car.connect :db => 15
       assert_equal ["1"], Car.all.key.smembers
     end
   end
