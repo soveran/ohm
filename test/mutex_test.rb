@@ -68,8 +68,8 @@ class TestMutex < Test::Unit::TestCase
 
       threads = []
 
-      n = 10
-      m = 9
+      n = 3
+      m = 2
 
       n.times do |i|
         threads << Thread.new do
