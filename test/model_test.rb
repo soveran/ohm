@@ -743,10 +743,10 @@ class ModelTest < Test::Unit::TestCase
 
     should "be able to decrement a counter" do
       @event.decr(:votes)
-      assert_equal -1, @event.votes
+      assert_equal(-1, @event.votes)
 
       @event.decr(:votes, 2)
-      assert_equal -3, @event.votes
+      assert_equal(-3, @event.votes)
     end
   end
 
@@ -815,7 +815,7 @@ class ModelTest < Test::Unit::TestCase
       rescue NoMethodError => exception_raised
       end
 
-      assert_match /You tried to call SomeMissingConstant#\w+, but SomeMissingConstant is not defined on #{__FILE__}:\d+:in `bar'/, exception_raised.message
+      assert_match(/You tried to call SomeMissingConstant#\w+, but SomeMissingConstant is not defined on #{__FILE__}:\d+:in `bar'/, exception_raised.message)
     end
 
     should "inform about a miscatch by Wrapper when calling class methods" do

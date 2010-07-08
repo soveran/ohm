@@ -44,7 +44,8 @@ module Ohm
   end
 
   def options
-    @options || []
+    @options = [] unless defined? @options
+    @options
   end
 
   # Clear the database.

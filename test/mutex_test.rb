@@ -71,9 +71,9 @@ class TestMutex < Test::Unit::TestCase
       n = 3
       m = 2
 
-      n.times do |i|
+      n.times do
         threads << Thread.new do
-          m.times do |i|
+          m.times do
             @candidate.mutex do
               sleep 0.1
               @candidate.incr(:votes)

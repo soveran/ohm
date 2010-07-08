@@ -59,7 +59,7 @@ class IndicesTest < Test::Unit::TestCase
     end
 
     should "use a special namespace for set operations" do
-      assert_match /^~:/, User.find(:email => "foo", :activation_code => "bar").key.to_s
+      assert_match(/^~:/, User.find(:email => "foo", :activation_code => "bar").key.to_s)
 
       assert Ohm.redis.keys("~:*").size > 0
     end
