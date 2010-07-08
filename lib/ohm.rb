@@ -193,16 +193,14 @@ module Ohm
 
       def find(options)
         source = keys(options)
-
-        apply(:sinterstore, key, source)
+        target = source.inject(key.volatile) { |chain, other| chain + other }
+        apply(:sinterstore, key, source, target)
       end
 
       def except(options)
-        keys = options.map do |k, v|
-          model.index_key_for(k, v)
-        end
-
-        apply(:sdiffstore, key, keys)
+        source = keys(options)
+        target = source.inject(key.volatile) { |chain, other| chain - other }
+        apply(:sdiffstore, key, source, target)
       end
 
       def sort(options = {})
@@ -256,9 +254,8 @@ module Ohm
 
     protected
 
-      def apply(operation, key, keys)
-        target = keys.inject(key.volatile) { |chain, other| chain + other }
-        target.send(operation, key, *keys)
+      def apply(operation, key, source, target)
+        target.send(operation, key, *source)
         Set.new(target, Wrapper.wrap(model))
       end
 
