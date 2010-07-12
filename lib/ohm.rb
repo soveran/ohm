@@ -200,7 +200,7 @@ module Ohm
       Raw = Ohm::Set
 
       def inspect
-        "#<Set (#{model}): #{all.inspect}>"
+        "#<Set (#{model}): #{raw.to_a.inspect}>"
       end
 
       # Returns an intersection with the sets generated from the passed hash.
@@ -265,7 +265,7 @@ module Ohm
       end
 
       def inspect
-        "#<List (#{model}): #{all.inspect}>"
+        "#<List (#{model}): #{raw.to_a.inspect}>"
       end
     end
 
