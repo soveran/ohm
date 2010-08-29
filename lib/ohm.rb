@@ -3,6 +3,7 @@
 require "base64"
 require "redis"
 
+require File.join(File.dirname(__FILE__), "ohm", "core_ext")
 require File.join(File.dirname(__FILE__), "ohm", "validations")
 require File.join(File.dirname(__FILE__), "ohm", "compat-1.8.6")
 require File.join(File.dirname(__FILE__), "ohm", "key")
@@ -292,9 +293,24 @@ module Ohm
 
       alias push <<
 
+      # Returns the element at index, or returns a subarray starting at
+      # start and continuing for length elements, or returns a subarray
+      # specified by range. Negative indices count backward from the end
+      # of the array (-1 is the last element). Returns nil if the index
+      # (or starting index) are out of range.
+      def [](index, limit = nil)
+        case [index, limit]
+        when [Fixnum, Fixnum] then
+          key.lrange(index, limit).collect { |id| model[id] }
+        when [Range, nil] then
+          key.lrange(index.first, index.last).collect { |id| model[id] }
+        when [Fixnum, nil] then
+          model[key.lindex(index)]
+        end
+      end
+
       def first
-        id = key.lindex(0)
-        model[id] if id
+        self[0]
       end
 
       def pop

@@ -526,6 +526,32 @@ class ModelTest < Test::Unit::TestCase
       assert_equal ["2", "3", "4"], Post[@post.id].related.map { |model| model.id }
     end
 
+    should "allow slicing the list" do
+      post1 = Post.create
+      post2 = Post.create
+      post3 = Post.create
+
+      @post.related << post1
+      @post.related << post2
+      @post.related << post3
+
+      assert_equal post1, @post.related[0]
+      assert_equal post2, @post.related[1]
+      assert_equal post3, @post.related[-1]
+
+      assert_equal nil, @post.related[3]
+
+      assert_equal [post2, post3], @post.related[1, 2]
+      assert_equal [post2, post3], @post.related[1, -1]
+
+      assert_equal [], @post.related[4, 5]
+
+      assert_equal [post2, post3], @post.related[1..2]
+      assert_equal [post2, post3], @post.related[1..5]
+
+      assert_equal [], @post.related[4..5]
+    end
+
     should "respond to each" do
       @post.related << Post.create
       @post.related << Post.create
