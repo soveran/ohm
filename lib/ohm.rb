@@ -3,7 +3,7 @@
 require "base64"
 require "redis"
 
-require File.join(File.dirname(__FILE__), "ohm", "core_ext")
+require File.join(File.dirname(__FILE__), "ohm", "pattern")
 require File.join(File.dirname(__FILE__), "ohm", "validations")
 require File.join(File.dirname(__FILE__), "ohm", "compat-1.8.6")
 require File.join(File.dirname(__FILE__), "ohm", "key")
@@ -300,11 +300,11 @@ module Ohm
       # (or starting index) are out of range.
       def [](index, limit = nil)
         case [index, limit]
-        when [Fixnum, Fixnum] then
+        when Pattern[Fixnum, Fixnum] then
           key.lrange(index, limit).collect { |id| model[id] }
-        when [Range, nil] then
+        when Pattern[Range, nil] then
           key.lrange(index.first, index.last).collect { |id| model[id] }
-        when [Fixnum, nil] then
+        when Pattern[Fixnum, nil] then
           model[key.lindex(index)]
         end
       end
