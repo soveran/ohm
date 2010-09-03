@@ -30,4 +30,12 @@ class ConnectionTest < Test::Unit::TestCase
 
     assert(conn1 != conn2)
   end
+
+  test "supports connecting by URL" do
+    Ohm.connect(:url => "redis://localhost:9876")
+
+    assert_raises(Errno::ECONNREFUSED) do
+      Ohm.redis.get "foo"
+    end
+  end
 end

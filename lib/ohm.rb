@@ -39,9 +39,9 @@ module Ohm
 
   # Return a connection to Redis.
   #
-  # This is a wapper around Redis.new(options)
+  # This is a wapper around Redis.connect(options)
   def connection(*options)
-    Redis.new(*options)
+    Redis.connect(*options)
   end
 
   def options
