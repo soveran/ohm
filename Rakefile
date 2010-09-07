@@ -34,6 +34,7 @@ task :test do
       load file
     end
 
+    Process.waitpid
     exit $?.exitstatus unless $?.success?
   end
 
