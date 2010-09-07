@@ -860,7 +860,7 @@ module Ohm
     end
 
     def initialize_id
-      self.id = db.incr(self.class.key[:id]).to_s
+      @id ||= self.class.key[:id].incr.to_s
     end
 
     def db

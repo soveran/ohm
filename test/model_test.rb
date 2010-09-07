@@ -184,6 +184,13 @@ class ModelTest < Test::Unit::TestCase
         end
       end
     end
+
+    should "allow arbitrary IDs" do
+      Event.create(:id => "abc123", :name => "Concert")
+
+      assert Event.all.size == 1
+      assert Event["abc123"].name == "Concert"
+    end
   end
 
   context "Finding an event" do
