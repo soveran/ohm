@@ -675,7 +675,7 @@ module Ohm
     # @param att [Symbol] Attribute to increment.
     def incr(att, count = 1)
       raise ArgumentError, "#{att.inspect} is not a counter." unless counters.include?(att)
-      write_local(att, db.hincrby(key, att, count))
+      write_local(att, key.hincrby(att, count))
     end
 
     # Decrement the counter denoted by :att.
@@ -807,13 +807,13 @@ module Ohm
         atts = (attributes + counters).inject([]) { |ret, att|
           value = send(att).to_s
 
-          ret.push(att, value)  if not value.empty?
+          ret.push(att, value) if not value.empty?
           ret
         }
 
         db.multi do
-          db.del(key)
-          db.hmset(key, *atts.flatten)  if atts.any?
+          key.del
+          key.hmset(*atts.flatten) if atts.any?
         end
       end
     end
@@ -822,9 +822,9 @@ module Ohm
       write_local(att, value)
 
       if value.to_s.empty?
-        db.hdel(key, att)
+        key.hdel(att)
       else
-        db.hset(key, att, value)
+        key.hset(att, value)
       end
     end
 
@@ -856,7 +856,7 @@ module Ohm
     end
 
     def self.exists?(id)
-      db.sismember(key[:all], id)
+      key[:all].sismember(id)
     end
 
     def initialize_id
@@ -876,7 +876,7 @@ module Ohm
     end
 
     def delete_model_membership
-      db.del(key)
+      key.del
       self.class.all.delete(self)
     end
 
@@ -903,16 +903,16 @@ module Ohm
 
     def add_to_index(att, value = send(att))
       index = index_key_for(att, value)
-      db.sadd(index, id)
-      db.sadd(key[:_indices], index)
+      index.sadd(id)
+      key[:_indices].sadd(index)
     end
 
     def delete_from_indices
-      db.smembers(key[:_indices]).each do |index|
+      key[:_indices].smembers.each do |index|
         db.srem(index, id)
       end
 
-      db.del(key[:_indices])
+      key[:_indices].del
     end
 
     def read_local(att)
@@ -925,7 +925,7 @@ module Ohm
 
     def read_remote(att)
       unless new?
-        value = db.hget(key, att)
+        value = key.hget(att)
         value.respond_to?(:force_encoding) ?
           value.force_encoding("UTF-8") :
           value
@@ -959,27 +959,23 @@ module Ohm
     #
     # @see Model#mutex
     def lock!
-      until db.setnx(key[:_lock], lock_timeout)
-        next unless lock = db.get(key[:_lock])
-        sleep(0.5) and next unless lock_expired?(lock)
+      until key[:_lock].setnx(Time.now.to_f + 0.5)
+        next unless timestamp = key[:_lock].get
+        sleep(0.1) and next unless lock_expired?(timestamp)
 
-        break unless lock = db.getset(key[:_lock], lock_timeout)
-        break if lock_expired?(lock)
+        break unless timestamp = key[:_lock].getset(Time.now.to_f + 0.5)
+        break if lock_expired?(timestamp)
       end
     end
 
     # Release the lock.
     # @see Model#mutex
     def unlock!
-      db.del(key[:_lock])
+      key[:_lock].del
     end
 
-    def lock_timeout
-      Time.now.to_f + 1
-    end
-
-    def lock_expired? lock
-      lock.to_f < Time.now.to_f
+    def lock_expired? timestamp
+      timestamp.to_f < Time.now.to_f
     end
   end
 end
