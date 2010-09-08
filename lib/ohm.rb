@@ -2,6 +2,7 @@
 
 require "base64"
 require "redis"
+require "nest"
 
 require File.join(File.dirname(__FILE__), "ohm", "pattern")
 require File.join(File.dirname(__FILE__), "ohm", "validations")
