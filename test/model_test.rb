@@ -835,11 +835,10 @@ class ModelTest < Test::Unit::TestCase
 
       bar.update(:name => "Albert")
       bar.friends << Bar.create
-      bar.friends << Bar.create
       bar.comments << Bar.create
       bar.incr(:visits)
 
-      assert_equal %Q{#<Bar:#{bar.id} name="Albert" friends=#<Set (Bar): ["3", "2"]> comments=#<List (Bar): ["4"]> visits=1>}, Bar[bar.id].inspect
+      assert_equal %Q{#<Bar:#{bar.id} name="Albert" friends=#<Set (Bar): ["2"]> comments=#<List (Bar): ["3"]> visits=1>}, Bar[bar.id].inspect
     end
 
     def assert_wrapper_exception(&block)
