@@ -12,15 +12,15 @@ require File.join(File.dirname(__FILE__), "ohm", "key")
 module Ohm
 
   # Provides access to the Redis database. This is shared accross all models and instances.
-  def redis
+  def self.redis
     threaded[:redis] ||= connection(*options)
   end
 
-  def redis=(connection)
+  def self.redis=(connection)
     threaded[:redis] = connection
   end
 
-  def threaded
+  def self.threaded
     Thread.current[:ohm] ||= {}
   end
 
@@ -33,7 +33,7 @@ module Ohm
   # @option options [#to_s] :timeout (0) Database timeout in seconds.
   # @example Connect to a database in port 6380.
   #   Ohm.connect(:port => 6380)
-  def connect(*options)
+  def self.connect(*options)
     self.redis = nil
     @options = options
   end
@@ -41,21 +41,19 @@ module Ohm
   # Return a connection to Redis.
   #
   # This is a wapper around Redis.connect(options)
-  def connection(*options)
+  def self.connection(*options)
     Redis.connect(*options)
   end
 
-  def options
+  def self.options
     @options = [] unless defined? @options
     @options
   end
 
   # Clear the database.
-  def flush
+  def self.flush
     redis.flushdb
   end
-
-  module_function :connect, :connection, :flush, :redis, :redis=, :options, :threaded
 
   Error = Class.new(StandardError)
 
