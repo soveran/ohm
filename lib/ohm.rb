@@ -55,7 +55,7 @@ module Ohm
     redis.flushdb
   end
 
-  Error = Class.new(StandardError)
+  class Error < StandardError; end
 
   class Model
 
