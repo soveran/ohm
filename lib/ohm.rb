@@ -277,13 +277,11 @@ module Ohm
       end
 
       def pop
-        id = key.rpop
-        model[id] if id
+        model[key.rpop]
       end
 
       def shift
-        id = key.lpop
-        model[id] if id
+        model[key.lpop]
       end
 
       def unshift(model)
@@ -533,7 +531,7 @@ module Ohm
     end
 
     def self.[](id)
-      new(:id => id) if exists?(id)
+      new(:id => id) if id && exists?(id)
     end
 
     def self.to_proc
