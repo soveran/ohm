@@ -105,9 +105,10 @@ module Ohm
         self << model
       end
 
-      def sort(options = {})
+      def sort(_options = {})
         return [] unless key.exists
 
+        options = _options.dup
         options[:start] ||= 0
         options[:limit] = [options[:start], options[:limit]] if options[:limit]
 
@@ -124,9 +125,10 @@ module Ohm
       #   user = User.all.sort_by(:name, :order => "ALPHA").first
       #   user.name == "A"
       #   # => true
-      def sort_by(att, options = {})
+      def sort_by(att, _options = {})
         return [] unless key.exists
 
+        options = _options.dup
         options.merge!(:by => model.key["*->#{att}"])
 
         if options[:get]
@@ -195,7 +197,8 @@ module Ohm
         apply(:sdiffstore, key, source, target)
       end
 
-      def first(options = {})
+      def first(_options = {})
+        options = _options.dup
         options.merge!(:limit => 1)
 
         if options[:by]
