@@ -105,14 +105,6 @@ module Ohm
         self << model
       end
 
-      def first(options = {})
-        if options[:by]
-          sort_by(options.delete(:by), options.merge(:limit => 1)).first
-        else
-          model[key.first(options)]
-        end
-      end
-
       def sort(options = {})
         return [] unless key.exists
 
