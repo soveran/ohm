@@ -389,6 +389,15 @@ class ModelTest < Test::Unit::TestCase
 
       assert_equal "A", Person.all.sort_by(:name, :get => :name, :order => "ALPHA").first
     end
+
+    should "work on lists" do
+      @post = Post.create :body => "Hello world!"
+      @post.related << Post.create(:body => "C")
+      @post.related << Post.create(:body => "B")
+      @post.related << Post.create(:body => "A")
+
+      assert_equal ["A", "B", "C"], @post.related.sort_by(:body, :order => "ALPHA ASC").map { |model| model.body }
+    end
   end
 
   context "Loading attributes" do

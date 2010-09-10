@@ -113,12 +113,13 @@ module Ohm
         end
       end
 
-      def [](index)
-        model[key[index]]
-      end
+      def sort(options = {})
+        return [] unless key.exists
 
-      def sort(*args)
-        key.sort(*args).map(&model)
+        options[:start] ||= 0
+        options[:limit] = [options[:start], options[:limit]] if options[:limit]
+
+        key.sort(options).map(&model)
       end
 
       # Sort the model instances by the given attribute.
@@ -132,10 +133,12 @@ module Ohm
       #   user.name == "A"
       #   # => true
       def sort_by(att, options = {})
-        options.merge!(:by => model.key("*->#{att}"))
+        return [] unless key.exists
+
+        options.merge!(:by => model.key["*->#{att}"])
 
         if options[:get]
-          key.sort(options.merge(:get => model.key("*->#{options[:get]}")))
+          key.sort(options.merge(:get => model.key["*->#{options[:get]}"]))
         else
           sort(options)
         end
@@ -198,37 +201,6 @@ module Ohm
         source = keys(options)
         target = source.inject(key.volatile) { |chain, other| chain - other }
         apply(:sdiffstore, key, source, target)
-      end
-
-      def sort(options = {})
-        return [] unless key.exists
-
-        options[:start] ||= 0
-        options[:limit] = [options[:start], options[:limit]] if options[:limit]
-
-        key.sort(options).map(&model)
-      end
-
-      # Sort the model instances by the given attribute.
-      #
-      # @example Sorting elements by name:
-      #
-      #   User.create :name => "B"
-      #   User.create :name => "A"
-      #
-      #   user = User.all.sort_by(:name, :order => "ALPHA").first
-      #   user.name == "A"
-      #   # => true
-      def sort_by(att, options = {})
-        return [] unless key.exists
-
-        options.merge!(:by => model.key["*->#{att}"])
-
-        if options[:get]
-          key.sort(options.merge(:get => model.key["*->#{options[:get]}"]))
-        else
-          sort(options)
-        end
       end
 
       def first(options = {})
