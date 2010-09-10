@@ -145,14 +145,11 @@ module Ohm
         key.del
       end
 
-      def concat(models)
-        models.each { |model| add(model) }
-        self
-      end
-
       def replace(models)
-        clear
-        concat(models)
+        model.db.multi do
+          clear
+          models.each { |model| add(model) }
+        end
       end
 
       def empty?
