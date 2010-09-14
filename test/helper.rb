@@ -14,15 +14,6 @@ ensure
   $VERBOSE = original_verbose
 end
 
-def assert_raise(type = Exception)
-  begin
-    yield
-  rescue => ex
-  ensure
-    assert ex.kind_of?(type)
-  end
-end
-
 class Logger
   def self.current
     Thread.current[:logger] ||= new
@@ -49,8 +40,6 @@ class Logger
     @lines.map { |line| line[/Redis >> ([A-Z].+?)$/, 1] }.compact
   end
 end
-
-setup { }
 
 $VERBOSE = true
 
