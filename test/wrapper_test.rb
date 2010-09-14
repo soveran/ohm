@@ -1,4 +1,6 @@
-require File.expand_path(File.join(File.dirname(__FILE__), "test_helper"))
+# encoding: UTF-8
+
+require "./test/helper"
 
 $missing_constants = []
 
@@ -13,8 +15,6 @@ class Foo < Ohm::Model
   set :bars, Bar
 end
 
-class Tests < Test::Unit::TestCase
-  test "calls other const_missing hooks" do
-    assert_equal [:Bar], $missing_constants
-  end
+test "calls other const_missing hooks" do
+  assert [:Bar] == $missing_constants
 end

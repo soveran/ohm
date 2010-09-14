@@ -5,7 +5,7 @@ begin
 rescue LoadError
 end
 
-require "contest"
+require "cutest"
 
 def silence_warnings
   original_verbose, $VERBOSE = $VERBOSE, nil
@@ -14,7 +14,14 @@ ensure
   $VERBOSE = original_verbose
 end
 
-$VERBOSE = true
+def assert_raise(type = Exception)
+  begin
+    yield
+  rescue => ex
+  ensure
+    assert ex.kind_of?(type)
+  end
+end
 
 class Logger
   def self.current
@@ -43,11 +50,8 @@ class Logger
   end
 end
 
-require "ohm"
+setup { }
 
-class Test::Unit::TestCase
-  setup do
-    Ohm.redis = Redis.connect(:logger => Logger.current)
-    Ohm.flush
-  end
-end
+$VERBOSE = true
+
+require "ohm"

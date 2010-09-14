@@ -20,23 +20,11 @@ desc "Stop the Redis server"
 task :stop do
   if File.exists?(REDIS_PID)
     system "kill #{File.read(REDIS_PID)}"
-    system "rm #{REDIS_PID}"
   end
 end
 
 task :test do
-  require File.expand_path(File.join(File.dirname(__FILE__), "test", "test_helper"))
+  require File.expand_path("./test/helper", File.dirname(__FILE__))
 
-  Dir["test/**/*_test.rb"].each_with_index do |file, index|
-    ENV["REDIS_URL"] = "redis://127.0.0.1:6379/#{index}"
-
-    fork do
-      load file
-    end
-
-    Process.waitpid
-    exit $?.exitstatus unless $?.success?
-  end
-
-  Process.waitall
+  Cutest.run(Dir["test/*_test.rb"])
 end
