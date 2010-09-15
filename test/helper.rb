@@ -14,33 +14,6 @@ ensure
   $VERBOSE = original_verbose
 end
 
-class Logger
-  def self.current
-    Thread.current[:logger] ||= new
-  end
-
-  def initialize
-    clear
-  end
-
-  def clear
-    @lines = []
-  end
-
-  def debug(message)
-    @lines << message.to_s
-  end
-
-  def debug?; true; end
-  alias info  debug
-  alias warn  debug
-  alias error debug
-
-  def commands
-    @lines.map { |line| line[/Redis >> ([A-Z].+?)$/, 1] }.compact
-  end
-end
-
 $VERBOSE = true
 
 require "ohm"

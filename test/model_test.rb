@@ -373,8 +373,6 @@ end
 
 # Loading attributes
 setup do
-  Logger.current.clear
-  Ohm.redis = Redis.connect(:logger => Logger.current)
   Ohm.flush
 
   event = Event.new
@@ -382,18 +380,35 @@ setup do
   @id = event.create.id
 end
 
+def monitor
+  log = []
+
+  monitor = Thread.new do
+    Redis.connect.monitor do |line|
+      break if line =~ /ping/
+      log << line
+    end
+  end
+
+  sleep 0.5
+
+  log.clear.tap do
+    yield
+    Ohm.redis.ping
+    monitor.join
+  end
+end
+
 test "load attributes lazily" do
   event = Event[@id]
 
-  Logger.current.clear
+  log = monitor { event.name }
 
-  assert Logger.current.commands.empty?
-  assert "Ruby Tuesday" == event.name
-  assert !Logger.current.commands.empty?
+  assert !log.empty?
 
-  Logger.current.clear
-  assert "Ruby Tuesday" == event.name
-  assert Logger.current.commands.empty?
+  log = monitor { event.name }
+
+  assert log.empty?
 end
 
 test "load attributes as a strings" do
