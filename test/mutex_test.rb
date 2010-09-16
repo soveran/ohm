@@ -7,7 +7,6 @@ class Person < Ohm::Model
 end
 
 setup do
-  Ohm.flush
   @p1 = Person.create :name => "Albert"
   @p2 = Person[1]
 end

@@ -1,3 +1,5 @@
+# encoding: UTF-8
+
 require File.expand_path("./helper", File.dirname(__FILE__))
 
 class User < Ohm::Model
@@ -27,8 +29,6 @@ class User < Ohm::Model
 end
 
 setup do
-  Ohm.flush
-
   @user1 = User.create(:email => "foo", :activation_code => "bar", :update => "baz")
   @user2 = User.create(:email => "bar")
   @user3 = User.create(:email => "baz qux")
@@ -99,8 +99,6 @@ end
 
 # Indexing arbitrary attributes
 setup do
-  Ohm.flush
-
   @user1 = User.create(:email => "foo@gmail.com")
   @user2 = User.create(:email => "bar@gmail.com")
   @user3 = User.create(:email => "bazqux@yahoo.com")
@@ -117,8 +115,6 @@ end
 
 # Indexing enumerables
 setup do
-  Ohm.flush
-
   @user1 = User.create(:email => "foo@gmail.com")
   @user2 = User.create(:email => "bar@gmail.com")
 
@@ -157,8 +153,6 @@ class Event < Ohm::Model
 end
 
 setup do
-  Ohm.flush
-
   @event1 = Event.create(:timeline => 1).update(:days => [1, 2])
   @event2 = Event.create(:timeline => 1).update(:days => [2, 3])
   @event3 = Event.create(:timeline => 2).update(:days => [3, 4])

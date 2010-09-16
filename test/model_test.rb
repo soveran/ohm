@@ -1,6 +1,7 @@
 # encoding: UTF-8
 
 require File.expand_path("./helper", File.dirname(__FILE__))
+
 require "ostruct"
 
 class Post < Ohm::Model
@@ -52,10 +53,6 @@ class Meetup < Ohm::Model
   def validate
     assert_present :name
   end
-end
-
-setup do
-  Ohm.flush
 end
 
 test "assign attributes from the hash" do
@@ -171,7 +168,6 @@ test "allow arbitrary IDs" do
 end
 
 setup do
-  Ohm.flush
   Ohm.redis.sadd("Event:all", 1)
   Ohm.redis.hset("Event:1", "name", "Concert")
 end
@@ -183,7 +179,6 @@ test "return an instance of Event" do
 end
 
 setup do
-  Ohm.flush
   Ohm.redis.sadd("User:all", 1)
   Ohm.redis.hset("User:1", "email", "albert@example.com")
 end
@@ -199,7 +194,6 @@ test "allow to map key to models" do
 end
 
 setup do
-  Ohm.flush
   Ohm.redis.sadd("User:all", 1)
   Ohm.redis.set("User:1:email", "albert@example.com")
 
@@ -293,7 +287,6 @@ test "delete an existing model" do
 end
 
 setup do
-  Ohm.flush
 end
 
 test "be no leftover keys" do
@@ -373,8 +366,6 @@ end
 
 # Loading attributes
 setup do
-  Ohm.flush
-
   event = Event.new
   event.name = "Ruby Tuesday"
   @id = event.create.id
@@ -419,7 +410,6 @@ end
 
 # Attributes of type Set
 setup do
-  Ohm.flush
   @person1 = Person.create(:name => "Albert")
   @person2 = Person.create(:name => "Bertrand")
   @person3 = Person.create(:name => "Charles")
@@ -500,7 +490,6 @@ end
 
 # Attributes of type List
 setup do
-  Ohm.flush
   @post = Post.new
   @post.body = "Hello world!"
   @post.create
@@ -670,7 +659,6 @@ class ::Appointment < Ohm::Model
 end
 
 setup do
-  Ohm.flush
   @calendar = Calendar.create
 
   @calendar.holidays.key.rpush "2009-05-25"
@@ -699,7 +687,6 @@ end
 
 # Sorting lists and sets
 setup do
-  Ohm.flush
   @post = Post.create(:body => "Lorem")
   @post.related << Post.create
   @post.related << Post.create
@@ -712,7 +699,6 @@ end
 
 # Sorting lists and sets by model attributes
 setup do
-  Ohm.flush
   @event = Event.create(:name => "Ruby Tuesday")
   @event.attendees << Person.create(:name => "D")
   @event.attendees << Person.create(:name => "C")
@@ -737,7 +723,6 @@ end
 
 # Collections initialized with a Model parameter
 setup do
-  Ohm.flush
   @user = User.create(:email => "albert@example.com")
   @user.posts.add Post.create(:body => "D")
   @user.posts.add Post.create(:body => "C")
@@ -751,7 +736,6 @@ end
 
 # Counters
 setup do
-  Ohm.flush
   @event = Event.create(:name => "Ruby Tuesday")
 end
 
@@ -783,7 +767,6 @@ end
 
 # Comparison
 setup do
-  Ohm.flush
   @user = User.create(:email => "foo")
 end
 

@@ -2,6 +2,8 @@
 
 require File.expand_path("./helper", File.dirname(__FILE__))
 
+prepare.clear
+
 test "String#lines should return the parts when separated with \\n" do
   assert ["a\n", "b\n", "c\n"] == "a\nb\nc\n".lines.to_a
 end

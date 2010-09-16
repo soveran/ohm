@@ -6,10 +6,6 @@ class Tag < Ohm::Model
   attribute :name
 end
 
-setup do
-  Ohm.flush
-end
-
 test "using a new record as a hash key" do
   tag = Tag.new
   hash = { tag => "Ruby" }

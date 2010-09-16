@@ -1,4 +1,6 @@
-require "./test/helper"
+# encoding: UTF-8
+
+require File.expand_path("./helper", File.dirname(__FILE__))
 
 class Event < Ohm::Model
   attribute :name
@@ -19,11 +21,8 @@ class Validatable
   include Ohm::Validations
 end
 
-def context(*a); yield; end
-
 context "A new model with validations" do
   setup do
-    Ohm.flush
     @event = Event.new
   end
 
@@ -176,7 +175,6 @@ end
 
 context "Validations module" do
   setup do
-    Ohm.flush
     @target = Validatable.new
   end
 
@@ -210,8 +208,6 @@ context "Validations module" do
 
   context "assert_present" do
     setup do
-      Ohm.flush
-
       @target = Validatable.new
 
       def @target.validate

@@ -1,3 +1,5 @@
+# encoding: UTF-8
+
 require File.expand_path("./helper", File.dirname(__FILE__))
 
 class Person < Ohm::Model
@@ -31,7 +33,6 @@ class ::Post < Ohm::Model
 end
 
 setup do
-  Ohm.flush
   @post = Post.create
 end
 
@@ -71,6 +72,7 @@ test "be cached in an instance variable" do
 end
 
 setup do
+  @post = Post.create
   @note = Note.create(:content => "Interesting stuff", :source => @post)
   @comment = Comment.create(:note => @note)
 end

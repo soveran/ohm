@@ -2,6 +2,8 @@
 
 require File.expand_path("./helper", File.dirname(__FILE__))
 
+prepare.clear
+
 test "connects lazily" do
   Ohm.connect(:port => 9876)
 

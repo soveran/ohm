@@ -1,3 +1,5 @@
+# encoding: UTF-8
+
 require File.expand_path("./helper", File.dirname(__FILE__))
 
 require "json"
@@ -20,10 +22,6 @@ class Programmer < Ohm::Model
   def to_hash
     super.merge(:language => language)
   end
-end
-
-setup do
-  Ohm.flush
 end
 
 test "export an empty hash via to_hash" do

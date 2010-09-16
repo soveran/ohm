@@ -1,3 +1,5 @@
+# encoding: UTF-8
+
 $LOAD_PATH.unshift(File.expand_path(File.dirname(__FILE__) + "/../lib"))
 
 begin
@@ -17,3 +19,9 @@ end
 $VERBOSE = true
 
 require "ohm"
+
+prepare do
+  Ohm.flush
+end
+
+def context(*_); yield; end

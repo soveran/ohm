@@ -1,6 +1,8 @@
 # encoding: UTF-8
 
-require "./test/helper"
+require File.expand_path("./helper", File.dirname(__FILE__))
+
+prepare.clear
 
 $missing_constants = []
 
