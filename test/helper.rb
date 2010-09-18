@@ -23,5 +23,3 @@ require "ohm"
 prepare do
   Ohm.flush
 end
-
-def context(*_); yield; end
