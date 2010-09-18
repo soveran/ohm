@@ -381,7 +381,7 @@ def monitor
     end
   end
 
-  sleep 0.5
+  sleep 0.01
 
   log.clear.tap do
     yield

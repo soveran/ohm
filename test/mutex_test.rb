@@ -15,13 +15,13 @@ test "prevent other instances of the same object from grabing a locked record" d
   t1 = t2 = nil
   p1 = Thread.new do
     @p1.mutex do
-      sleep 0.1
+      sleep 0.01
       t1 = Time.now
     end
   end
 
   p2 = Thread.new do
-    sleep 0.1
+    sleep 0.01
     @p2.mutex do
       t2 = Time.now
     end
@@ -72,7 +72,7 @@ test "yield the right result after a lock fight" do
     threads << Thread.new do
       m.times do
         @candidate.mutex do
-          sleep 0.1
+          sleep 0.01
           @candidate.incr(:votes)
         end
       end
