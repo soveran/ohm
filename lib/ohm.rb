@@ -8,6 +8,7 @@ require File.join(File.dirname(__FILE__), "ohm", "pattern")
 require File.join(File.dirname(__FILE__), "ohm", "validations")
 require File.join(File.dirname(__FILE__), "ohm", "compat-1.8.6")
 require File.join(File.dirname(__FILE__), "ohm", "key")
+require File.join(File.dirname(__FILE__), "ohm", "railtie") if Object.const_defined?("Rails")
 
 module Ohm
 
