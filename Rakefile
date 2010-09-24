@@ -20,6 +20,7 @@ desc "Stop the Redis server"
 task :stop do
   if File.exists?(REDIS_PID)
     system "kill #{File.read(REDIS_PID)}"
+    File.delete(REDIS_PID)
   end
 end
 
