@@ -345,8 +345,6 @@ module Ohm
     @@counters = Hash.new { |hash, key| hash[key] = [] }
     @@indices = Hash.new { |hash, key| hash[key] = [] }
 
-    attr_writer :id
-
     def id
       @id or raise MissingID
     end
@@ -759,6 +757,7 @@ module Ohm
     end
 
   protected
+    attr_writer :id
 
     def key
       self.class.key[id]

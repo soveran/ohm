@@ -167,6 +167,14 @@ test "allow arbitrary IDs" do
   assert Event["abc123"].name == "Concert"
 end
 
+test "forbid assignment of IDs on a new object" do
+  event = Event.new(:name => "Concert")
+
+  assert_raise(NoMethodError) do
+    event.id = "abc123"
+  end
+end
+
 setup do
   Ohm.redis.sadd("Event:all", 1)
   Ohm.redis.hset("Event:1", "name", "Concert")
