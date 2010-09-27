@@ -58,7 +58,6 @@ module Ohm
   #   p.remove_comment_id(101)
   #   p.comment_ids == []
   #   # => true
-  #
   def self.redis
     threaded[:redis] ||= connection(*options)
   end
@@ -239,7 +238,6 @@ module Ohm
       #   # => true
       #
       # @see http://ohm.keyvalue.org/tutorials/chaining Chaining Ohm Sets
-      #
       def self.wrap(object)
         object.class == self ? object : new(object.inspect) { object }
       end
@@ -323,7 +321,6 @@ module Ohm
       #
       # @see file:OHM_REFERENCE.md#sort_options Sort options documentation
       # @see http://code.google.com/p/redis/wiki/SortCommand Redis SortCommand
-      #
       def sort(_options = {})
         return [] unless key.exists
 
@@ -377,7 +374,6 @@ module Ohm
       #   post.comments.clear
       #   post.comments.size == 0
       #   # => true
-      #
       def clear
         key.del
       end
@@ -406,7 +402,6 @@ module Ohm
       #   post.comments.replace(comments)
       #   post.comments.map(&:id) == ["101", "102", "103"]
       #   # => true
-      #
       def replace(models)
         model.db.multi do
           clear
@@ -484,7 +479,6 @@ module Ohm
       # @return [Fixnum] the total number of members for this set.
       # @see http://code.google.com/p/redis/wiki/ScardCommand SCARD in Redis
       #      Command Reference.
-      #
       def size
         key.scard
       end
@@ -564,7 +558,6 @@ module Ohm
       #
       # @param [Hash] options a hash of key value pairs.
       # @return [Ohm::Model::Set] a set satisfying the filter passed.
-      #
       def find(options)
         source = keys(options)
         target = source.inject(key.volatile) { |chain, other| chain + other }
@@ -589,7 +582,6 @@ module Ohm
       #
       # @param [Hash] options a hash of key value pairs.
       # @return [Ohm::Model::Set] a set satisfying the filter passed.
-      #
       def except(options)
         source = keys(options)
         target = source.inject(key.volatile) { |chain, other| chain - other }
@@ -633,7 +625,6 @@ module Ohm
       #         set is empty.
       #
       # @see file:OHM_REFERENCE.md#sort_options Sort options documentation
-      #
       def first(_options = {})
         options = _options.dup
         options.merge!(:limit => 1)
@@ -654,7 +645,6 @@ module Ohm
       #
       # @see http://code.google.com/p/redis/wiki/SismemberCommand SISMEMBER
       #      in Redis Command Reference.
-      #
       def include?(model)
         key.sismember(model.id)
       end
@@ -686,6 +676,7 @@ module Ohm
     end
 
     class Index < Set
+      # @see Ohm::Model::Set#find
       def find(options)
         keys = keys(options)
         return super(options) if keys.size > 1
@@ -693,12 +684,36 @@ module Ohm
         Set.new(keys.first, Wrapper.wrap(model))
       end
     end
-
+    
+    # Provides a Ruby-esque interface to a _Redis_ *LIST*. The *LIST* is 
+    # assumed to be composed of ids which maps to {#model}.
     class List < Collection
+      # An implementation which relies on *LRANGE* and yields an instance
+      # of {#model}.
+      #
+      # @see http://code.google.com/p/redis/wiki/LrangeCommand LRANGE
+      #      in Redis Command Reference.
       def each(&block)
         key.lrange(0, -1).each { |id| block.call(model[id]) }
       end
 
+      # Thin wrapper around *RPUSH*.
+      # 
+      # @example
+      #   
+      #   class Post < Ohm::Model
+      #     list :comments, Comment
+      #   end
+      #
+      #   class Comment < Ohm::Model
+      #   end
+      #
+      #   p = Post.create
+      #   p.comments << Comment.create
+      #
+      # @param [#id] model typically an {Ohm::Model} instance.
+      # @see http://code.google.com/p/redis/wiki/RpushCommand RPUSH
+      #      in Redis Command Reference.
       def <<(model)
         key.rpush(model.id)
       end
@@ -710,6 +725,32 @@ module Ohm
       # specified by range. Negative indices count backward from the end
       # of the array (-1 is the last element). Returns nil if the index
       # (or starting index) are out of range.
+      #
+      # @example
+      #   class Post < Ohm::Model
+      #     list :comments, Comment
+      #   end
+      #
+      #   class Comment < Ohm::Model
+      #   end
+      #
+      #   post = Post.create
+      #
+      #   10.times { post.comments << Comment.create }
+      #
+      #   post.comments[0] == Comment[1]
+      #   # => true
+      #
+      #   post.comments[0, 4] == (1..5).map { |i| Comment[i] }
+      #   # => true
+      #
+      #   post.comments[0, 4] == post.comments[0..4]
+      #   # => true
+      #
+      #   post.comments.all == post.comments[0, -1]
+      #   # => true
+      # @see http://code.google.com/p/redis/wiki/LrangeCommand LRANGE
+      #      in Redis Command Reference.
       def [](index, limit = nil)
         case [index, limit]
         when Pattern[Fixnum, Fixnum] then
@@ -720,31 +761,74 @@ module Ohm
           model[key.lindex(index)]
         end
       end
-
+      
+      # Convience method for doing list[0], similar to Ruby's Array#first
+      # method.
+      #
+      # @return [Ohm::Model, nil] an {Ohm::Model} instance or nil if the list
+      #         is empty.
       def first
         self[0]
       end
 
+      # Returns the model at the tail of this list, while simultaneously
+      # removing it from the list.
+      #
+      # @return [Ohm::Model, nil] an {Ohm::Model} instance or nil if the list
+      #         is empty.
+      # @see http://code.google.com/p/redis/wiki/LpopCommand RPOP
+      #      in Redis Command Reference.
       def pop
         model[key.rpop]
       end
 
+      # Returns the model at the head of this list, while simultaneously
+      # removing it from the list.
+      #
+      # @return [Ohm::Model, nil] an {Ohm::Model} instance or nil if the list
+      #         is empty.
+      # @see http://code.google.com/p/redis/wiki/LpopCommand LPOP
+      #      in Redis Command Reference.
       def shift
         model[key.lpop]
       end
 
+      # Prepends an {Ohm::Model} instance at the beginning of this list.
+      #
+      # @param [#id] typically an {Ohm::Model} instance.
+      #
+      # @see http://code.google.com/p/redis/wiki/RpushCommand LPUSH
+      #      in Redis Command Reference.
       def unshift(model)
         key.lpush(model.id)
       end
 
+      # Returns an array representation of this list, with elements of the
+      # array being an instance of {#model}.
+      #
+      # @return [Array<Ohm::Model>] instances of {Ohm::Model}.
       def all
         key.lrange(0, -1).map(&model)
       end
 
+      # Thin Ruby interface wrapper for *LLEN*.
+      #
+      # @return [Fixnum] the total number of elements for this list.
+      # @see http://code.google.com/p/redis/wiki/LlenCommand LLEN in Redis
+      #      Command Reference.
       def size
         key.llen
       end
 
+      # Ruby-like interface wrapper around *LRANGE*.
+      #
+      # @param [#id] model typically an {Ohm::Model} instance.
+      #
+      # @return [true, false] whether or not the {Ohm::Model} instance is
+      #         an element of this list.
+      #
+      # @see http://code.google.com/p/redis/wiki/LrangeCommand LRANGE
+      #      in Redis Command Reference.
       def include?(model)
         key.lrange(0, -1).include?(model.id)
       end
@@ -1199,7 +1283,6 @@ module Ohm
     #   # you may want to call this method from outside of the class
     #   # definition:
     #   Post.connect(:port => 6380, :db => 2)
-    #
     def self.connect(*options)
       self.db = Ohm.connection(*options)
     end
