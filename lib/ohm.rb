@@ -684,8 +684,8 @@ module Ohm
         Set.new(keys.first, Wrapper.wrap(model))
       end
     end
-    
-    # Provides a Ruby-esque interface to a _Redis_ *LIST*. The *LIST* is 
+
+    # Provides a Ruby-esque interface to a _Redis_ *LIST*. The *LIST* is
     # assumed to be composed of ids which maps to {#model}.
     class List < Collection
       # An implementation which relies on *LRANGE* and yields an instance
@@ -698,9 +698,9 @@ module Ohm
       end
 
       # Thin wrapper around *RPUSH*.
-      # 
+      #
       # @example
-      #   
+      #
       #   class Post < Ohm::Model
       #     list :comments, Comment
       #   end
@@ -761,7 +761,7 @@ module Ohm
           model[key.lindex(index)]
         end
       end
-      
+
       # Convience method for doing list[0], similar to Ruby's Array#first
       # method.
       #
@@ -844,7 +844,7 @@ module Ohm
     module Validations
       include Ohm::Validations
 
-      # Validates that the attribute or array of attributes are unique. For 
+      # Validates that the attribute or array of attributes are unique. For
       # this, an index of the same kind must exist.
       #
       # @overload assert_unique :name
@@ -858,7 +858,7 @@ module Ohm
     end
 
     include Validations
-  
+
     # Raised when you try and get the *id* of an {Ohm::Model} before it is
     # persisted.
     #
@@ -868,7 +868,7 @@ module Ohm
     #
     #   class Comment < Ohm::Model
     #   end
-    #   
+    #
     #   ex = nil
     #   begin
     #     Post.new.id
@@ -879,14 +879,14 @@ module Ohm
     #   ex.kind_of?(Ohm::Model::MissingID)
     #   # => true
     #
-    # This is also one of the most common errors you'll be faced with when 
-    # you're new to {Ohm} coming from an ActiveRecord background, where you 
+    # This is also one of the most common errors you'll be faced with when
+    # you're new to {Ohm} coming from an ActiveRecord background, where you
     # are used to just assigning associations even before the base model is
     # persisted.
-    # 
+    #
     #   # following from the example above:
     #   post = Post.new
-    #   
+    #
     #   ex = nil
     #   begin
     #     post.comments << Comment.new
@@ -909,6 +909,31 @@ module Ohm
       end
     end
 
+    # Raised when you try and do an {Ohm::Model::Set#find} operation and use
+    # a key which you did not define as an index.
+    #
+    #   class Post < Ohm::Model
+    #     attribute :title
+    #   end
+    #
+    #   post = Post.create(:title => "Ohm")
+    #
+    #   ex = nil
+    #   begin
+    #     Post.find(:title => "Ohm")
+    #   rescue Exception => e
+    #     ex = e
+    #   end
+    #
+    #   ex.kind_of?(Ohm::Model::IndexNotFound)
+    #   # => true
+    #
+    # To correct this problem, simply define a _:title_ *index* in your class.
+    #
+    #   class Post < Ohm::Model
+    #     attribute :title
+    #     index :title
+    #   end
     class IndexNotFound < Error
       def initialize(att)
         @att = att
@@ -928,8 +953,9 @@ module Ohm
       @id or raise MissingID
     end
 
-    # Defines a string attribute for the model. This attribute will be persisted by Redis
-    # as a string. Any value stored here will be retrieved in its string representation.
+    # Defines a string attribute for the model. This attribute will be
+    # persisted by _Redis_ as a string. Any value stored here will be
+    # retrieved in its string representation.
     #
     # @param name [Symbol] Name of the attribute.
     def self.attribute(name)
@@ -944,8 +970,8 @@ module Ohm
       attributes << name unless attributes.include?(name)
     end
 
-    # Defines a counter attribute for the model. This attribute can't be assigned, only incremented
-    # or decremented. It will be zero by default.
+    # Defines a counter attribute for the model. This attribute can't be
+    # assigned, only incremented or decremented. It will be zero by default.
     #
     # @param name [Symbol] Name of the counter.
     def self.counter(name)
@@ -956,8 +982,8 @@ module Ohm
       counters << name unless counters.include?(name)
     end
 
-    # Defines a list attribute for the model. It can be accessed only after the model instance
-    # is created.
+    # Defines a list attribute for the model. It can be accessed only after
+    # the model instance is created.
     #
     # @param name [Symbol] Name of the list.
     def self.list(name, model)
@@ -965,9 +991,10 @@ module Ohm
       collections << name unless collections.include?(name)
     end
 
-    # Defines a set attribute for the model. It can be accessed only after the model instance
-    # is created. Sets are recommended when insertion and retrival order is irrelevant, and
-    # operations like union, join, and membership checks are important.
+    # Defines a set attribute for the model. It can be accessed only after
+    # the model instance is created. Sets are recommended when insertion and
+    # retreival order is irrelevant, and operations like union, join, and
+    # membership checks are important.
     #
     # @param name [Symbol] Name of the set.
     def self.set(name, model)
@@ -977,8 +1004,8 @@ module Ohm
 
     # Creates an index (a set) that will be used for finding instances.
     #
-    # If you want to find a model instance by some attribute value, then an index for that
-    # attribute must exist.
+    # If you want to find a model instance by some attribute value, then an
+    # index for that attribute must exist.
     #
     # @example
     #   class User < Ohm::Model
@@ -1024,7 +1051,7 @@ module Ohm
     #   @comment.post
     #   # => nil
     #
-    # @see Ohm::Model::collection
+    # @see Ohm::Model.collection
     def self.reference(name, model)
       model = Wrapper.wrap(model)
 
@@ -1054,8 +1081,8 @@ module Ohm
       end
     end
 
-    # Define a collection of objects which have a {Ohm::Model::reference reference}
-    # to this model.
+    # Define a collection of objects which have a
+    # {Ohm::Model.reference reference} to this model.
     #
     #   class Comment < Ohm::Model
     #     attribute :content
@@ -1077,7 +1104,8 @@ module Ohm
     #   end
     #
     #   @person = Person.create :name => "Albert"
-    #   @post = Post.create :content => "Interesting stuff", :author => @person
+    #   @post = Post.create :content => "Interesting stuff",
+    #                       :author => @person
     #   @comment = Comment.create :content => "Indeed!", :post => @post
     #
     #   @post.comments.first.content
@@ -1086,56 +1114,119 @@ module Ohm
     #   @post.author.name
     #   # => "Albert"
     #
-    # *Important*: please note that even though a collection is an {Ohm::Model::Set},
+    # *Important*: please note that even though a collection is a
+    # {Ohm::Model::Set set},
     # you should not add or remove objects from this collection directly.
     #
-    # @see Ohm::Model::reference
+    # @see Ohm::Model.reference
     # @param name      [Symbol]   Name of the collection.
     # @param model     [Constant] Model where the reference is defined.
-    # @param reference [Symbol]   Reference as defined in the associated model.
+    # @param reference [Symbol]   Reference as defined in the associated
+    #                             model.
     def self.collection(name, model, reference = to_reference)
       model = Wrapper.wrap(model)
       define_method(name) { model.unwrap.find(:"#{reference}_id" => send(:id)) }
     end
 
+    # Used by {Ohm::Model.collection} to infer the reference.
+    #
+    # @return [Symbol] representation of this class in an all-lowercase
+    #                  format, separated by underscores and demodulized.
     def self.to_reference
       name.to_s.match(/^(?:.*::)*(.*)$/)[1].gsub(/([a-z\d])([A-Z])/, '\1_\2').downcase.to_sym
     end
 
+    # @private
     def self.define_memoized_method(name, &block)
       define_method(name) do
         @_memo[name] ||= instance_eval(&block)
       end
     end
 
+    # Allows you to find an {Ohm::Model} instance by its *id*.
+    #
+    # @param  [Fixnum, String]  id the id of the model you want to find.
+    # @return [Ohm::Model, nil] the instance of Ohm::Model or nil of it does
+    #                           not exist.
     def self.[](id)
       new(:id => id) if id && exists?(id)
     end
 
+    # @private Used for conveniently doing [1, 2].map(&Post) for example.
     def self.to_proc
       Proc.new { |id| self[id] }
     end
 
+    # Returns a {Ohm::Model::Set set} containing all the members of a given
+    # class.
+    #
+    # @example
+    #
+    #   class Post < Ohm::Model
+    #   end
+    #
+    #   post = Post.create
+    #
+    #   Post.all.include?(post)
+    #   # => true
+    #
+    #   post.delete
+    #
+    #   Post.all.include?(post)
+    #   # => false
     def self.all
       Ohm::Model::Index.new(key[:all], Wrapper.wrap(self))
     end
 
+    # All the defined attributes within a class.
+    # @see Ohm::Model.attribute
     def self.attributes
       @@attributes[self]
     end
 
+    # All the defined counters within a class.
+    # @see Ohm::Model.counter
     def self.counters
       @@counters[self]
     end
 
+    # All the defined collections within a class. This will be comprised of
+    # all {Ohm::Model::Set sets} and {Ohm::Model::List lists} defined within
+    # your class.
+    #
+    # @example
+    #   class Post < Ohm::Model
+    #     set  :authors, Author
+    #     list :comments, Comment
+    #   end
+    #
+    #   Post.collections == [:authors, :comments]
+    #   # => true
+    #
+    # @see Ohm::Model.list
+    # @see Ohm::Model.set
     def self.collections
       @@collections[self]
     end
 
+    # All the defined indices within a class.
+    # @see Ohm::Model.index
     def self.indices
       @@indices[self]
     end
 
+    # Convenience method to create and return the newly created object.
+    #
+    # @example
+    #
+    #   class Post < Ohm::Model
+    #     attribute :title
+    #   end
+    #
+    #   post = Post.create(:title => "A new post")
+    #
+    # @param  [Hash] args attribute-value pairs for the object.
+    # @return [Ohm::Model] an instance of the class you're trying to create.
     def self.create(*args)
       model = new(*args)
       model.create
@@ -1149,16 +1240,61 @@ module Ohm
     #   event2 = Event.create day: "2009-09-09", author: "Benoit"
     #   event3 = Event.create day: "2009-09-10", author: "Albert"
     #
-    #   assert_equal [event1], Event.find(author: "Albert", day: "2009-09-09")
+    #   [event1] == Event.find(author: "Albert", day: "2009-09-09").to_a
+    #   # => true
     def self.find(hash)
       raise ArgumentError, "You need to supply a hash with filters. If you want to find by ID, use #{self}[id] instead." unless hash.kind_of?(Hash)
       all.find(hash)
     end
 
+    # Encode a value, making it safe to use as a key. Internally used by
+    # {Ohm::Model.index_key_for} to canonicalize the indexed values.
+    #
+    # @param  [#to_s]  value any object you want to be able to use as a key.
+    # @return [String] a string which is safe to use as a key.
+    # @see Ohm::Model.index_key_for
     def self.encode(value)
       Base64.encode64(value.to_s).gsub("\n", "")
     end
 
+    # Constructor for all subclasses of {Ohm::Model}, which optionally
+    # takes a Hash of attribute value pairs.
+    #
+    # Starting with Ohm 0.1.0, you can use custom ids instead of being forced
+    # to use auto incrementing numeric ids, but keep in mind that you have
+    # to pass in the preferred id during object initialization.
+    #
+    # @example
+    #
+    #   class User < Ohm::Model
+    #   end
+    #
+    #   class Post < Ohm::Model
+    #     attribute :title
+    #     reference :user, User
+    #   end
+    #
+    #   user = User.create
+    #   p1 = Post.new(:title => "Redis", :user_id => user.id)
+    #   p1.save
+    #
+    #   p1.user_id == user.id
+    #   # => true
+    #
+    #   p1.user == user
+    #   # => true
+    #
+    #   # You can also just pass the actual User object, which is the better
+    #   # way to do it:
+    #   Post.new(:title => "Different way", :user => user).user == user
+    #   # => true
+    #
+    #   # Let's try and generate custom ids
+    #   p2 = Post.new(:id => "ohm-redis-library", :title => "Lib")
+    #   p2 == Post["ohm-redis-library"]
+    #   # => true
+    #
+    # @param [Hash] attrs attribute value pairs
     def initialize(attrs = {})
       @id = nil
       @_memo = {}
@@ -1166,10 +1302,15 @@ module Ohm
       update_attributes(attrs)
     end
 
+    # @return [true, false] whether or not this object has an id.
     def new?
       !@id
     end
 
+    # Create this model if it passes all validations.
+    #
+    # @return [Ohm::Model, nil] the newly created object or nil if it fails
+    #                           validation.
     def create
       return unless valid?
       initialize_id
@@ -1181,6 +1322,10 @@ module Ohm
       end
     end
 
+    # Create or update this object based on the state of #new?.
+    #
+    # @return [Ohm::Model, nil] the saved object or nil if it fails
+    #                           validation.
     def save
       return create if new?
       return unless valid?
@@ -1191,17 +1336,32 @@ module Ohm
       end
     end
 
+    # Update this object, optionally accepting new attributes.
+    #
+    # @param [Hash] attrs attribute value pairs to use for the updated
+    #               version
+    # @return [Ohm::Model, nil] the updated object or nil if it fails
+    #                           validation.
     def update(attrs)
       update_attributes(attrs)
       save
     end
 
+    # Locally update all attributes without persisting the changes.
+    # Internally used by {Ohm::Model#initialize} and {Ohm::Model#update}
+    # to set attribute value pairs.
+    #
+    # @param [Hash] attrs attribute value pairs.
     def update_attributes(attrs)
       attrs.each do |key, value|
         send(:"#{key}=", value)
       end
     end
 
+    # Delete this object from the _Redis_ datastore, ensuring that all
+    # indices, attributes, collections, etc are also deleted with it.
+    #
+    # @return [Ohm::Model] Returns a reference of itself.
     def delete
       delete_from_indices
       delete_attributes(collections) unless collections.empty?
@@ -1211,7 +1371,8 @@ module Ohm
 
     # Increment the counter denoted by :att.
     #
-    # @param att [Symbol] Attribute to increment.
+    # @param [Symbol] att Attribute to increment.
+    # @param [Fixnum] count An optional increment step to use.
     def incr(att, count = 1)
       raise ArgumentError, "#{att.inspect} is not a counter." unless counters.include?(att)
       write_local(att, key.hincrby(att, count))
@@ -1219,14 +1380,15 @@ module Ohm
 
     # Decrement the counter denoted by :att.
     #
-    # @param att [Symbol] Attribute to decrement.
+    # @param [Symbol] att Attribute to decrement.
+    # @param [Fixnum] count An optional decrement step to use.
     def decr(att, count = 1)
       incr(att, -count)
     end
 
     # Export the id and errors of the object. The `to_hash` takes the opposite
-    # approach of providing all the attributes and instead favors a
-    # white listed approach.
+    # approach of providing all the attributes and instead favors a white
+    # listed approach.
     #
     # @example
     #
@@ -1262,26 +1424,62 @@ module Ohm
       attrs
     end
 
+    # Returns the JSON representation of the {#to_hash} for this object.
+    # Defining a custom {#to_hash} method will also affect this and return
+    # a corresponding JSON representation of whatever you have in your
+    # {#to_hash}.
+    #
+    # @example
+    #   require "json"
+    #
+    #   class Post < Ohm::Model
+    #     attribute :title
+    #
+    #     def to_hash
+    #       super.merge(:title => title)
+    #     end
+    #   end
+    #
+    #   p1 = Post.create(:title => "Delta Force")
+    #   p1.to_hash == { :id => "1", :title => "Delta Force" }
+    #   # => true
+    #
+    #   p1.to_json == "{\"id\":\"1\",\"title\":\"Delta Force\"}"
+    #   # => true
+    #
+    # @return [String] The JSON representation of this object defined in
+    #                  terms of {#to_hash}.
     def to_json(*args)
       to_hash.to_json(*args)
     end
 
+    # Convenience wrapper for {Ohm::Model.attributes}.
     def attributes
       self.class.attributes
     end
 
+    # Convenience wrapper for {Ohm::Model.counters}.
     def counters
       self.class.counters
     end
 
+    # Convenience wrapper for {Ohm::Model.collections}.
     def collections
       self.class.collections
     end
 
+    # Convenience wrapper for {Ohm::Model.indices}.
     def indices
       self.class.indices
     end
 
+    # Implementation of equality checking. Equality is defined by two simple
+    # rules:
+    #
+    # 1. They have the same class.
+    # 2. They have the same key (_Redis_ key e.g. Post:1 == Post:1).
+    #
+    # @return [true, false] Whether or not the passed object is equal.
     def ==(other)
       other.kind_of?(self.class) && other.key == key
     rescue MissingID
@@ -1289,11 +1487,31 @@ module Ohm
     end
     alias :eql? :==
 
+    # Allows you to safely use an instance of {Ohm::Model} as a key in a
+    # Ruby hash without running into weird scenarios.
+    #
+    # @example
+    #
+    #   class Post < Ohm::Model
+    #   end
+    #
+    #   h = {}
+    #   p1 = Post.new
+    #   h[p1] = "Ruby"
+    #   h[p1] == "Ruby"
+    #   # => true
+    #
+    #   p1.save
+    #   h[p1] == "Ruby"
+    #   # => false
+    # @return [Fixnum] An integer representing this object to be used
+    #                  as the index for hashes in Ruby.
     def hash
       new? ? super : key.hash
     end
 
-    # Lock the object before executing the block, and release it once the block is done.
+    # Lock the object before executing the block, and release it once the
+    # block is done.
     def mutex
       lock!
       yield
@@ -1302,6 +1520,11 @@ module Ohm
       unlock!
     end
 
+    # Returns everything, including {Ohm::Model.attributes attributes},
+    # {Ohm::Model.collections collections}, {Ohm::Model.counters counters},
+    # and the id of this object.
+    #
+    # Useful for debugging and for doing irb work.
     def inspect
       everything = (attributes + collections + counters).map do |att|
         value = begin
@@ -1316,7 +1539,14 @@ module Ohm
       "#<#{self.class}:#{new? ? "?" : id} #{everything.map {|e| e.join("=") }.join(" ")}>"
     end
 
-    # Makes the model connect to a different Redis instance.
+    # Makes the model connect to a different Redis instance. This is useful
+    # for scaling a large application, where one model can be stored in a
+    # different Redis instance, and some other groups of models can be
+    # in another Redis instance.
+    #
+    # This approach of splitting models is a lot simpler than doing a
+    # distributed *Redis* solution and may well be the right solution for
+    # certain cases.
     #
     # @example
     #
@@ -1337,6 +1567,10 @@ module Ohm
   protected
     attr_writer :id
 
+    # @return [Ohm::Key] A key scoped to the model which uses this object's
+    #                    id.
+    #
+    # @see http://github.com/soveran/nest The Nest library.
     def key
       self.class.key[id]
     end
