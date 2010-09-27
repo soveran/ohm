@@ -380,8 +380,7 @@ module Ohm
       end
 
       # Simultaneously clear and add all models. This wraps all operations
-      # in a {http://code.google.com/p/redis/wiki/MultiExecCommand MULTI EXEC}
-      # block to make the whole operation atomic.
+      # in a MULTI EXEC block to make the whole operation atomic.
       #
       # @example
       #
@@ -403,6 +402,7 @@ module Ohm
       #   post.comments.replace(comments)
       #   post.comments.map(&:id) == ["101", "102", "103"]
       #   # => true
+      # @see http://code.google.com/p/redis/wiki/MultiExecCommand MULTI EXEC.
       def replace(models)
         model.db.multi do
           clear
