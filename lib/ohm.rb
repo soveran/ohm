@@ -11,26 +11,97 @@ require File.join(File.dirname(__FILE__), "ohm", "key")
 
 module Ohm
 
-  # Provides access to the Redis database. This is shared accross all models and instances.
+  # Provides access to the _Redis_ database. It is highly recommended that you
+  # use this sparingly, and only if you really know what you're doing.
+  #
+  # The better way to access the _Redis_ database and do raw _Redis_
+  # commands would be one of the following:
+  #
+  # 1. Use {Ohm::Model.key} or {Ohm::Model#key}. So if the name of your
+  #    model is *Post*, it would be *Post.key* or the protected method
+  #    *#key* which should be used within your *Post* model.
+  #
+  # 2. Use {Ohm::Model.db} or {Ohm::Model#db}. Although this is also
+  #    accessible, it is much cleaner and terse to use {Ohm::Model.key}.
+  #
+  # @example
+  #   class Post < Ohm::Model
+  #     def comment_ids
+  #       key[:comments].zrange(0, -1)
+  #     end
+  #
+  #     def add_comment_id(id)
+  #       key[:comments].zadd(Time.now.to_i, id)
+  #     end
+  #
+  #     def remove_comment_id(id)
+  #       # Let's use the db style here just to demonstrate.
+  #       db.zrem key[:comments], id
+  #     end
+  #   end
+  #
+  #   Post.key[:latest].sadd(1)
+  #   Post.key[:latest].smembers == ["1"]
+  #   # => true
+  #
+  #   Post.key[:latest] == "Post:latest"
+  #   # => true
+  #
+  #   p = Post.create
+  #   p.comment_ids == []
+  #   # => true
+  #
+  #   p.add_comment_id(101)
+  #   p.comment_ids == ["101"]
+  #   # => true
+  #
+  #   p.remove_comment_id(101)
+  #   p.comment_ids == []
+  #   # => true
+  #
   def self.redis
     threaded[:redis] ||= connection(*options)
   end
 
+  # Assign a new _Redis_ connection. Internally used by {Ohm.connect}
+  # to clear the cached _Redis_ instance.
+  #
+  # If you're looking to change the connection or reconnect with different
+  # parameters, try {Ohm.connect} or {Ohm::Model.connect}.
+  # @see connect
+  # @see Model.connect
+  # @param connection [Redis] an instance created using `Redis.new`.
   def self.redis=(connection)
     threaded[:redis] = connection
   end
 
+  # @private Used internally by Ohm for thread safety.
   def self.threaded
     Thread.current[:ohm] ||= {}
   end
 
-  # Connect to a redis database.
+  # Connect to a _Redis_ database.
   #
-  # @param options [Hash] options to create a message with.
-  # @option options [#to_s] :host ('127.0.0.1') Host of the redis database.
-  # @option options [#to_s] :port (6379) Port number.
-  # @option options [#to_s] :db (0) Database number.
-  # @option options [#to_s] :timeout (0) Database timeout in seconds.
+  # It is also worth mentioning that you can pass in a *URI* e.g.
+  #
+  #   Ohm.connect :url => "redis://127.0.0.1:6379/0"
+  #
+  # Note that the value *0* refers to the database number for the given
+  # _Redis_ instance.
+  #
+  # Also you can use {Ohm.connect} without any arguments. The behavior will
+  # be as follows:
+  #
+  #   # Connect to redis://127.0.0.1:6379/0
+  #   Ohm.connect
+  #
+  #   # Connect to redis://10.0.0.100:22222/5
+  #   Ohm.connect
+  #
+  # @param options [{Symbol => #to_s}] An options hash.
+  # @see file:OHM_REFERENCE.md#connect_options Ohm.connect options
+  #      documentation
+  #
   # @example Connect to a database in port 6380.
   #   Ohm.connect(:port => 6380)
   def self.connect(*options)
@@ -38,29 +109,98 @@ module Ohm
     @options = options
   end
 
-  # Return a connection to Redis.
+  # @private Return a connection to Redis.
   #
-  # This is a wapper around Redis.connect(options)
+  # This is a wrapper around Redis.connect(options)
   def self.connection(*options)
     Redis.connect(*options)
   end
 
+  # @private Stores the connection options for Ohm.redis.
   def self.options
     @options = [] unless defined? @options
     @options
   end
 
-  # Clear the database.
+  # Clear the database. You typically use this only during testing,
+  # or when you seed your site.
   def self.flush
     redis.flushdb
   end
 
+  # The base class of all *Ohm* errors. Can be used as a catch all for
+  # Ohm related errors.
   class Error < StandardError; end
 
+  # This is the class that you need to extend in order to define your
+  # own models.
+  #
+  # Probably the most magic happening within {Ohm::Model} is the catching
+  # of {Ohm::Model.const_missing} exceptions to allow the use of constants
+  # even before they are defined.
+  #
+  # @example
+  #
+  #   class Post < Ohm::Model
+  #     reference :author, User # no User definition yet!
+  #   end
+  #
+  #   class User < Ohm::Model
+  #   end
+  #
+  # @see Model.const_missing
   class Model
 
     # Wraps a model name for lazy evaluation.
     class Wrapper < BasicObject
+
+      # Allows you to use a constant even before it is defined. This solves
+      # the issue of having to require inter-project dependencies in a very
+      # simple and "magic-free" manner.
+      #
+      # Example of how it was done before Wrapper existed:
+      #
+      #   require "./app/models/user"
+      #   require "./app/models/comment"
+      #
+      #   class Post < Ohm::Model
+      #     reference :author, User
+      #     list :comments, Comment
+      #   end
+      #
+      # Now, you can simply do the following:
+      #   class Post < Ohm::Model
+      #     reference :author, User
+      #     list :comments, Comment
+      #   end
+      #
+      # @example
+      #   module Commenting
+      #     def self.included(base)
+      #       base.list :comments, Ohm::Model::Wrapper.new(:Comment) {
+      #         Object.const_get(:Comment)
+      #       }
+      #     end
+      #   end
+      #
+      #   # In your classes:
+      #   class Post < Ohm::Model
+      #     include Commenting
+      #   end
+      #
+      #   class Comment < Ohm::Model
+      #   end
+      #
+      #   p = Post.create
+      #   p.comments.empty?
+      #   # => true
+      #
+      #   p.comments.push(Comment.create)
+      #   p.comments.size == 1
+      #   # => true
+      #
+      # @param name [Symbol, String] name of wrapped class.
+      # @param block [#to_proc] closure for getting the name of the constant
       def initialize(name, &block)
         @name = name
         @caller = ::Kernel.caller[2]
@@ -73,38 +213,117 @@ module Ohm
         end
       end
 
+      # Used as a convenience for wrapping an existing constant into an
+      # {Ohm::Model::Wrapper}.
+      #
+      # This is used extensively within the library for points where a user
+      # defined class (e.g. _Post_, _User_, _Comment_) is expected.
+      #
+      # You can also use this if you need to do uncommon things, such as
+      # creating your own {Ohm::Model::Set}, {Ohm::Model::List}, etc.
+      #
+      # (*NOTE:* Keep in mind that the following example is given only as an
+      # education example, and is in no way prescribed as good design.)
+      #
+      #   class User < Ohm::Model
+      #   end
+      #
+      #   User.create(:id => "1001")
+      #
+      #   Ohm.redis.sadd("myset", 1001)
+      #
+      #   key = Ohm::Key.new("myset", Ohm.redis)
+      #   set = Ohm::Model::Set.new(key, Ohm::Model::Wrapper.wrap(User))
+      #
+      #   [User[1001]] == set.all.to_a
+      #   # => true
+      #
+      # @see http://ohm.keyvalue.org/tutorials/chaining Chaining Ohm Sets
+      #
       def self.wrap(object)
         object.class == self ? object : new(object.inspect) { object }
       end
 
+      # Evaluates the passed block in {Ohm::Model::Wrapper#initialize}.
+      #
+      # @return [Class] the wrapped class.
       def unwrap
         @block.call
       end
 
+      # Since {Ohm::Model::Wrapper} is a subclass of _BasicObject_ we have
+      # to manually declare this.
+      #
+      # @return [Wrapper]
       def class
         Wrapper
       end
 
+      # @return [String] a string describing this lazy object.
       def inspect
         "<Wrapper for #{@name} (in #{@caller})>"
       end
     end
 
+    # Defines the base implementation for all enumerable types in Ohm,
+    # which includes {Ohm::Model::Set}, {Ohm::Model::List} and
+    # {Ohm::Model::Index}.
     class Collection
       include Enumerable
 
+      # An instance of {Ohm::Key}.
       attr :key
+
+      # A subclass of {Ohm::Model}
       attr :model
 
+      # @param key [Key] A key which includes a _Redis_ connection.
+      # @param model [Ohm::Model::Wrapper] a wrapped subclass of {Ohm::Model}.
       def initialize(key, model)
         @key = key
         @model = model.unwrap
       end
 
+      # Adds an instance of {Ohm::Model} to this collection.
+      #
+      # @param model [#id] a model with an ID.
       def add(model)
         self << model
       end
 
+      # Sort this collection using the ID by default, or an attribute defined
+      # in the elements of this collection.
+      #
+      # *NOTE:* It is worth mentioning that if you want to sort by a specific
+      # attribute instead of an ID, you would probably want to use
+      # {Ohm::Model::Collection#sort_by} instead.
+      #
+      # @example
+      #   class Post < Ohm::Model
+      #     attribute :title
+      #   end
+      #
+      #   p1 = Post.create(:title => "Alpha")
+      #   p2 = Post.create(:title => "Beta")
+      #   p3 = Post.create(:title => "Gamma")
+      #
+      #   [p1, p2, p3] == Post.all.sort.to_a
+      #   # => true
+      #
+      #   [p3, p2, p1] == Post.all.sort(:order => "DESC").to_a
+      #   # => true
+      #
+      #   [p1, p2, p3] == Post.all.sort(:by => "Post:*->title").to_a
+      #   # => true
+      #
+      #   [p3, p2, p1] == Post.all.sort(:by => "Post:*->title",
+      #                                 :order => "DESC ALPHA").to_a
+      #
+      #   # => true
+      #
+      # @see file:OHM_REFERENCE.md#sort_options Sort options documentation
+      # @see http://code.google.com/p/redis/wiki/SortCommand Redis SortCommand
+      #
       def sort(_options = {})
         return [] unless key.exists
 
@@ -138,10 +357,56 @@ module Ohm
         end
       end
 
+      # Delete this collection.
+      #
+      # @example
+      #
+      #   class Post < Ohm::Model
+      #     list :comments, Comment
+      #   end
+      #
+      #   class Comment < Ohm::Model
+      #   end
+      #
+      #   post = Post.create
+      #   post.comments << Comment.create
+      #
+      #   post.comments.size == 1
+      #   # => true
+      #
+      #   post.comments.clear
+      #   post.comments.size == 0
+      #   # => true
+      #
       def clear
         key.del
       end
 
+      # Simultaneously clear and add all models. This wraps all operations
+      # in a {http://code.google.com/p/redis/wiki/MultiExecCommand MULTI EXEC}
+      # block to make the whole operation atomic.
+      #
+      # @example
+      #
+      #   class Post < Ohm::Model
+      #     list :comments, Comment
+      #   end
+      #
+      #   class Comment < Ohm::Model
+      #   end
+      #
+      #   post = Post.create
+      #   post.comments << Comment.create(:id => 100)
+      #
+      #   post.comments.map(&:id) == ["100"]
+      #   # => true
+      #
+      #   comments = (101..103).to_a.map { |i| Comment.create(:id => i) }
+      #
+      #   post.comments.replace(comments)
+      #   post.comments.map(&:id) == ["101", "102", "103"]
+      #   # => true
+      #
       def replace(models)
         model.db.multi do
           clear
@@ -149,54 +414,226 @@ module Ohm
         end
       end
 
+      # @return [true, false] whether or not this collection is empty.
       def empty?
         !key.exists
       end
 
+      # @return [Array] array representation of this collection.
       def to_a
         all
       end
     end
 
+    # Provides a Ruby-esque interface to a _Redis_ *SET*. The *SET* is assumed
+    # to be composed of ids which maps to {#model}.
     class Set < Collection
+      # An implementation which relies on *SMEMBERS* and yields an instance
+      # of {#model}.
+      #
+      # @see http://code.google.com/p/redis/wiki/SmembersCommand SMEMBERS
+      #      in Redis Command Reference.
       def each(&block)
         key.smembers.each { |id| block.call(model[id]) }
       end
 
+      # Convenient way to scope access to a predefined set, useful for access
+      # control.
+      #
+      # @example
+      #
+      #   class User < Ohm::Model
+      #     set :photos, Photo
+      #   end
+      #
+      #   class Photo < Ohm::Model
+      #   end
+      #
+      #   @user = User.create
+      #   @user.photos.add(Photo.create(:id => "101"))
+      #   @user.photos.add(Photo.create(:id => "102"))
+      #
+      #   Photo.create(:id => "500")
+      #
+      #   @user.photos[101] == Photo[101]
+      #   # => true
+      #
+      #   @user.photos[500] == nil
+      #   # => true
+      #
+      # @param [String, Fixnum] id any id existing within this set.
+      # @return [Ohm::Model, nil] the model if it exists.
       def [](id)
         model[id] if key.sismember(id)
       end
 
+      # Adds a model to this set.
+      #
+      # @param [#id] model typically an instance of an {Ohm::Model} subclass.
+      #
+      # @see http://code.google.com/p/redis/wiki/SaddCommand SADD in Redis
+      #      Command Reference.
       def << model
         key.sadd(model.id)
       end
 
       alias add <<
 
+      # Thin Ruby interface wrapper for *SCARD*.
+      #
+      # @return [Fixnum] the total number of members for this set.
+      # @see http://code.google.com/p/redis/wiki/ScardCommand SCARD in Redis
+      #      Command Reference.
+      #
       def size
         key.scard
       end
 
+      # Thin Ruby interface wrapper for *SREM*.
+      #
+      # @param [#id] member a member of this set.
+      # @see http://code.google.com/p/redis/wiki/SremCommand SREM in Redis
+      #      Command Reference.
       def delete(member)
         key.srem(member.id)
       end
 
+      # Array representation of this set.
+      #
+      # @example
+      #
+      #   class Author < Ohm::Model
+      #     set :posts, Post
+      #   end
+      #
+      #   class Post < Ohm::Model
+      #   end
+      #
+      #   author = Author.create
+      #   author.posts.add(Author.create(:id => "101"))
+      #   author.posts.add(Author.create(:id => "102"))
+      #
+      #   author.posts.all.is_a?(Array)
+      #   # => true
+      #
+      #   author.posts.all.include?(Author[101])
+      #   # => true
+      #
+      #   author.posts.all.include?(Author[102])
+      #   # => true
+      #
+      # @return [Array<Ohm::Model>] all members of this set.
       def all
         key.smembers.map(&model)
       end
 
+      # Allows you to find members of this set which fits the given criteria.
+      #
+      # @example
+      #
+      #   class Post < Ohm::Model
+      #     attribute :title
+      #     attribute :tags
+      #
+      #     index :title
+      #     index :tag
+      #
+      #     def tag
+      #       tags.split(/\s+/)
+      #     end
+      #   end
+      #
+      #   post = Post.create(:title => "Ohm", :tags => "ruby ohm redis")
+      #   Post.all.is_a?(Ohm::Model::Set)
+      #   # => true
+      #
+      #   Post.all.find(:tag => "ruby").include?(post)
+      #   # => true
+      #
+      #   # Post.find is actually just a wrapper around Post.all.find
+      #   Post.find(:tag => "ohm", :title => "Ohm").include?(post)
+      #   # => true
+      #
+      #   Post.find(:tag => ["ruby", "python"]).empty?
+      #   # => true
+      #
+      #   # Alternatively, you may choose to chain them later on.
+      #   ruby = Post.find(:tag => "ruby")
+      #   ruby.find(:title => "Ohm").include?(post)
+      #   # => true
+      #
+      # @param [Hash] options a hash of key value pairs.
+      # @return [Ohm::Model::Set] a set satisfying the filter passed.
+      #
       def find(options)
         source = keys(options)
         target = source.inject(key.volatile) { |chain, other| chain + other }
         apply(:sinterstore, key, source, target)
       end
 
+      # Similar to find except that it negates the criteria.
+      #
+      # @example
+      #   class Post < Ohm::Model
+      #     attribute :title
+      #   end
+      #
+      #   ohm = Post.create(:title => "Ohm")
+      #   ruby = Post.create(:title => "Ruby")
+      #
+      #   Post.except(:title => "Ohm").include?(ruby)
+      #   # => true
+      #
+      #   Post.except(:title => "Ohm").size == 1
+      #   # => true
+      #
+      # @param [Hash] options a hash of key value pairs.
+      # @return [Ohm::Model::Set] a set satisfying the filter passed.
+      #
       def except(options)
         source = keys(options)
         target = source.inject(key.volatile) { |chain, other| chain - other }
         apply(:sdiffstore, key, source, target)
       end
 
+      # Returns by default the lowest id value for this set. You may also
+      # pass in options similar to {#sort}.
+      #
+      # @example
+      #
+      #   class Post < Ohm::Model
+      #     attribute :title
+      #   end
+      #
+      #   p1 = Post.create(:id => "101", :title => "Alpha")
+      #   p2 = Post.create(:id => "100", :title => "Beta")
+      #   p3 = Post.create(:id => "99", :title => "Gamma")
+      #
+      #   Post.all.is_a?(Ohm::Model::Set)
+      #   # => true
+      #
+      #   p3 == Post.all.first
+      #   # => true
+      #
+      #   p1 == Post.all.first(:order => "DESC")
+      #   # => true
+      #
+      #   p1 == Post.all.first(:by => :title, :order => "ASC ALPHA")
+      #   # => true
+      #
+      #   # just ALPHA also means ASC ALPHA, for brevity.
+      #   p1 == Post.all.first(:by => :title, :order => "ALPHA")
+      #   # => true
+      #
+      #   p3 == Post.all.first(:by => :title, :order => "DESC ALPHA")
+      #   # => true
+      #
+      # @param [Hash] options sort options hash.
+      # @return [Ohm::Model, nil] an {Ohm::Model} instance or nil if this
+      #         set is empty.
+      #
+      # @see file:OHM_REFERENCE.md#sort_options Sort options documentation
+      #
       def first(_options = {})
         options = _options.dup
         options.merge!(:limit => 1)
@@ -208,6 +645,16 @@ module Ohm
         end
       end
 
+      # Ruby-like interface wrapper around *SISMEMBER*.
+      #
+      # @param [#id] model typically an {Ohm::Model} instance.
+      #
+      # @return [true, false] whether or not the {Ohm::Model} instance is
+      #         a member of this set.
+      #
+      # @see http://code.google.com/p/redis/wiki/SismemberCommand SISMEMBER
+      #      in Redis Command Reference.
+      #
       def include?(model)
         key.sismember(model.id)
       end
@@ -217,12 +664,14 @@ module Ohm
       end
 
     protected
-
+      # @private
       def apply(operation, key, source, target)
         target.send(operation, key, *source)
         Set.new(target, Wrapper.wrap(model))
       end
 
+      # @private
+      #
       # Transform a hash of attribute/values into an array of keys.
       def keys(hash)
         [].tap do |keys|
@@ -506,7 +955,7 @@ module Ohm
     #   @post.author.name
     #   # => "Albert"
     #
-    # *Important*: please note that even though a collection is a {Ohm::Set Set},
+    # *Important*: please note that even though a collection is an {Ohm::Model::Set},
     # you should not add or remove objects from this collection directly.
     #
     # @see Ohm::Model::reference
@@ -788,6 +1237,10 @@ module Ohm
       end
     end
 
+    # Wraps any missing constants lazily in {Ohm::Model::Wrapper} delaying
+    # the evaluation of constants until they are actually needed.
+    #
+    # @see http://en.wikipedia.org/wiki/Lazy_evaluation Lazy evaluation
     def self.const_missing(name)
       wrapper = Wrapper.new(name) { const_get(name) }
 
@@ -811,6 +1264,7 @@ module Ohm
       Ohm.threaded[self] = connection
     end
 
+    # Allows you to do key manipulations scoped solely to your class.
     def self.key
       Key.new(self, db)
     end
@@ -939,3 +1393,4 @@ module Ohm
     end
   end
 end
+
