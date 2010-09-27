@@ -838,11 +838,14 @@ module Ohm
       end
     end
 
+    # All validations which need to access the _Redis_ database goes here.
+    # As of this writing, {Ohm::Model::Validations#assert_unique} is the only
+    # assertion contained within this module.
     module Validations
       include Ohm::Validations
 
-      # Validates that the attribute or array of attributes are unique. For this,
-      # an index of the same kind must exist.
+      # Validates that the attribute or array of attributes are unique. For 
+      # this, an index of the same kind must exist.
       #
       # @overload assert_unique :name
       #   Validates that the name attribute is unique.
@@ -855,7 +858,51 @@ module Ohm
     end
 
     include Validations
-
+  
+    # Raised when you try and get the *id* of an {Ohm::Model} before it is
+    # persisted.
+    #
+    #   class Post < Ohm::Model
+    #     list :comments, Comment
+    #   end
+    #
+    #   class Comment < Ohm::Model
+    #   end
+    #   
+    #   ex = nil
+    #   begin
+    #     Post.new.id
+    #   rescue Exception => e
+    #     ex = e
+    #   end
+    #
+    #   ex.kind_of?(Ohm::Model::MissingID)
+    #   # => true
+    #
+    # This is also one of the most common errors you'll be faced with when 
+    # you're new to {Ohm} coming from an ActiveRecord background, where you 
+    # are used to just assigning associations even before the base model is
+    # persisted.
+    # 
+    #   # following from the example above:
+    #   post = Post.new
+    #   
+    #   ex = nil
+    #   begin
+    #     post.comments << Comment.new
+    #   rescue Exception => e
+    #     ex = e
+    #   end
+    #
+    #   ex.kind_of?(Ohm::Model::MissingID)
+    #   # => true
+    #
+    #   # Correct way:
+    #   post = Post.new
+    #
+    #   if post.save
+    #     post.comments << Comment.create
+    #   end
     class MissingID < Error
       def message
         "You tried to perform an operation that needs the model ID, but it's not present."
