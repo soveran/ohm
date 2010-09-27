@@ -5,6 +5,7 @@ require "redis"
 require "nest"
 
 require File.join(File.dirname(__FILE__), "ohm", "pattern")
+require File.join(File.dirname(__FILE__), "ohm", "typecast")
 require File.join(File.dirname(__FILE__), "ohm", "validations")
 require File.join(File.dirname(__FILE__), "ohm", "compat-1.8.6")
 require File.join(File.dirname(__FILE__), "ohm", "key")
@@ -59,6 +60,7 @@ module Ohm
   class Error < StandardError; end
 
   class Model
+    include Ohm::Typecast
 
     # Wraps a model name for lazy evaluation.
     class Wrapper < BasicObject
