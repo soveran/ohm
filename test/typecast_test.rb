@@ -36,12 +36,14 @@ end
 test "assign attributes as decimals" do
   multi = Multi.new(:prize => 88.99)
   assert multi.prize == 88.99
+  assert multi.prize.class == BigDecimal
 end
 
 test "assign attributes as time" do
   t = Time.now
   multi = Multi.new(:event => t)
   assert multi.event == t
+  assert multi.event.class == Time
 end
 
 test "assign attributes as timestamps" do
@@ -58,6 +60,7 @@ test "assign attributes as hashes" do
   multi.save
   m = Multi[1]
   assert m.sh == hsh
+  assert m.sh.class == Ohm::Types::Hash
 end
 
 # test "assign attributes as marshalized objects" do
