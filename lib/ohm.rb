@@ -95,6 +95,7 @@ module Ohm
   #   Ohm.connect
   #
   #   # Connect to redis://10.0.0.100:22222/5
+  #   ENV["REDIS_URL"] = "redis://10.0.0.100:22222/5"
   #   Ohm.connect
   #
   # @param options [{Symbol => #to_s}] An options hash.
