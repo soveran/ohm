@@ -366,6 +366,8 @@ module Ohm
 
       attributes << name unless attributes.include?(name)
     end
+    # class << self ?
+    def self.attr(name);      attribute(name);    end
 
     # Defines a counter attribute for the model. This attribute can't be assigned, only incremented
     # or decremented. It will be zero by default.

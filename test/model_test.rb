@@ -389,6 +389,7 @@ def monitor
     end
   end
 
+  # Had really a bad time with this, tests silent stops with < 0.1
   sleep 0.5
 
   log.clear.tap do

@@ -113,8 +113,9 @@ module Ohm
     class Time < Primitive
       delegate_to ::Time
 
+
       def object
-        ::Time.at(@raw).utc
+        ::Time.parse(@raw).utc
       end
     end
 
@@ -123,6 +124,21 @@ module Ohm
 
       def object
         ::Date.parse(@raw)
+      end
+    end
+
+    class Stamp < Primitive
+      delegate_to ::Time
+      def initialize(raw)
+        @raw = raw.kind_of?(Time) ? raw.utc.to_i : ::Time.at(raw.to_i).utc
+      end
+
+      def to_s
+        @raw.to_i.to_s # .at(@raw).to_s
+      end
+
+      def object
+        ::Time.at(@raw)
       end
     end
 
@@ -181,6 +197,7 @@ module Ohm
         ::Ohm::Types::Hash
       end
     end
+    Json = Hash
 
     class Array < Serialized
       RAW = ::Array
@@ -286,7 +303,7 @@ module Ohm
       #                you need to.
       # @return [Array] the array of attributes already defined.
       # @return [nil] if the attribute is already defined.
-      def attribute(name, type = Ohm::Types::String, klass = Ohm::Types[type])
+      def typecast(name, type = Ohm::Types::String, klass = Ohm::Types[type])
         define_method(name) do
           # Primitive types maintain a reference to the original object
           # stored in @_attributes[att]. Hence mutation works for the
@@ -306,7 +323,6 @@ module Ohm
 
         attributes << name unless attributes.include?(name)
       end
-      alias :attr :attribute
 
     private
       def const_missing(name)
@@ -318,8 +334,8 @@ module Ohm
       end
 
       def method_missing(m, *args)
-        if Ohm::Types.constants.include? m.capitalize
-          attr(args[0], m.capitalize)
+        if Ohm::Types.defined?(klass = m.capitalize)
+          typecast(args.delete_at(0), klass, *args)
         else
           raise NoMethodError.new("undefined method '#{m}' for #{inspect}:#{self.class}")
         end
