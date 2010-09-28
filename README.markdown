@@ -6,10 +6,9 @@ Object-hash mapping library for Redis.
 Description
 -----------
 
-Ohm is a library for storing objects in
-[Redis](http://code.google.com/p/redis/), a persistent key-value
-database. It includes an extensible list of validations and has very
-good performance.
+Ohm is a library for storing objects in [Redis][redis], a persistent key-value
+database. It includes an extensible list of validations and has very good
+performance.
 
 Community
 ---------
@@ -21,9 +20,7 @@ Meet us on IRC: [#ohm](irc://chat.freenode.net/#ohm) on [freenode.net](http://fr
 Getting started
 ---------------
 
-Install [Redis](http://code.google.com/p/redis/). On most platforms
-it's as easy as grabbing the sources, running make and then putting the
-`redis-server` binary in the PATH.
+Install [Redis][redis]. On most platforms it's as easy as grabbing the sources, running make and then putting the `redis-server` binary in the PATH.
 
 Once you have it installed, you can execute `redis-server` and it will
 run on `localhost:6379` by default. Check the `redis.conf` file that comes
@@ -31,9 +28,9 @@ with the sources if you want to change some settings.
 
 If you don't have Ohm, try this:
 
-    $ sudo gem install ohm
+    $ [sudo] gem install ohm
 
-Or you can grab the code from [http://github.com/soveran/ohm](http://github.com/soveran/ohm).
+Or you can grab the code from [http://github.com/soveran/ohm][ohm].
 
 Now, in an irb session you can test the Redis adapter directly:
 
@@ -45,6 +42,40 @@ Now, in an irb session you can test the Redis adapter directly:
     => "OK"
     >> Ohm.redis.get "Foo"
     => "Bar"
+
+## Connecting to the Redis database {: #connecting }
+
+There are a couple of different strategies for connecting to your Redis
+database. The first is to explicitly set the `:host`, `:port`, `:db` and
+`:timeout` options. You can also set only a few of them, and let the other
+options fall back to the default.
+
+The other noteworthy style of connecting is by just doing `Ohm.connect` and
+set the environment variable `REDIS_URL`.
+
+Here are the options for {Ohm.connect} in detail:
+
+**:host**
+:    _(defaults to "127.0.0.1")_ Host of the _Redis_ database.
+
+**:port**
+:    _(defaults to 6379)_ Port number.
+
+**:db**
+:    _(defaults to 0)_ Database number.
+
+**:timeout**
+:    _(defaults to 0)_ Database timeout in seconds.
+
+**:url**
+:    a _Redis_ URI of the form
+     redis://:&lt;passwd&gt;@&lt;host&gt;:&lt;port&gt;/&lt;db&gt;. Note that
+     if you specify a url and one of the other options at the same time that
+     the other options will take precedence.
+
+     Also, if you try and do `Ohm.connect` without any arguments, it will
+     check if `ENV["REDIS_URL"]` is set, and will use it as the argument for
+     `:url`.
 
 Models
 ------
@@ -99,10 +130,10 @@ validations. Keep reading to find out what you can do with models.
 Attribute types
 ---------------
 
-Ohm::Model provides four attribute types: {Ohm::Model::attribute
-attribute}, {Ohm::Model::set set}, {Ohm::Model::list list}
-and {Ohm::Model::counter counter}; and two meta types:
-{Ohm::Model::reference reference} and {Ohm::Model::collection
+Ohm::Model provides four attribute types: {Ohm::Model.attribute
+attribute}, {Ohm::Model.set set}, {Ohm::Model.list list}
+and {Ohm::Model.counter counter}; and two meta types:
+{Ohm::Model.reference reference} and {Ohm::Model.collection
 collection}.
 
 ### attribute
@@ -162,13 +193,13 @@ If you need to check for validity before operating on lists, sets or
 counters, you can use this pattern:
 
     if event.valid?
-      event.comments << "Great event!"
+      event.comments << Comment.create(:body => "Great event!")
     end
 
 If you are saving the object, this will suffice:
 
     if event.save
-      event.comments << "Wonderful event!"
+      event.comments << Comment.create(:body => "Wonderful event!")
     end
 
 Working with Sets
@@ -184,22 +215,82 @@ Given the following model declaration:
 You can add instances of `Person` to the set of attendees with the
 `<<` method:
 
-    @event.attendees << Person.create(name: "Albert")
+    event.attendees << Person.create(:name => "Albert")
 
     # And now...
-    @event.attendees.each do |person|
+    event.attendees.each do |person|
       # ...do what you want with this person.
     end
 
-Sorting
--------
+## Sorting        {: #sorting}
 
 Since `attendees` is a {Ohm::Model::Set Set}, it exposes two sorting
 methods: {Ohm::Model::Collection#sort sort} returns the elements
 ordered by `id`, and {Ohm::Model::Collection#sort_by sort_by} receives
 a parameter with an attribute name, which will determine the sorting
-order. Both methods receive an options hash which is explained in the
-documentation for {Ohm::Model::Collection#sort sort}.
+order. Both methods receive an options hash which is explained below:
+
+**:order**
+:    _(defaults to ASC)_ Order direction and strategy. You can pass in any of
+     the following:
+
+     1. ASC
+     2. ASC ALPHA (or ALPHA ASC)
+     3. DESC
+     4. DESC ALPHA (or ALPHA DESC)
+
+**:start**
+:    _(defaults to 0)_ The offset from which we should start with. Note that
+     this is 0-indexed.
+
+**:limit**
+:    The number of entries to get. If you don't pass in anything, it will
+     get all the results from the LIST or SET that you are sorting.
+
+**:by**
+:    Key or Hash key with which to sort by. An important distinction with
+     using {Ohm::Model::Collection#sort sort} and
+     {Ohm::Model::Collection#sort_by sort_by} is that `sort_by` automatically
+     converts the passed argument with the assumption that it is a hash key
+     and it's within the current model you are sorting.
+
+         Post.all.sort_by(:title)     # SORT Post:all BY Post:*->title
+         Post.all.sort(:by => :title) # SORT Post:all BY title
+
+**:get**
+:    A key pattern to return, e.g. `Post:*->title`. As is the case with
+     the `:by` option, using {Ohm::Model::Collection#sort sort} and
+     {Ohm::Model::Collection#sort_by sort_by} has distinct differences in
+     that `sort_by` does much of the hand-coding for you.
+
+         Post.all.sort_by(:title, :get => :title)
+         # SORT Post:all BY Post:*->title GET Post:*->title
+
+         Post.all.sort(:by => :title, :get => :title)
+         # SORT Post:all BY title GET title
+
+
+**:store**
+:    An optional key which you may use to cache the sorted result. The key
+     may or may not exist.
+
+     This option can only be used together with `:get`.
+
+     The type that is used for the STORE key is a LIST.
+
+       Post.all.sort_by(:title, :store => "FOO")
+
+       # Get all the results stored in FOO.
+       Post.db.lrange("FOO", 0, -1)
+
+     When using temporary values, it might be a good idea to use a `volatile`
+     key. In Ohm, a volatile key means it just starts with a `~` character.
+
+         Post.all.sort_by(:title, :get => :title,
+                          :store => Post.key.volatile["FOO"])
+
+         Post.key.volatile["FOO"].lrange 0, -1
+
 
 Associations
 ------------
@@ -219,19 +310,85 @@ Ohm lets you declare `references` and `collections` to represent associations.
 
 After this, every time you refer to `post.comments` you will be talking
 about instances of the model `Comment`. If you want to get a list of IDs
-you can use `post.comments.raw`.
+you can use `post.comments.key.smembers`.
+
+### References explained {: #references }
+
+Doing a {Ohm::Model.reference reference} is actually just a shortcut for
+the following:
+
+    # Redefining our model above
+    class Comment < Ohm::Model
+      attribute :body
+      attribute :post_id
+      index :post_id
+
+      def post=(post)
+        self.post_id = post.id
+      end
+
+      def post
+        Post[post_id]
+      end
+    end
+
+_(The only difference with the actual implementation is that the model
+is memoized.)_
+
+The net effect here is we can conveniently set and retrieve `Post` objects,
+and also search comments using the `post_id` index.
+
+    Comment.find(:post_id => 1)
+
+
+### Collections explained {: #collections }
+
+The reason a {Ohm::Model.reference reference} and a
+{Ohm::Model.collection collection} go hand in hand, is that a collection is
+just a macro that defines a finder for you, and we know that to find a model
+by a field requires an {Ohm::Model.index index} to be defined for the field
+you want to search.
+
+    # Redefining our post above
+    class Post < Ohm::Model
+      attribute :title
+      attribute :body
+
+      def comments
+        Comment.find(:post_id => self.id)
+      end
+    end
+
+The only "magic" happening is with the inference of the `index` that was used
+in the other model. The following all produce the same effect:
+
+    # easiest, with the basic assumption that the index is `:post_id`
+    collection :comments, Comment
+
+    # we can explicitly declare this as follows too:
+    collection :comments, Comment, :post
+
+    # finally, we can use the default argument for the third parameter which
+    # is `to_reference`.
+    collection :comments, Comment, to_reference
+
+    # exploring `to_reference` reveals a very interesting and simple concept:
+    Post.to_reference == :post
+    # => true
 
 Indexes
 -------
 
-An index is a set that's handled automatically by Ohm. For any index declared,
-Ohm maintains different sets of objects IDs for quick lookups.
+An {Ohm::Model.index index} is a set that's handled automatically by Ohm. For
+any index declared, Ohm maintains different sets of objects IDs for quick
+lookups.
 
 In the `Event` example, the index on the name attribute will
 allow for searches like `Event.find(:name => "some value")`.
 
-Note that the `assert_unique` validation and the methods `find` and `except` need a
-corresponding index in order to work.
+Note that the {Ohm::Model::Validations#assert_unique assert_unique}
+validation and the methods {Ohm::Model::Set#find find} and
+{Ohm::Model::Set#except except} need a corresponding index in order to work.
 
 ### Finding records
 
@@ -396,3 +553,8 @@ don't have to load your application environment. Since we assume it's
 very likely that you have a bunch of data, the script uses
 [Batch](http://github.com/djanowski/batch) to show you some progress
 while the process runs.
+
+
+[redis]: http://redis.io
+[ohm]: http://github.com/soveran/ohm
+
