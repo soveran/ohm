@@ -29,3 +29,17 @@ task :test do
 
   Cutest.run(Dir["test/*_test.rb"])
 end
+
+namespace :examples do
+  desc "Run all the examples"
+  task :run do
+    begin
+      require "cutest"
+    rescue LoadError
+      raise "!! Missing gem `cutest`. Try `gem install cutest`."
+    end
+
+    Cutest.run(Dir["examples/*.rb"])
+  end
+end
+
