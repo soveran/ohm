@@ -116,7 +116,6 @@ test "find using an intersection of multiple tag names" do |p|
   assert ! Post.find(tag: ["tagging", "foo"]).include?(p)
 end
 
-
 #### Adding a Tag model
 
 # Let's pretend that the client suddenly requested that we keep track
@@ -227,12 +226,9 @@ test "updating an existing post decrements the tags removed" do
   assert 2 == Tag["redis"].total
 end
 
-
-
 ## Conclusion
 
 # Most of the time we tend to think in terms of an RDBMS way, and this is in
 # no way a negative thing. However, it is important to try and switch your
 # frame of mind when working with Ohm (and Redis) because it will greatly save
 # you time, and possibly lead to a great design.
-

@@ -177,4 +177,3 @@ SMEMBERS Post:user_id:OQ==
 # If there's anything else you want to know, you can hang out on #ohm at
 # irc.freenode.net, or you can visit the
 # [Ohm google group](http://groups.google.com/group/ohm-ruby).
-
