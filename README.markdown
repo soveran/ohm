@@ -57,34 +57,34 @@ set the environment variable `REDIS_URL`.
 Here are the options for {Ohm.connect} in detail:
 
 **:url**
-:     A Redis URL of the form `redis://:<passwd>@<host>:<port>/<db>`.
-      Note that if you specify a URL and one of the other options at
-      the same time, the other options will take precedence. Also, if
-      you try and do `Ohm.connect` without any arguments, it will check
-      if `ENV["REDIS_URL"]` is set, and will use it as the argument for
-      `:url`.
+:    A Redis URL of the form `redis://:<passwd>@<host>:<port>/<db>`.
+     Note that if you specify a URL and one of the other options at
+     the same time, the other options will take precedence. Also, if
+     you try and do `Ohm.connect` without any arguments, it will check
+     if `ENV["REDIS_URL"]` is set, and will use it as the argument for
+     `:url`.
 
 **:host**
-:     Host where the Redis server is running, defaults to `"127.0.0.1"`.
+:    Host where the Redis server is running, defaults to `"127.0.0.1"`.
 
 **:port**
-:     Port number, defaults to `6379`.
+:    Port number, defaults to `6379`.
 
 **:db**
-:     Database number, defaults to `0`.
+:    Database number, defaults to `0`.
 
 **:password**
-:     It is the secret that will be sent to the Redis server. Use it if the server
-      configuration requires it. Defaults to `nil`.
+:    It is the secret that will be sent to the Redis server. Use it if the server
+     configuration requires it. Defaults to `nil`.
 
 **:timeout**
-:     Database timeout in seconds, defaults to `0`.
+:    Database timeout in seconds, defaults to `0`.
 
 **:thread_safe**
-:     Initializes the client with a monitor. It has a small performance penalty, and
-      it's off by default. For thread safety, it is recommended to use a different
-      instance per thread. I you have no choice, then pass `:thread_safe => true`
-      when connecting.
+:    Initializes the client with a monitor. It has a small performance penalty, and
+     it's off by default. For thread safety, it is recommended to use a different
+     instance per thread. I you have no choice, then pass `:thread_safe => true`
+     when connecting.
 
 Models
 ------
