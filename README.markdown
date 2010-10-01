@@ -20,7 +20,8 @@ Meet us on IRC: [#ohm](irc://chat.freenode.net/#ohm) on [freenode.net](http://fr
 Getting started
 ---------------
 
-Install [Redis][redis]. On most platforms it's as easy as grabbing the sources, running make and then putting the `redis-server` binary in the PATH.
+Install [Redis][redis]. On most platforms it's as easy as grabbing the sources,
+running make and then putting the `redis-server` binary in the PATH.
 
 Once you have it installed, you can execute `redis-server` and it will
 run on `localhost:6379` by default. Check the `redis.conf` file that comes
@@ -55,27 +56,35 @@ set the environment variable `REDIS_URL`.
 
 Here are the options for {Ohm.connect} in detail:
 
+**:url**
+:     A Redis URL of the form `redis://:<passwd>@<host>:<port>/<db>`.
+      Note that if you specify a URL and one of the other options at
+      the same time, the other options will take precedence. Also, if
+      you try and do `Ohm.connect` without any arguments, it will check
+      if `ENV["REDIS_URL"]` is set, and will use it as the argument for
+      `:url`.
+
 **:host**
-:    _(defaults to "127.0.0.1")_ Host of the _Redis_ database.
+:     Host where the Redis server is running, defaults to `"127.0.0.1"`.
 
 **:port**
-:    _(defaults to 6379)_ Port number.
+:     Port number, defaults to `6379`.
 
 **:db**
-:    _(defaults to 0)_ Database number.
+:     Database number, defaults to `0`.
+
+**:password**
+:     It is the secret that will be sent to the Redis server. Use it if the server
+      configuration requires it. Defaults to `nil`.
 
 **:timeout**
-:    _(defaults to 0)_ Database timeout in seconds.
+:     Database timeout in seconds, defaults to `0`.
 
-**:url**
-:    a _Redis_ URI of the form
-     redis://:&lt;passwd&gt;@&lt;host&gt;:&lt;port&gt;/&lt;db&gt;. Note that
-     if you specify a url and one of the other options at the same time that
-     the other options will take precedence.
-
-     Also, if you try and do `Ohm.connect` without any arguments, it will
-     check if `ENV["REDIS_URL"]` is set, and will use it as the argument for
-     `:url`.
+**:thread_safe**
+:     Initializes the client with a monitor. It has a small performance penalty, and
+      it's off by default. For thread safety, it is recommended to use a different
+      instance per thread. I you have no choice, then pass `:thread_safe => true`
+      when connecting.
 
 Models
 ------
@@ -231,7 +240,7 @@ a parameter with an attribute name, which will determine the sorting
 order. Both methods receive an options hash which is explained below:
 
 **:order**
-:    _(defaults to ASC)_ Order direction and strategy. You can pass in any of
+:    Order direction and strategy. You can pass in any of
      the following:
 
      1. ASC
@@ -239,9 +248,11 @@ order. Both methods receive an options hash which is explained below:
      3. DESC
      4. DESC ALPHA (or ALPHA DESC)
 
+     It defaults to `ASC`.
+
 **:start**
-:    _(defaults to 0)_ The offset from which we should start with. Note that
-     this is 0-indexed.
+:    The offset from which we should start with. Note that
+     this is 0-indexed. It defaults to `0`.
 
 **:limit**
 :    The number of entries to get. If you don't pass in anything, it will
@@ -529,6 +540,20 @@ Ohm is rather small and can be extended in many ways.
 
 A lot of amazing contributions are available at [Ohm Contrib](http://labs.sinefunc.com/ohm-contrib/doc/), make sure to check them if you need to extend Ohm's functionality.
 
+Tutorials
+=========
+
+Check the examples to get a feeling of the design patterns for Redis.
+
+1. [Activity Feed](examples/activity-feed.html)
+2. [Chaining finds](examples/chaining.html)
+3. [Serialization to JSON](examples/json-hash.html)
+4. [One to many associations](examples/one-to-many.html)
+5. [Philosophy behind Ohm](examples/philosophy.html)
+6. [Learning Ohm internals](examples/redis-logging.html)
+7. [Slugs and permalinks](examples/slug.html)
+8. [Tagging](examples/tagging.html)
+
 Versions
 ========
 
@@ -557,4 +582,3 @@ while the process runs.
 
 [redis]: http://redis.io
 [ohm]: http://github.com/soveran/ohm
-
