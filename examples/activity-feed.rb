@@ -61,6 +61,9 @@ end
 # We'll use cutest for our testing framework.
 require "cutest"
 
+# The database is flushed before each test.
+prepare { Ohm.flush }
+
 # We define two users, `john` and `jane`, and yield them so all
 # other tests are given access to these 2 users.
 setup do
@@ -157,4 +160,3 @@ end
 # sharding for large datasets, but that would be again trivial to implement
 # using [redis-rb](http://github.com/ezmobius/redis-rb)'s distributed support
 # and sharding it against the *user_id*.
-
