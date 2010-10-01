@@ -4,11 +4,11 @@
 
 # In contrast to the usual philosophy of ORMs in the wild, Ohm actually
 # just provides a basic object mapping where you can safely tuck away
-# attributes and declare grouping of data. 
-# 
+# attributes and declare grouping of data.
+#
 # Beyond that, Ohm doesn't try to hide Redis, but rather exposes it in
-# a simple way, through key hierarchies provided by the library 
-# [Nest](http://github.com/soveran/nest). 
+# a simple way, through key hierarchies provided by the library
+# [Nest](http://github.com/soveran/nest).
 
 # Let's require `Ohm`. We also require `Ohm::Contrib` so we can make
 # use of its module `Ohm::Callbacks`.
@@ -16,29 +16,29 @@ require "ohm"
 require "ohm/contrib"
 
 # Let's quickly declare our `Post` model and include `Ohm::Callbacks`.
-# We define an *attribute* `title` and also *index* it. 
+# We define an *attribute* `title` and also *index* it.
 #
 # In addition we specify our `Post` to have a list of *comments*.
 class Post < Ohm::Model
   include Ohm::Callbacks
-  
+
   attribute :title
   index :title
 
   list :comments, Comment
-  
+
   # This is one example of using the underlying library `Nest` directly.
   # As you can see, we can easily drop down to using raw *Redis* commands,
-  # in this case we use 
+  # in this case we use
   # [ZREVRANGE](http://code.google.com/p/redis/wiki/ZrangeCommand).
   #
-  # *Note:* Since `Ohm::Model` defines a `to_proc`, we can use the `&` syntax 
+  # *Note:* Since `Ohm::Model` defines a `to_proc`, we can use the `&` syntax
   # together with `map` to make our code a little more terse.
   def self.latest
     key[:latest].zrevrange(0, -1).map(&Post)
   end
 
-  # Here we just quickly push this instance of `Post` to our `latest` 
+  # Here we just quickly push this instance of `Post` to our `latest`
   # *SORTED SET*. We use the current time as the score.
 protected
   def after_save
@@ -46,10 +46,10 @@ protected
   end
 
   # Since we add every `Post` to our *SORTED SET*, we have to make sure that
-  # we removed it from our `latest` *SORTED SET* as soon as we delete a 
+  # we removed it from our `latest` *SORTED SET* as soon as we delete a
   # `Post`.
   #
-  # In this case we use the raw *Redis* command 
+  # In this case we use the raw *Redis* command
   # [ZREM](http://code.google.com/p/redis/wiki/ZremCommand).
   def after_delete
     self.class.key[:latest].zrem(id)
@@ -60,14 +60,13 @@ end
 class Comment < Ohm::Model
 end
 
-
 #### Test it out
 
 # For this example, we'll use [Cutest](http://github.com/djanowski/cutest)
 # for our testing framework.
 require "cutest"
 
-# To make it simple, we also ensure that every test run has a clean 
+# To make it simple, we also ensure that every test run has a clean
 # *Redis* instance.
 prepare { Ohm.flush }
 
@@ -99,7 +98,7 @@ end
 
 #### Understanding `post.comments`.
 
-# Let's pop the hood and see how we can do *LIST* operations on our 
+# Let's pop the hood and see how we can do *LIST* operations on our
 # `post.comments` object.
 
 # Getting the current size of our comments is just a wrapper for
@@ -123,7 +122,7 @@ end
 test "now what if we want to find all Ohm or Redis posts" do
   ohm = Post.create(:title => "Ohm")
   redis = Post.create(:title => "Redis")
-  
+
   # Let's first choose an arbitrary key name to hold our `Set`.
   ohm_redis = Post.key.volatile["ohm-redis"]
 
@@ -137,7 +136,7 @@ test "now what if we want to find all Ohm or Redis posts" do
     Post.index_key_for(:title, "Ohm"),
     Post.index_key_for(:title, "Redis")
   )
-  
+
   # And voila, they have been found!
   assert [ohm.id, redis.id] == ohm_redis.smembers.sort
 end
@@ -146,7 +145,5 @@ end
 
 # If you invest a little time reading through all the different
 # [Redis commands](http://code.google.com/p/redis/wiki/CommandReference),
-# I'm pretty sure you will enjoy your experience hacking with Ohm, Nest and 
+# I'm pretty sure you will enjoy your experience hacking with Ohm, Nest and
 # Redis a lot more.
-
-

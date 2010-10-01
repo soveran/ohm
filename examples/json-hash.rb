@@ -4,23 +4,23 @@
 
 # If you've ever needed to build an AJAX route handler, you may have noticed
 # the prevalence of the design pattern where you return a JSON response.
-# 
+#
 #     post "/comments.json" do
 #       comment = Comment.create(params[:comment])
 #       comment.to_json
 #     end
-# 
-# `Ohm` helps you here by providing sensible defaults. It's not very popular, 
-# but `Ohm` actually has a `to_hash` method. 
+#
+# `Ohm` helps you here by providing sensible defaults. It's not very popular,
+# but `Ohm` actually has a `to_hash` method.
 
-# Let's start by requiring `ohm` and `json`. In ruby 1.9, `json` is 
-# actually part of the standard library, so you don't have to install a gem 
+# Let's start by requiring `ohm` and `json`. In ruby 1.9, `json` is
+# actually part of the standard library, so you don't have to install a gem
 # for it. For ruby 1.8.x, a simple `[sudo] gem install json` will do it.
 require "ohm"
 require "json"
 
 # Here we define our `Post` model with just a single `attribute` called
-# `title`. 
+# `title`.
 #
 # We also define a validation, asserting the presence of the `title`.
 class Post < Ohm::Model
@@ -38,14 +38,14 @@ require "cutest"
 prepare { Ohm.flush }
 
 # When we successfully create a `Post`, we can see that it returns
-# only the *id* and its value in the hash. 
+# only the *id* and its value in the hash.
 test "hash representation when created" do
   post = Post.create(:title => "my post")
-  
+
   assert({ :id => "1" } == post.to_hash)
 end
 
-# The JSON representation is actually just `post.to_hash.to_json`, so the 
+# The JSON representation is actually just `post.to_hash.to_json`, so the
 # same result, only in JSON, is returned.
 test "json representation when created" do
   post = Post.create(:title => "my post")
@@ -70,16 +70,16 @@ test "json representation when validation failed" do
   assert("{\"errors\":[[\"title\",\"not_present\"]]}" == post.to_json)
 end
 
-#### Whitelisted approach 
+#### Whitelisted approach
 
 # Unlike in other frameworks which dumps out all attributes by default,
 # `Ohm` favors a whitelisted approach where you have to explicitly
 # declare which attributes you want.
-# 
+#
 # By default, only `:id` and `:errors` will be available, depending if
 # it was successfully saved or if there were validation errors.
 
-# Let's re-open our Post class, and add a `to_hash` method. 
+# Let's re-open our Post class, and add a `to_hash` method.
 class Post
   def to_hash
     super.merge(:title => title)
@@ -100,4 +100,3 @@ end
 # 1. `Ohm` doesn't assume too much about your needs.
 # 2. If you need a customized version, you can always define it yourself.
 # 3. Customization is easy using basic OOP principles.
-
