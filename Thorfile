@@ -8,7 +8,11 @@ class OhmTasks < Thor
   def doc
     require "yard"
 
-    opts = ["--protected", "--title", "Ohm &mdash; Object-hash mapping library for Redis"]
+    opts = []
+    opts.push("--protected")
+    opts.push("--no-private")
+    opts.push("--private")
+    opts.push("--title", "Ohm &mdash; Object-hash mapping library for Redis")
 
     YARD::CLI::Yardoc.run(*opts)
 
