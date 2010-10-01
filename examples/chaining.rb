@@ -3,7 +3,7 @@
 #### Doing the straight forward approach
 
 # Let's design our example around the following requirements:
-# 
+#
 # 1. a `User` has many orders.
 # 2. an  `Order` can be pending, authorized or captured.
 # 3. a `Product` is referenced by an `Order`.
@@ -15,7 +15,7 @@ require "ohm"
 
 # A `User` has a `collection` of *orders*. Note that a collection
 # is actually just a convenience, which implemented simply will look like:
-# 
+#
 #     def orders
 #       Order.find(:user_id => self.id)
 #     end
@@ -57,27 +57,27 @@ prepare { Ohm.flush }
 # We also create two products named *iPod* and *iPad*.
 setup do
   @user = User.create
-  
+
   @ipod = Product.create(:name => "iPod")
   @ipad = Product.create(:name => "iPad")
 
-  @pending =    Order.create(:user => @user, :state => "pending", 
+  @pending =    Order.create(:user => @user, :state => "pending",
                              :product => @ipod)
-  @authorized = Order.create(:user => @user, :state => "authorized", 
+  @authorized = Order.create(:user => @user, :state => "authorized",
                              :product => @ipad)
-  @captured =   Order.create(:user => @user, :state => "captured", 
+  @captured =   Order.create(:user => @user, :state => "captured",
                              :product => @ipad)
 end
 
-# Now let's try and grab all pending orders, and also pending 
+# Now let's try and grab all pending orders, and also pending
 # *iPad* and *iPod* ones.
 test "finding pending orders" do
   assert @user.orders.find(state: "pending").include?(@pending)
-  
-  assert @user.orders.find(:state => "pending", 
+
+  assert @user.orders.find(:state => "pending",
                            :product_id => @ipod.id).include?(@pending)
 
-  assert @user.orders.find(:state => "pending", 
+  assert @user.orders.find(:state => "pending",
                            :product_id => @ipad.id).empty?
 end
 
@@ -90,7 +90,7 @@ test "finding authorized and/or captured orders" do
   assert @user.orders.find(:state => "captured").include?(@captured)
 
   assert @user.orders.find(:state => ["authorized", "captured"]).empty?
-  
+
   auth_or_capt = @user.orders.key.volatile[:auth_or_capt]
   auth_or_capt.sunionstore(
     @user.orders.find(:state => "authorized").key,
@@ -101,7 +101,26 @@ test "finding authorized and/or captured orders" do
   assert auth_or_capt.smembers.include?(@captured.id)
 end
 
-# In most cases this is fine, but if you want to have a little fun, 
+#### Creating shortcuts
+
+# You can of course define methods to make that code more readable.
+class User < Ohm::Model
+  def authorized_orders
+    orders.find(:state => "authorized")
+  end
+
+  def captured_orders
+    orders.find(:state => "captured")
+  end
+end
+
+# And we can now test these new methods.
+test "finding authorized and/or captured orders" do
+  assert @user.authorized_orders.include?(@authorized)
+  assert @user.captured_orders.include?(@captured)
+end
+
+# In most cases this is fine, but if you want to have a little fun,
 # then we can play around with some chainability.
 
 #### Chaining Kung-Fu
@@ -115,7 +134,7 @@ class UserOrders < Ohm::Model::Set
   def initialize(key)
     super key, Ohm::Model::Wrapper.wrap(Order)
   end
-  
+
   # Here is the crux of the chaining pattern. Instead of
   # just doing a straight up `find(:state => "pending")`, we return
   # `UserOrders` again.
@@ -130,7 +149,7 @@ class UserOrders < Ohm::Model::Set
   def captured
     self.class.new(model.index_key_for(:state, "captured"))
   end
-  
+
   # Now we wrap the implementation of doing an `SUNIONSTORE` and also
   # make it return a `UserOrders` object.
   #
@@ -163,10 +182,10 @@ end
 test "finding authorized and/or captured orders using a chainable style" do
   assert @user.orders.authorized.include?(@authorized)
   assert @user.orders.captured.include?(@captured)
-  
+
   assert @user.orders.accepted.include?(@authorized)
   assert @user.orders.accepted.include?(@captured)
-  
+
   accepted = @user.orders.accepted
 
   assert accepted.find(:product_id => @ipad.id).include?(@authorized)
@@ -175,11 +194,10 @@ end
 
 #### Conclusion
 
-# This design pattern is something that really depends upon the situation. In 
+# This design pattern is something that really depends upon the situation. In
 # the example above, you can add more complicated querying on the `UserOrders`
 # class.
-# 
-# The most important takeaway here is the ease of which we can weild the 
-# different components of Ohm, and mold it accordingly to our preferences, 
+#
+# The most important takeaway here is the ease of which we can weild the
+# different components of Ohm, and mold it accordingly to our preferences,
 # without having to monkey-patch anything.
-
