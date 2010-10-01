@@ -21,7 +21,7 @@
 #
 # As you can see, this design leads to a lot of problems:
 #
-# 1. Trying to find the tags of a post will have to go through taggings, and 
+# 1. Trying to find the tags of a post will have to go through taggings, and
 #    then individually find the actual tag.
 # 2. One might be inclined to use a JOIN query, but we all know
 #    [joins are evil](http://stackoverflow.com/questions/1020847).
@@ -33,23 +33,14 @@
 #
 # 1.  We should be able to tag a post (separated by commas).
 # 2.  We should be able to find a post with a given tag.
-# 3.  We should be able to find top tags, and their count.
 
 #### Beginning with our Post model
 
-# Let's first require ohm (and ohm/contrib, which is used for 
-# `Ohm::Callbacks`).
+# Let's first require ohm.
 require 'ohm'
-require 'ohm/contrib'
 
 # We then declare our class, inheriting from `Ohm::Model` in the process.
 class Post < Ohm::Model
-
-  # When we want our class to have extended functionality like callbacks,
-  # we simply include the necessary modules, in this case `Ohm::Callbacks`,
-  # which will be responsible for inserting `before_*` and `after_*` methods
-  # in the object's lifecycle.
-  include Ohm::Callbacks
 
   # The structure, fields, and other associations are defined in a declarative
   # manner. Ohm allows us to declare *attributes*, *sets*, *lists* and
@@ -78,6 +69,78 @@ class Post < Ohm::Model
   # 7. ruby, redis, ohm
   #
   # Pretty neat ain't it?
+  def tag
+    tags.to_s.split(/\s*,\s*/).uniq
+  end
+end
+
+#### Testing it out
+
+# It's a very good habit to test all the time. In the Ruby community,
+# a lot of test frameworks have been created.
+
+# For our purposes in this example, we'll use cutest.
+require "cutest"
+
+# Cutest allows us to define callbacks which are guaranteed to be executed
+# every time a new `test` begins. Here, we just make sure that the Redis
+# instance of `Ohm` is empty everytime.
+prepare { Ohm.flush }
+
+# Next, let's create a simple `Post` instance. The return value of the `setup`
+# block will be passed to every `test` block, so we don't actually have to
+# assign it to an instance variable.
+setup do
+  Post.create(:body => "Ohm Tagging", :tags => "tagging, ohm, redis")
+end
+
+# For our first run, let's verify the fact that we can find a `Post`
+# using any of the tags we gave.
+test "find using a single tag" do |p|
+  assert Post.find(tag: "tagging").include?(p)
+  assert Post.find(tag: "ohm").include?(p)
+  assert Post.find(tag: "redis").include?(p)
+end
+
+# Now we verify our claim earlier, that it is possible to find a tag
+# using any one of the combinations for the given set of tags.
+#
+# We also verify that if we pass in a non-existent tag name that
+# we'll fail to find the `Post` we just created.
+test "find using an intersection of multiple tag names" do |p|
+  assert Post.find(tag: ["tagging", "ohm"]).include?(p)
+  assert Post.find(tag: ["tagging", "redis"]).include?(p)
+  assert Post.find(tag: ["ohm", "redis"]).include?(p)
+  assert Post.find(tag: ["tagging", "ohm", "redis"]).include?(p)
+
+  assert ! Post.find(tag: ["tagging", "foo"]).include?(p)
+end
+
+
+#### Adding a Tag model
+
+# Let's pretend that the client suddenly requested that we keep track
+# of the number of times a tag has been used. It's a pretty fair requirement
+# after all. Updating our requirements, we will now have:
+#
+# 1.  We should be able to tag a post (separated by commas).
+# 2.  We should be able to find a post with a given tag.
+# 3.  We should be able to find top tags, and their count.
+
+# Continuing from our example above, let's require `ohm-contrib`, which we
+# will be using for callbacks.
+require "ohm/contrib"
+
+# Let's quickly re-open our Post class.
+class Post
+  # When we want our class to have extended functionality like callbacks,
+  # we simply include the necessary modules, in this case `Ohm::Callbacks`,
+  # which will be responsible for inserting `before_*` and `after_*` methods
+  # in the object's lifecycle.
+  include Ohm::Callbacks
+
+  # To make our code more concise, we just quickly change our implementation
+  # of `tag` to receive a default parameter:
   def tag(tags = self.tags)
     tags.to_s.split(/\s*,\s*/).uniq
   end
@@ -128,49 +191,13 @@ class Tag < Ohm::Model
   end
 end
 
-#### Testing it out
+#### Verifying our third requirement
 
-# It's a very good habit to test all the time. In the Ruby community,
-# a lot of test frameworks have been created.
+# Continuing from our test cases above, let's add test coverage for the
+# behavior of counting tags.
 
-# For our purposes in this example, we'll use cutest.
-require "cutest"
-
-# Cutest allows us to define callbacks which are guaranteed to be executed
-# every time a new `test` begins. Here, we just make sure that the Redis
-# instance of `Ohm` is empty everytime.
-prepare { Ohm.flush }
-
-# Next, let's create a simple `Post` instance. The return value of the `setup`
-# block will be passed to every `test` block, so we don't actually have to
-# assign it to an instance variable.
-setup do
-  Post.create(:body => "Ohm Tagging", :tags => "tagging, ohm, redis")
-end
-
-# For our first run, let's verify the fact that we can find a `Post`
-# using any of the tags we gave.
-test "find using a single tag" do |p|
-  assert Post.find(tag: "tagging").include?(p)
-  assert Post.find(tag: "ohm").include?(p)
-  assert Post.find(tag: "redis").include?(p)
-end
-
-# Now we verify our claim earlier, that it is possible to find a tag
-# using any one of the combinations for the given set of tags.
-#
-# We also verify that if we pass in a non-existent tag name that
-# we'll fail to find the `Post` we just created.
-test "find using an intersection of multiple tag names" do |p|
-  assert Post.find(tag: ["tagging", "ohm"]).include?(p)
-  assert Post.find(tag: ["tagging", "redis"]).include?(p)
-  assert Post.find(tag: ["ohm", "redis"]).include?(p)
-  assert Post.find(tag: ["tagging", "ohm", "redis"]).include?(p)
-
-  assert ! Post.find(tag: ["tagging", "foo"]).include?(p)
-end
-
-# Of course we need to verify that every tag we created has a total of 1.
+# For each and every tag we initially create, we need to make sure they have a
+# total of 1.
 test "verify total to be exactly 1" do
   assert 1 == Tag["ohm"].total
   assert 1 == Tag["redis"].total
@@ -200,9 +227,12 @@ test "updating an existing post decrements the tags removed" do
   assert 2 == Tag["redis"].total
 end
 
+
+
 ## Conclusion
 
-# Most of the time we tend to think in terms of an RDBMS way, and this is in 
-# no way a negative thing. However, it is important to try and switch your 
+# Most of the time we tend to think in terms of an RDBMS way, and this is in
+# no way a negative thing. However, it is important to try and switch your
 # frame of mind when working with Ohm (and Redis) because it will greatly save
 # you time, and possibly lead to a great design.
+
