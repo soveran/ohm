@@ -6,10 +6,10 @@
 
 #### ID Prefixed slugs
 
-# This is by far the simplest (and most cost-effective way) of generating 
+# This is by far the simplest (and most cost-effective way) of generating
 # slugs. Implementing this is pretty simple too.
 
-# Let's first require `Ohm`. 
+# Let's first require `Ohm`.
 require "ohm"
 
 # Now let's define our `Post` model, with just a single
@@ -51,20 +51,20 @@ end
 
 # Now let's verify the behavior of our `to_param` method.
 # Note that we make it dash-separated and lowercased.
-test "to_param" do |p|
-  assert "1-id-prefixed-slugs" == p.to_param
+test "to_param" do |post|
+  assert "1-id-prefixed-slugs" == post.to_param
 end
 
 # We also check that our easier finder syntax works.
-test "finding the post" do |p|
-  assert p == Post[p.to_param]
+test "finding the post" do |post|
+  assert post == Post[post.to_param]
 end
 
 #### We don't have to code it everytime
 
 # Because of the prevalence, ease of use, and efficiency of this style of slug
-# generation, it has been extracted to a module in 
-# [Ohm::Contrib](http://github.com/cyx/ohm-contrib/) called `Ohm::Slug`. 
+# generation, it has been extracted to a module in
+# [Ohm::Contrib](http://github.com/cyx/ohm-contrib/) called `Ohm::Slug`.
 
 # Let's create a different model to demonstrate how to use it.
 # (Run `[sudo] gem install ohm-contrib` to install ohm-contrib).
@@ -78,7 +78,7 @@ class Video < Ohm::Model
   include Ohm::Slug
 
   attribute :title
-  
+
   # `Ohm::Slug` just uses the value of the object's `to_s`.
   def to_s
     title.to_s
@@ -114,10 +114,10 @@ protected
   def before_create
     temp = Ohm::Slug.slug(title)
     self.id = temp
-    
+
     counter = 0
     while Article.exists?(id)
-      self.id = "%s-%d" % [temp, counter += 1]      
+      self.id = "%s-%d" % [temp, counter += 1]
     end
   end
 end
@@ -147,4 +147,3 @@ end
 #
 #    *NOTE:* The example we used for the second solution has potential
 #    race conditions. I'll leave fixing it as an exercise to you.
-
