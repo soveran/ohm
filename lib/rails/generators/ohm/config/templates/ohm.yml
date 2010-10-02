@@ -1,0 +1,23 @@
+# Ohm/Redis >2
+#   gem install ohm
+development:
+  # url: redis://:<passwd>@<host>:<port>/<db>
+  # or
+  host: 127.0.0.1
+  port: 6379
+  db: <%= database_number || 0 %>
+  # password: foo
+  # timeout: 0
+  # thread_save: false
+
+# Warning: The database defined as "test" will be erased and
+# re-generated from your development database when you run "rake".
+# Do not set this db to the same as development or production.
+test: &test
+  db: <%= database_number ? database_number.to_i + 1 : 1 %>
+
+production:
+  url: <%%= ENV['OHM_URL'] %>
+
+cucumber:
+  <<: *test

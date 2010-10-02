@@ -56,13 +56,16 @@ module Rails #:nodoc:
       #   development:
       #     <<: *defaults
       #     database: ohm
-      # initializer "setup database" do
-      #   config_file = Rails.root.join("config", "ohm.yml")
-      #   if config_file.file?
-      #     settings = YAML.load(ERB.new(config_file.read).result)[Rails.env]
-      #     ::Ohm.from_hash(settings) if settings.present?
-      #   end
-      # end
+      initializer "setup database" do
+        config_file = Rails.root.join("config", "ohm.yml")
+        if config_file.file?
+          settings = YAML.load(ERB.new(config_file.read).result)[Rails.env]
+          if settings.present?
+            puts "[Ohm] Connecting to #{Rails.env} env, DB ##{settings['db']}."
+            ::Ohm.connect(settings)
+          end
+        end
+      end
 
       # # After initialization we will attempt to connect to the database, if
       # # we get an exception and can't find a ohm.yml we will alert the user
