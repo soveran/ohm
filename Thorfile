@@ -3,12 +3,24 @@
 class OhmTasks < Thor
   namespace :ohm
 
-  desc "doc", "Generate YARD documentation"
+  desc "doc", "Generate documentation"
   method_options :open => false
   def doc
+    invoke :yard
+    invoke :rocco
+
+    system "open doc/index.html" if options[:open]
+  end
+
+  desc "yard", "Generate YARD documentation"
+  def yard
     require "yard"
 
-    opts = ["--protected", "--title", "Ohm &mdash; Object-hash mapping library for Redis"]
+    opts = []
+    opts.push("--protected")
+    opts.push("--no-private")
+    opts.push("--private")
+    opts.push("--title", "Ohm &mdash; Object-hash mapping library for Redis")
 
     YARD::CLI::Yardoc.run(*opts)
 
@@ -30,8 +42,13 @@ class OhmTasks < Thor
 
       File.open(file, "w") { |f| f.write(contents) }
     end
+  end
 
-    system "open doc/index.html" if options[:open]
+  desc "rocco", "Generate ROCCO documentation"
+  def rocco
+    `mkdir doc/examples` unless Dir.exists?("doc/examples")
+    `rocco examples/*.*`
+    `mv examples/*.html doc/examples`
   end
 
   desc "deploy", "Deploy documentation"

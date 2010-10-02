@@ -1,0 +1,179 @@
+### Understanding Ohm Internals through Logging
+
+#### Benefits
+
+# Ohm is actually a very thin wrapper for Redis, and most of the design
+# patterns implemented in Ohm are based on the prescribed patterns for using
+# Redis.
+#
+# If you take a little time to grok the internals of Ohm and Redis, the more
+# effective you will be in weilding it efficiently.
+
+#### Keys
+#
+# Most key-value stores have standardized on a structured design pattern for
+# organizing data. Let's fire up a console:
+#
+#     >> irb -r ohm -r logger
+#
+#     Ohm.redis.client.logger = Logger.new(STDOUT)
+#
+#     class Post < Ohm::Model
+#       attribute :title
+#     end
+#
+#     Post.create(:title => "Grokking Ohm")
+#
+# After executing `Post.create(...)`, you'll see a lot of output from the
+# logger. Let's go through every line in detail.
+
+#### Post.create
+
+# *Generate a new `Post:id`.*
+INCR Post:id
+
+# *Lock `Post:2`
+# (see [SETNX](http://code.google.com/p/redis/wiki/SetnxCommand)
+# for an explanation of the locking design pattern).
+SETNX Post:2:_lock 1285060009.409451
+
+# *Add the newly generated ID 2 to the `Post:all` SET.*
+SADD Post:all 2
+
+# *Start transaction.*
+MULTI
+
+# *Delete HASH `Post:2`.*
+DEL Post:2
+
+# *Set the attributes.*
+HMSET Post:2 title "Grokking Ohm"
+
+# *End transaction.*
+EXEC
+
+# *Release the lock.*
+DEL Post:2:_lock
+
+#### Sets and Lists
+
+# Let's do a little `SET` and `LIST` manipulation and see what Ohm does.
+# Here's the code for this section:
+#
+#     class User < Ohm::Model
+#       collection :posts, Post
+#     end
+#
+#     class Post < Ohm::Model
+#       attribute :title
+#       reference :user, User
+#
+#       list :comments, Comment
+#     end
+#
+#     class Comment < Ohm::Model
+#     end
+
+#### User.create
+
+# *Generate a new ID for the `User`.*
+INCR User:id
+
+# *Lock User:9.*
+SETNX User:9:_lock 1285061032.174834
+
+# *Add this new user to the SET User:all.*
+SADD User:all 9
+
+# *Release the lock.*
+DEL User:9:_lock
+
+#### Post.create(:title => "Foo", :user => User.create)
+
+# *Generate an ID for this Post*
+INCR Post:id
+
+# *Lock Post:3*
+SETNX Post:3:_lock 1285061032.180314
+
+# *Add the ID 3 to the SET Post:all*
+SADD Post:all 3
+
+# *Start transaction*
+MULTI
+
+# *Remove existing Post:3 HASH*
+DEL Post:3
+
+# *Assign the attributes to Post:3*
+HMSET Post:3 title Foo user_id 9
+
+# *End transaction*
+EXEC
+
+# *Add the ID of this post to the SET index (more on this below)*
+SADD Post:user_id:OQ== 3
+
+# *Book keeping for Post:3 indices*
+SADD Post:3:_indices Post:user_id:OQ==
+
+# *Release lock*
+DEL Post:3:_lock
+
+#### post.comments << Comment.create
+
+# *Generate an ID for this comment*
+INCR Comment:id
+
+# *Lock Comment:1*
+SETNX Comment:1:_lock 1285061034.335855
+
+# *Add this comment to the SET Comment:all*
+SADD Comment:all 1
+
+# *Release lock*
+DEL Comment:1:_lock
+
+# *Append the comment to the LIST Post:3:comments*
+RPUSH Post:3:comments 1
+
+#### Understanding indexes
+
+#     reference :user, User
+#
+# is actually more or less the same as:
+#
+#     attribute :user_id
+#     index :user_id
+#
+#     def user
+#       User[user_id]
+#     end
+#
+#     def user_id=(user_id)
+#       self.user_id = user_id
+#     end
+#
+# To further explain the [example above](#section-29), let's
+# run through the commands that was issued. Remember that
+# we had a *user_id* of *9* and a *post_id* of *3*.
+
+# *OQ== is Base64 of *9*, with newlines removed. The post_id 3 is added
+# effectively to Post:user_id:9, if we ignore the encoding.*
+SADD Post:user_id:OQ== 3
+
+# *Just keep track that Post:user_id:OQ== was created*
+SADD Post:3:_indices Post:user_id:OQ==
+
+# *Get all *posts* with user_id *9**
+SMEMBERS Post:user_id:OQ==
+
+#### What's next?
+
+# We tackled a fair bit amount regarding Ohm internals. More or less this is
+# the foundation of everything else found in Ohm, and other code are just
+# built around the same fundamental concepts.
+#
+# If there's anything else you want to know, you can hang out on #ohm at
+# irc.freenode.net, or you can visit the
+# [Ohm google group](http://groups.google.com/group/ohm-ruby).
