@@ -1718,9 +1718,6 @@ module Ohm
       self.db = Ohm.connection(*options)
     end
 
-  protected
-    attr_writer :id
-
     # @return [Ohm::Key] A key scoped to the model which uses this object's
     #                    id.
     #
@@ -1728,6 +1725,10 @@ module Ohm
     def key
       self.class.key[id]
     end
+
+  protected
+    attr_writer :id
+
 
     # Write all the attributes and counters of this object. The operation
     # is actually a 2-step process:
