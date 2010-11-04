@@ -17,6 +17,16 @@ Join the mailing list: [http://groups.google.com/group/ohm-ruby](http://groups.g
 
 Meet us on IRC: [#ohm](irc://chat.freenode.net/#ohm) on [freenode.net](http://freenode.net/)
 
+
+Related projects
+----------------
+
+These are libraries in other languages that were inspired by Ohm.
+
+* [JOhm](https://github.com/xetorthio/johm) for Java, created by xetorthio
+* [Nohm](https://github.com/maritz/nohm) for Node.js, created by maritz
+* [Redisco](https://github.com/iamteem/redisco) for Python, created by iamteem
+
 Getting started
 ---------------
 
@@ -44,7 +54,7 @@ Now, in an irb session you can test the Redis adapter directly:
     >> Ohm.redis.get "Foo"
     => "Bar"
 
-## Connecting to the Redis database {: #connecting }
+## Connecting to the Redis database
 
 There are a couple of different strategies for connecting to your Redis
 database. The first is to explicitly set the `:host`, `:port`, `:db` and
@@ -231,7 +241,7 @@ You can add instances of `Person` to the set of attendees with the
       # ...do what you want with this person.
     end
 
-## Sorting        {: #sorting}
+## Sorting
 
 Since `attendees` is a {Ohm::Model::Set Set}, it exposes two sorting
 methods: {Ohm::Model::Collection#sort sort} returns the elements
@@ -323,7 +333,7 @@ After this, every time you refer to `post.comments` you will be talking
 about instances of the model `Comment`. If you want to get a list of IDs
 you can use `post.comments.key.smembers`.
 
-### References explained {: #references }
+### References explained
 
 Doing a {Ohm::Model.reference reference} is actually just a shortcut for
 the following:
@@ -352,7 +362,7 @@ and also search comments using the `post_id` index.
     Comment.find(:post_id => 1)
 
 
-### Collections explained {: #collections }
+### Collections explained
 
 The reason a {Ohm::Model.reference reference} and a
 {Ohm::Model.collection collection} go hand in hand, is that a collection is
@@ -545,14 +555,14 @@ Tutorials
 
 Check the examples to get a feeling of the design patterns for Redis.
 
-1. [Activity Feed](examples/activity-feed.html)
-2. [Chaining finds](examples/chaining.html)
-3. [Serialization to JSON](examples/json-hash.html)
-4. [One to many associations](examples/one-to-many.html)
-5. [Philosophy behind Ohm](examples/philosophy.html)
-6. [Learning Ohm internals](examples/redis-logging.html)
-7. [Slugs and permalinks](examples/slug.html)
-8. [Tagging](examples/tagging.html)
+1. [Activity Feed](http://ohm.keyvalue.org/examples/activity-feed.html)
+2. [Chaining finds](http://ohm.keyvalue.org/examples/chaining.html)
+3. [Serialization to JSON](http://ohm.keyvalue.org/examples/json-hash.html)
+4. [One to many associations](http://ohm.keyvalue.org/examples/one-to-many.html)
+5. [Philosophy behind Ohm](http://ohm.keyvalue.org/examples/philosophy.html)
+6. [Learning Ohm internals](http://ohm.keyvalue.org/examples/redis-logging.html)
+7. [Slugs and permalinks](http://ohm.keyvalue.org/examples/slug.html)
+8. [Tagging](http://ohm.keyvalue.org/examples/tagging.html)
 
 Versions
 ========
