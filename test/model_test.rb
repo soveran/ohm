@@ -659,6 +659,8 @@ class ::Calendar < Ohm::Model
   list :holidays, lambda { |v| Date.parse(v) }
   list :subscribers, lambda { |id| MyActiveRecordModel.find(id) }
   list :appointments, Appointment
+
+  set :events, lambda { |id| MyActiveRecordModel.find(id) }
 end
 
 class ::Appointment < Ohm::Model
@@ -673,6 +675,8 @@ setup do
   @calendar.holidays.key.rpush "2009-07-09"
 
   @calendar.subscribers << MyActiveRecordModel.find(1)
+
+  @calendar.events << MyActiveRecordModel.find(1)
 end
 
 test "apply a transformation" do
@@ -680,6 +684,24 @@ test "apply a transformation" do
 
   assert [1] == @calendar.subscribers.all.map { |model| model.id }
   assert [MyActiveRecordModel.find(1)] == @calendar.subscribers.all
+end
+
+test "doing an each on lists" do
+  arr = []
+  @calendar.subscribers.each do |sub|
+    arr << sub
+  end
+
+  assert [MyActiveRecordModel.find(1)] == arr
+end
+
+test "doing an each on sets" do
+  arr = []
+  @calendar.events.each do |sub|
+    arr << sub
+  end
+
+  assert [MyActiveRecordModel.find(1)] == arr
 end
 
 test "allow lambdas in references" do

@@ -470,7 +470,7 @@ module Ohm
       # @see http://code.google.com/p/redis/wiki/SmembersCommand SMEMBERS
       #      in Redis Command Reference.
       def each(&block)
-        key.smembers.each { |id| block.call(model[id]) }
+        key.smembers.each { |id| block.call(model.to_proc[id]) }
       end
 
       # Convenient way to scope access to a predefined set, useful for access
@@ -784,7 +784,7 @@ module Ohm
       # @see http://code.google.com/p/redis/wiki/LrangeCommand LRANGE
       #      in Redis Command Reference.
       def each(&block)
-        key.lrange(0, -1).each { |id| block.call(model[id]) }
+        key.lrange(0, -1).each { |id| block.call(model.to_proc[id]) }
       end
 
       # Thin wrapper around *RPUSH*.
@@ -845,9 +845,9 @@ module Ohm
       def [](index, limit = nil)
         case [index, limit]
         when Pattern[Fixnum, Fixnum] then
-          key.lrange(index, limit).collect { |id| model[id] }
+          key.lrange(index, limit).collect { |id| model.to_proc[id] }
         when Pattern[Range, nil] then
-          key.lrange(index.first, index.last).collect { |id| model[id] }
+          key.lrange(index.first, index.last).collect { |id| model.to_proc[id] }
         when Pattern[Fixnum, nil] then
           model[key.lindex(index)]
         end
@@ -1287,7 +1287,7 @@ module Ohm
 
     # @private Used for conveniently doing [1, 2].map(&Post) for example.
     def self.to_proc
-      Proc.new { |id| self[id] }
+      lambda { |id| new(:id => id) }
     end
 
     # Returns a {Ohm::Model::Set set} containing all the members of a given
@@ -1999,4 +1999,3 @@ module Ohm
     end
   end
 end
-
