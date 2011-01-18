@@ -160,8 +160,15 @@ test "not raise if a index is redefined" do
   end
 end
 
-test "allow arbitrary IDs" do
+test "allow arbitrary IDs on create" do
   Event.create(:id => "abc123", :name => "Concert")
+
+  assert Event.all.size == 1
+  assert Event["abc123"].name == "Concert"
+end
+
+test "allow arbitrary IDs on save" do
+  Event.new(:id => "abc123", :name => "Concert").save
 
   assert Event.all.size == 1
   assert Event["abc123"].name == "Concert"

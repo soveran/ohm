@@ -1465,7 +1465,7 @@ module Ohm
     # @return [Ohm::Model, nil] The saved object or nil if it fails
     #                           validation.
     def save
-      return create if new?
+      return create if new? || !self.class.exists?(@id)
       return unless valid?
 
       mutex do
