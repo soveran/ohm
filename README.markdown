@@ -24,8 +24,19 @@ Related projects
 These are libraries in other languages that were inspired by Ohm.
 
 * [JOhm](https://github.com/xetorthio/johm) for Java, created by xetorthio
+* [Lohm](https://github.com/slact/lua-ohm) for Lua, created by slact
 * [Nohm](https://github.com/maritz/nohm) for Node.js, created by maritz
 * [Redisco](https://github.com/iamteem/redisco) for Python, created by iamteem
+
+Articles and Presentations
+--------------------------
+
+* [How to Redis](http://www.paperplanes.de/2009/10/30/how_to_redis.html)
+* [Redis and Ohm](http://carlopecchia.eu/blog/2010/04/30/redis-and-ohm-part1/)
+* [Ohm (Redis ORM)](http://blog.s21g.com/articles/1717) (Japanese)
+* [Redis and Ohm](http://www.slideshare.net/awksedgreep/redis-and-ohm)
+
+http://www.slideshare.net/cyx.ucron/ruby-off-rails
 
 Getting started
 ---------------
