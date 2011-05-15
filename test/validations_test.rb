@@ -115,6 +115,20 @@ scope do
     end
   end
 
+  # That must have a unique name
+  scope do
+    test "fail when the value already exists" do |event|
+
+      Event.create(:name => "foo")
+      event.name = "foo"
+      event.create
+
+      assert !event.new?
+      assert !event.assert_unique(:name)
+      assert [[:name, :not_unique]] == event.errors
+    end
+  end
+
   # That must have a unique name scoped by place
   scope do
     test "fail when the value already exists for a scoped attribute" do |event|

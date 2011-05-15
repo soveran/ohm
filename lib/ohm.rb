@@ -949,7 +949,7 @@ module Ohm
         indices = Array(atts).map { |att| index_key_for(att, send(att)) }
         result  = db.sinter(*indices)
 
-        assert result.empty? || !new? && result.include?(id.to_s), error
+        assert result.empty? || !new? && result == Array(id.to_s), error
       end
     end
 
