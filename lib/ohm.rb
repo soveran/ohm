@@ -1067,7 +1067,7 @@ module Ohm
         write_local(name, value)
       end
 
-      attributes << name unless attributes.include?(name)
+      attributes(self) << name unless attributes.include?(name)
     end
 
     # Defines a counter attribute for the model. This attribute can't be
@@ -1079,7 +1079,7 @@ module Ohm
         read_local(name).to_i
       end
 
-      counters << name unless counters.include?(name)
+      counters(self) << name unless counters.include?(name)
     end
 
     # Defines a list attribute for the model. It can be accessed only after
@@ -1111,7 +1111,7 @@ module Ohm
     # @param [Symbol] name Name of the list.
     def self.list(name, model)
       define_memoized_method(name) { List.new(key[name], Wrapper.wrap(model)) }
-      collections << name unless collections.include?(name)
+      collections(self) << name unless collections.include?(name)
     end
 
     # Defines a set attribute for the model. It can be accessed only after
@@ -1122,7 +1122,7 @@ module Ohm
     # @param [Symbol] name Name of the set.
     def self.set(name, model)
       define_memoized_method(name) { Set.new(key[name], Wrapper.wrap(model)) }
-      collections << name unless collections.include?(name)
+      collections(self) << name unless collections.include?(name)
     end
 
     # Creates an index (a set) that will be used for finding instances.
@@ -1142,7 +1142,7 @@ module Ohm
     #
     # @param [Symbol] name Name of the attribute to be indexed.
     def self.index(att)
-      indices << att unless indices.include?(att)
+      indices(self) << att unless indices.include?(att)
     end
 
     # Define a reference to another object.
@@ -1184,7 +1184,7 @@ module Ohm
       reader = :"#{name}_id"
       writer = :"#{name}_id="
 
-      attributes << reader unless attributes.include?(reader)
+      attributes(self) << reader unless attributes.include?(reader)
 
       index reader
 
@@ -1313,14 +1313,14 @@ module Ohm
 
     # All the defined attributes within a class.
     # @see Ohm::Model.attribute
-    def self.attributes
-      @@attributes[self]
+    def self.attributes(klass=nil)
+      klass ? @@attributes[klass] : all_ancestors(@@attributes)
     end
 
     # All the defined counters within a class.
     # @see Ohm::Model.counter
-    def self.counters
-      @@counters[self]
+    def self.counters(klass=nil)
+      klass ? @@counters[klass] : all_ancestors(@@counters)
     end
 
     # All the defined collections within a class. This will be comprised of
@@ -1338,14 +1338,14 @@ module Ohm
     #
     # @see Ohm::Model.list
     # @see Ohm::Model.set
-    def self.collections
-      @@collections[self]
+    def self.collections(klass=nil)
+      klass ? @@collections[klass] : all_ancestors(@@collections)
     end
 
     # All the defined indices within a class.
     # @see Ohm::Model.index
-    def self.indices
-      @@indices[self]
+    def self.indices(klass=nil)
+      klass ? @@indices[klass] : all_ancestors(@@indices)
     end
 
     # Convenience method to create and return the newly created object.
@@ -1435,8 +1435,9 @@ module Ohm
     # @param [Hash] attrs Attribute value pairs.
     def initialize(attrs = {})
       @id = nil
-      @_memo = {}
-      @_attributes = Hash.new { |hash, key| hash[key] = read_remote(key) }
+      super
+      @_memo ||= {}
+      @_attributes ||= Hash.new { |hash, key| hash[key] = read_remote(key) }
       update_attributes(attrs)
     end
 
@@ -1801,6 +1802,10 @@ module Ohm
 
   private
 
+    # roll up all the attribute names from self and all superclasses
+    def self.all_ancestors(attr)
+      ancestors.map { |klass| attr[klass] }.flatten
+    end
     # Provides access to the Redis database. This is shared accross all models and instances.
     def self.db
       Ohm.threaded[self] || Ohm.redis
