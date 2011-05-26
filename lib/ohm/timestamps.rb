@@ -1,3 +1,4 @@
+require 'ohm/typecast'
 module Ohm
   # Provides typecast created_at / updated_at timestamps that preserve microseconds.
   #
@@ -15,11 +16,12 @@ module Ohm
   #   post.save
   #   post.updated_at.to_s == Time.now.utc.to_s
   #   # => true
+
   module Timestamps
-    
     Timestamp = Ohm::Types::Timestamp
     
     def self.included(base)
+      base.send(:include, Ohm::Typecast)
       base.attribute :created_at, Timestamp
       base.attribute :updated_at, Timestamp
     end
