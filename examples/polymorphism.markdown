@@ -19,7 +19,7 @@ Here `SuperUser` derives from `User` and adds the indexed attribute `kernel`.
 
 ## Model Root
 
-All models that have subclasses are deemed polymorphic. The model `root` is the superclass of all its polymorphs. The `root`s are your application classes that derive from `Ohm::Model`:
+All models that have subclasses are deemed polymorphic. The model `root` is the superclass of all its polymorphs. The `roots` are your application classes that derive from `Ohm::Model`:
 
     >> User.root
     => User
