@@ -4,10 +4,12 @@ require "base64"
 require "redis"
 require "nest"
 
+require File.join(File.dirname(__FILE__), "ohm", "helpers")
 require File.join(File.dirname(__FILE__), "ohm", "pattern")
 require File.join(File.dirname(__FILE__), "ohm", "validations")
 require File.join(File.dirname(__FILE__), "ohm", "compat-1.8.6")
 require File.join(File.dirname(__FILE__), "ohm", "key")
+
 
 module Ohm
 
@@ -599,11 +601,10 @@ module Ohm
       # @param  [Hash] options A hash of key value pairs.
       # @return [Ohm::Model::Set] A set satisfying the filter passed.
       def find(options)
-        source = keys(options)
-        target = source.inject(key.volatile) { |chain, other| chain + other }
-        apply(:sinterstore, key, source, target)
+        source, target = find_source(options, :+)
+        apply(:sinterstore, key, source, target)        
       end
-
+      
       # Similar to find except that it negates the criteria.
       #
       # @example
@@ -623,8 +624,7 @@ module Ohm
       # @param  [Hash] options A hash of key value pairs.
       # @return [Ohm::Model::Set] A set satisfying the filter passed.
       def except(options)
-        source = keys(options)
-        target = source.inject(key.volatile) { |chain, other| chain - other }
+        source, target = find_source(options, :-)
         apply(:sdiffstore, key, source, target)
       end
 
@@ -700,14 +700,22 @@ module Ohm
         Set.new(target, Wrapper.wrap(model))
       end
 
+      # generate list of source indices and a target volatile index for the find
+      # include the subclass index if scoped to a subclass
+      def find_source(options, op)
+        source = keys(options).uniq
+        target = source.inject(key.volatile) { |chain, other| chain.send(op, other) }
+        model.debug "find: #{model} #{options}: #{key} #{op} #{source} => #{target}"
+        [source, target]
+      end
+
       # @private
       #
       # Transform a hash of attribute/values into an array of keys.
       def keys(hash)
         [].tap do |keys|
           hash.each do |key, values|
-            values = [values] unless values.kind_of?(Array)
-            values.each do |v|
+            Array(values).each do |v|
               keys << model.index_key_for(key, v)
             end
           end
@@ -738,7 +746,8 @@ module Ohm
       #
       # If we want to search for example all `Posts` entitled "ruby" or
       # "redis", then it doesn't make sense to do an INTERSECTION with
-      # `Post.key[:all]` since it would be redundant.
+      # `Post.key[:all]` since it would be redundant, unless we're constrained
+      # to a subclass of Post.
       #
       # The implementation of {Ohm::Model::Index#find} avoids this redundancy.
       #
@@ -746,7 +755,7 @@ module Ohm
       # @see Ohm::Model.find find in Ohm::Model.
       def find(options)
         keys = keys(options)
-        return super(options) if keys.size > 1
+        return super(options) if keys.size > 1 || model != model.root # && !keys.all? {|k| k.model != model }
 
         Set.new(keys.first, Wrapper.wrap(model))
       end
@@ -1435,12 +1444,25 @@ module Ohm
     # @param [Hash] attrs Attribute value pairs.
     def initialize(attrs = {})
       @id = nil
-      super
       @_memo ||= {}
+      super
       @_attributes ||= Hash.new { |hash, key| hash[key] = read_remote(key) }
       update_attributes(attrs)
     end
 
+    # instantiate an instance of a model, or possibly a subclass of a model according to
+    # its _type attribute if it exists
+    def self.new(attrs = {})
+      type = attrs[:_type] || ( attrs[:id] && self.polymorph && _read_remote(root.key[attrs[:id]], :_type) )
+#      debug "#{self.name}.new: type: #{type} id: #{attrs[:id]}"
+      attrs.delete(:_type)
+      if type && ( klass = constantize(type.to_s) ) && klass != self
+        klass.new( attrs )
+      else
+        super
+      end
+    end
+    
     # @return [true, false] Whether or not this object has an id.
     def new?
       !@id
@@ -1692,6 +1714,12 @@ module Ohm
       )
     end
 
+    if !defined?(debug)
+      def self.debug(msg)
+        db.client.logger.debug(msg) if db && db.client && db.client.logger && db.client.logger.respond_to?(:debug)
+      end
+    end
+        
     # Makes the model connect to a different Redis instance. This is useful
     # for scaling a large application, where one model can be stored in a
     # different Redis instance, and some other groups of models can be
@@ -1719,14 +1747,26 @@ module Ohm
       self.db = Ohm.connection(*options)
     end
 
-    # @return [Ohm::Key] A key scoped to the model which uses this object's
+    # @return [Ohm::Key] A key scoped to the model root which uses this object's
     #                    id.
     #
     # @see http://github.com/soveran/nest The Nest library.
     def key
-      self.class.key[id]
+      root.key[id]
     end
 
+    def root
+      self.class.root
+    end
+    
+    def self.root
+      @root ||= ( !(base == superclass || base == self) && superclass.respond_to?(:root) ) ? superclass.root : self
+    end
+
+    def self.polymorph
+      @polymorph ||= self < root || ( self == root && !descendants.empty? )
+    end
+    
   protected
     attr_writer :id
 
@@ -1754,7 +1794,8 @@ module Ohm
           ret.push(att, value) if not value.empty?
           ret
         }
-
+        atts.unshift([:_type, self.class.name]) if self.class != root
+#        self.class.debug "write: #{atts.flatten}"
         db.multi do
           key.del
           key.hmset(*atts.flatten) if atts.any?
@@ -1845,11 +1886,37 @@ module Ohm
     #   end
     #
     def initialize_id
-      @id ||= self.class.key[:id].incr.to_s
+      @id ||= root.key[:id].incr.to_s
     end
 
     def db
       self.class.db
+    end
+
+    # base is the superclass of root. Normally this is Ohm::Model in which case all user models
+    # that inherit from Ohm::Model will have their own roots.
+    #
+    # @example
+    #
+    #   class MyModel::Base < Ohm::Model
+    #     self.base = self
+    #   end
+    #
+    #   class User < MyModel::Base; end
+    #   u = User.create
+    #   u = User.find(...)  # User is the root, not MyModel::Base
+    #
+    class << self
+      attr_accessor :base
+      silence_warnings do
+        def base
+          @base ||= self
+        end
+      end
+    end
+
+    def self.inherited(child)
+      child.base = self.base
     end
 
     def delete_attributes(atts)
@@ -1858,11 +1925,13 @@ module Ohm
 
     def create_model_membership
       self.class.all << self
+      root.all << self if self.class != root
     end
 
     def delete_model_membership
       key.del
       self.class.all.delete(self)
+      root.all.delete(self)  if self.class != root
     end
 
     def update_indices
@@ -1924,12 +1993,18 @@ module Ohm
     # @param  [Symbol] att The attribute you you want to get.
     # @return [String] The value of att.
     def read_remote(att)
-      unless new?
-        value = key.hget(att)
-        value.respond_to?(:force_encoding) ?
-          value.force_encoding("UTF-8") :
-          value
-      end
+      self.class._read_remote(key,att) unless new?
+    end
+
+    # Used internally to read a remote attribute and force the encoding
+    #
+    # @param  [Symbol] att The attribute you you want to get.
+    # @return [String] The value of att.
+    def self._read_remote(key,att)
+      value = key.hget(att)
+      value.respond_to?(:force_encoding) ?
+        value.force_encoding("UTF-8") :
+        value
     end
 
     # Read attributes en masse locally.
@@ -1970,7 +2045,8 @@ module Ohm
     #                    but also do Redis operations on.
     def self.index_key_for(name, value)
       raise IndexNotFound, name unless indices.include?(name)
-      key[name][encode(value)]
+#      debug "index_key_for: #{self} #{name}:#{value} #{root.key[name][encode(value)]}"
+      root.key[name][encode(value)]
     end
 
     # Thin wrapper around {Ohm::Model.index_key_for}.
