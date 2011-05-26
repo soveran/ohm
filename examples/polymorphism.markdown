@@ -17,7 +17,7 @@ Polymorphism allows Ohm models to be derived from, subclassed and specialized. S
 
 Here `SuperUser` derives from `User` and adds the indexed attribute `kernel`.
 
-## Model Root
+## Model Root 
 
 All models that have subclasses are deemed polymorphic. The model `root` is the superclass of all its polymorphs. The `roots` are your application classes that derive from `Ohm::Model`:
 
