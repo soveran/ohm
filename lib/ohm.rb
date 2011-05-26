@@ -705,7 +705,7 @@ module Ohm
       def find_source(options, op)
         source = keys(options).uniq
         target = source.inject(key.volatile) { |chain, other| chain.send(op, other) }
-        model.debug "find: #{model} #{options}: #{key} #{op} #{source} => #{target}"
+#        model.debug "find: #{model} #{options}: #{key} #{op} #{source} => #{target}"
         [source, target]
       end
 
@@ -1454,7 +1454,6 @@ module Ohm
     # its _type attribute if it exists
     def self.new(attrs = {})
       type = attrs[:_type] || ( attrs[:id] && self.polymorph && _read_remote(root.key[attrs[:id]], :_type) )
-#      debug "#{self.name}.new: type: #{type} id: #{attrs[:id]}"
       attrs.delete(:_type)
       if type && ( klass = constantize(type.to_s) ) && klass != self
         klass.new( attrs )
@@ -1795,7 +1794,6 @@ module Ohm
           ret
         }
         atts.unshift([:_type, self.class.name]) if self.class != root
-#        self.class.debug "write: #{atts.flatten}"
         db.multi do
           key.del
           key.hmset(*atts.flatten) if atts.any?
@@ -2045,7 +2043,6 @@ module Ohm
     #                    but also do Redis operations on.
     def self.index_key_for(name, value)
       raise IndexNotFound, name unless indices.include?(name)
-#      debug "index_key_for: #{self} #{name}:#{value} #{root.key[name][encode(value)]}"
       root.key[name][encode(value)]
     end
 
