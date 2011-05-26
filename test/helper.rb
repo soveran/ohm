@@ -22,6 +22,7 @@ require "ohm"
 require "logger"
 
 Ohm.redis.client.logger = Logger.new(STDOUT)
+Ohm.redis.client.logger.level = Logger::INFO
 
 class Ohm::Model
   silence_warnings do
