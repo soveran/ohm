@@ -1763,7 +1763,8 @@ module Ohm
     end
 
     def self.polymorph
-      @polymorph ||= self < root || ( self == root && !descendants.empty? )
+      @_descendants ||= descendants
+      @_polymorph ||= self < root || ( self == root && !@_descendants.empty? )
     end
     
   protected
@@ -1915,6 +1916,7 @@ module Ohm
 
     def self.inherited(child)
       child.base = self.base
+      @_descendants = nil
     end
 
     def delete_attributes(atts)
