@@ -199,8 +199,10 @@ module Ohm
 
       # @private since basic object doesn't include a #class we need
       # to define this manually
-      def class
-        ::Ohm::Types::Hash
+      silence_warnings do
+        def class
+          ::Ohm::Types::Hash
+        end
       end
     end
 
@@ -211,8 +213,10 @@ module Ohm
 
       # @private since basic object doesn't include a #class we need
       # to define this manually
-      def class
-        ::Ohm::Types::Array
+      silence_warnings do
+        def class
+          ::Ohm::Types::Array
+        end
       end
     end
   end
@@ -326,7 +330,6 @@ module Ohm
           write_local(name, klass[value].to_s)
         end
 
-        db.client.logger.debug "attribute #{self.name}.#{name}"
         attributes(self) << name unless attributes.include?(name)
       end
 
