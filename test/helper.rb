@@ -19,6 +19,19 @@ end
 $VERBOSE = true
 
 require "ohm"
+require "logger"
+
+Ohm.redis.client.logger = Logger.new(STDOUT)
+Ohm.redis.client.logger.level = Logger::INFO
+
+class Ohm::Model
+  silence_warnings do
+    def self.debug(msg)
+      @logger ||= Ohm.redis.client.logger || Logger.new(STDOUT)
+      @logger.debug(msg)
+    end
+  end
+end
 
 prepare do
   Ohm.flush
