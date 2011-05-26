@@ -574,6 +574,7 @@ Check the examples to get a feeling of the design patterns for Redis.
 6. [Learning Ohm internals](http://ohm.keyvalue.org/examples/redis-logging.html)
 7. [Slugs and permalinks](http://ohm.keyvalue.org/examples/slug.html)
 8. [Tagging](http://ohm.keyvalue.org/examples/tagging.html)
+9. [Polymorphism](https://github.com/tribalvibes/ohm/wiki/Polymorphism)
 
 Versions
 ========
