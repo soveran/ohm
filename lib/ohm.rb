@@ -1122,6 +1122,7 @@ module Ohm
     # @param [Symbol] name Name of the list.
     def self.list(name, model)
       define_memoized_method(name) { List.new(key[name], Wrapper.wrap(model)) }
+      define_method(:"#{name}=") { |value| send(name).replace(value) }
       collections(self) << name unless collections.include?(name)
     end
 
@@ -1133,6 +1134,7 @@ module Ohm
     # @param [Symbol] name Name of the set.
     def self.set(name, model)
       define_memoized_method(name) { Set.new(key[name], Wrapper.wrap(model)) }
+      define_method(:"#{name}=") { |value| send(name).replace(value) }
       collections(self) << name unless collections.include?(name)
     end
 
