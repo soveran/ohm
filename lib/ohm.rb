@@ -513,6 +513,7 @@ module Ohm
       #      Command Reference.
       def <<(model)
         key.sadd(model.id)
+        self
       end
       alias add <<
 
@@ -816,6 +817,7 @@ module Ohm
       #      in Redis Command Reference.
       def <<(model)
         key.rpush(model.id)
+        self
       end
       alias push <<
 
@@ -1445,8 +1447,8 @@ module Ohm
     def initialize(attrs = {})
       @id = nil
       @_memo ||= {}
-      super
       @_attributes ||= Hash.new { |hash, key| hash[key] = read_remote(key) }
+      super
       update_attributes(attrs)
     end
 
@@ -1454,7 +1456,7 @@ module Ohm
     # its _type attribute if it exists
     def self.new(attrs = {})
       type = attrs[:_type] || ( attrs[:id] && self.polymorph && _read_remote(root.key[attrs[:id]], :_type) )
-      attrs.delete(:_type)
+      (attrs = attrs.dup).delete(:_type)
       if type && ( klass = constantize(type.to_s) ) && klass != self
         klass.new( attrs )
       else
