@@ -194,7 +194,7 @@ module Ohm
 
     class Hash < Serialized
       RAW = ::Hash
-
+      include ::Enumerable
       delegate_to ::Hash
 
       # @private since basic object doesn't include a #class we need
@@ -208,7 +208,7 @@ module Ohm
 
     class Array < Serialized
       RAW = ::Array
-
+      include ::Enumerable
       delegate_to ::Array
 
       # @private since basic object doesn't include a #class we need
