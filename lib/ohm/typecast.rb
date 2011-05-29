@@ -312,7 +312,7 @@ module Ohm
       #                you need to.
       # @return [Array] the array of attributes already defined.
       # @return [nil] if the attribute is already defined.
-      def attribute(name, type = Ohm::Types::String, klass = Ohm::Types[type])
+      def attribute(name, type = String, klass = Ohm::Types[type])
         define_method(name) do
           # Primitive types maintain a reference to the original object
           # stored in @_attributes[att]. Hence mutation works for the
@@ -331,6 +331,7 @@ module Ohm
         end
 
         attributes(self) << name unless attributes.include?(name)
+        types(root)[name] = type
       end
 
     private

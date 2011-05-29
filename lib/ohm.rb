@@ -1055,6 +1055,7 @@ module Ohm
     @@collections = Hash.new { |hash, key| hash[key] = [] }
     @@counters    = Hash.new { |hash, key| hash[key] = [] }
     @@indices     = Hash.new { |hash, key| hash[key] = [] }
+    @@types       = Hash.new { |hash, key| hash[key] = Hash.new {|h,k| h[k] = String } }
 
     def id
       @id or raise MissingID
@@ -1330,6 +1331,12 @@ module Ohm
       klass ? @@attributes[klass] : all_ancestors(@@attributes)
     end
 
+    # Map of the types of defined attributes within a class.
+    # @see Ohm::Model.attribute
+    def self.types(klass=nil)
+      klass ? @@types[klass] : @@types[root].merge(@@types[base])
+    end
+      
     # All the defined counters within a class.
     # @see Ohm::Model.counter
     def self.counters(klass=nil)
@@ -1956,7 +1963,7 @@ module Ohm
 
     def self.collection?(value)
       value.kind_of?(Enumerable) &&
-      value.kind_of?(String) == false
+        value.kind_of?(String) == false
     end
 
     def add_to_index(att, value = send(att))
