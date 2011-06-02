@@ -704,7 +704,7 @@ module Ohm
       # generate list of source indices and a target volatile index for the find
       # include the subclass index if scoped to a subclass
       def find_source(options, op)
-        source = keys(options).uniq
+        source = keys(options)
         target = source.inject(key.volatile) { |chain, other| chain.send(op, other) }
 #        model.debug "find: #{model} #{options}: #{key} #{op} #{source} => #{target}"
         [source, target]
@@ -714,13 +714,28 @@ module Ohm
       #
       # Transform a hash of attribute/values into an array of keys.
       def keys(hash)
+        model.debug("#{model.name}.find: #{key} : #{hash}")
         [].tap do |keys|
-          hash.each do |key, values|
-            Array(values).each do |v|
-              keys << model.index_key_for(key, v)
+          hash.each do |attr, values|
+            # nb: String is Enumerable in 1.8.x...
+            attr_type = model.types[attr]
+            if !(Enumerable === values) || ( attr_type && attr_type < Enumerable && attr_type != String )
+              Array(values).each do |v|
+                keys << model.index_key_for(attr, v)
+              end
+            else
+              keys << union_key_for(attr,values)
             end
           end
-        end
+        end.uniq
+      end
+      
+      def union_key_for(attr, values)
+        model.debug "union_key_for: #{attr}: #{values}"
+        source = values.map {|v| model.index_key_for(attr, v) }
+        target = source.reduce(&:*)
+        apply(:sunionstore, source.shift, source, target)
+        target
       end
     end
 
@@ -748,17 +763,19 @@ module Ohm
       # If we want to search for example all `Posts` entitled "ruby" or
       # "redis", then it doesn't make sense to do an INTERSECTION with
       # `Post.key[:all]` since it would be redundant, unless we're constrained
-      # to a subclass of Post.
+      # to a subclass of Post and the index is on a superclass.
       #
-      # The implementation of {Ohm::Model::Index#find} avoids this redundancy.
+      # The implementation of {Ohm::Model::Index#find} avoids this redundancy
+      # for the single index case.
       #
       # @see Ohm::Model::Set#find find in Ohm::Model::Set.
       # @see Ohm::Model.find find in Ohm::Model.
       def find(options)
-        keys = keys(options)
-        return super(options) if keys.size > 1 || model != model.root # && !keys.all? {|k| k.model != model }
-
-        Set.new(keys.first, Wrapper.wrap(model))
+        if options.keys.size == 1 && model.indices(model).include?(options.keys.first)
+          Set.new(keys(options).first, Wrapper.wrap(model))
+        else
+          super(options)
+        end
       end
     end
 
@@ -1055,7 +1072,7 @@ module Ohm
     @@collections = Hash.new { |hash, key| hash[key] = [] }
     @@counters    = Hash.new { |hash, key| hash[key] = [] }
     @@indices     = Hash.new { |hash, key| hash[key] = [] }
-    @@types       = Hash.new { |hash, key| hash[key] = Hash.new {|h,k| h[k] = String } }
+    @@types       = Hash.new { |hash, key| hash[key] = {} }
 
     def id
       @id or raise MissingID

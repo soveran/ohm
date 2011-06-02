@@ -30,6 +30,12 @@ module Ohm
     def -(other)
       self.class.new("#{self}-#{other}", redis)
     end
+
+    # Produces a key with `other` suffixed with itself. This is primarily
+    # used for storing SUNIONSTORE results.
+    def *(other)
+      self.class.new("#{self}_#{other}", redis)
+    end
   end
 end
 

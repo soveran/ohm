@@ -1,7 +1,6 @@
 # encoding: UTF-8
 
 require File.expand_path("./helper", File.dirname(__FILE__))
-require "ostruct"
 
 require 'ohm/timestamps'
 
@@ -12,10 +11,15 @@ end
 
 class User < ModelBase
   attribute :name
+  attribute :likes, Array
   attribute :age, Integer
   index :name
   set :following, User
   set :followers, User
+  set :groups, Group
+  index :followers
+  index :groups
+  index :likes
   counter :visits
   
   def validate
@@ -56,6 +60,10 @@ module Power
   end
 end
 
+class Group < ModelBase
+  collection :members, User
+end
+
 prepare do
   u = User.create( name: 'jo user', age: 33 )
   u2 = User.create( name: 'mari moe',age: 27 )
@@ -67,10 +75,20 @@ test "retrieving root type as root" do
   assert User === u
 end
 
-test "add followers" do
+test "add polymorphic followers" do
+  @su = SuperUser.create( name: 'lenny', kernel: 'debian' )  
   User.all.each {|u|  u.follow(@u3) if u != @u3 }
   followers = @u3.followers.map(&:name).sort
-  assert followers == ['jo user', 'mari moe']
+  assert followers == ['jo user', 'lenny', 'mari moe']
+  assert @u3.followers.map(&:class).sort == [SuperUser,User,User]
+end
+
+test "allow direct set assignment" do
+  @su = SuperUser.create( name: 'lenny', kernel: 'debian' )  
+  User.all.each {|u|  u.follow(@u3) if u != @u3 }
+  u = User.create( name:'foo' )
+  u.followers= @u3.followers.all
+  assert u.followers.map(&:name).sort == ['jo user', 'lenny', 'mari moe']
 end
 
 test "create subclass" do
