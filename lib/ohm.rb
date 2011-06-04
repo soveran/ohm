@@ -733,7 +733,7 @@ module Ohm
       def union_key_for(attr, values)
         model.debug "union_key_for: #{attr}: #{values}"
         source = values.map {|v| model.index_key_for(attr, v) }
-        target = source.reduce(&:*)
+        target = model.key_for( attr, source.reduce(&:*), :union ).volatile
         apply(:sunionstore, source.shift, source, target)
         target
       end
@@ -1429,7 +1429,13 @@ module Ohm
     # @return [String] A string which is safe to use as a key.
     # @see Ohm::Model.index_key_for
     def self.encode(value)
-      Base64.encode64(value.to_s).gsub("\n", "")
+      Base64.encode64(digest(value.to_s)).gsub("\n", "")
+    end
+    
+    # Optionally digest a long key name with a hash function if the key is longer than the hash
+    def self.digest(value)
+      puts "Ohm::digest #{value}"
+      value
     end
 
     # Constructor for all subclasses of {Ohm::Model}, which optionally
@@ -2072,13 +2078,18 @@ module Ohm
     # @return [Ohm::Key] A {Ohm::Key key} which you can treat as a string,
     #                    but also do Redis operations on.
     def self.index_key_for(name, value)
+      key_for(name, value, :index)
+    end
+
+    # generate a given kind of key. kind = [:index, :union, ...]
+    def self.key_for(name, value, kind = :index)
       raise IndexNotFound, name unless indices.include?(name)
       root.key[name][encode(value)]
     end
 
     # Thin wrapper around {Ohm::Model.index_key_for}.
     def index_key_for(att, value)
-      self.class.index_key_for(att, value)
+      self.class.key_for(att, value, :index)
     end
 
     # Lock the object so no other instances can modify it.
