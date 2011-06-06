@@ -714,7 +714,7 @@ module Ohm
       #
       # Transform a hash of attribute/values into an array of keys.
       def keys(hash)
-        model.debug("#{model.name}.find: #{key} : #{hash}")
+        model.debug { "#{model.name}.find: #{key} : #{hash}" }
         [].tap do |keys|
           hash.each do |attr, values|
             # nb: String is Enumerable in 1.8.x...
@@ -731,7 +731,7 @@ module Ohm
       end
       
       def union_key_for(attr, values)
-        model.debug "union_key_for: #{attr}: #{values}"
+        model.debug { "union_key_for: #{attr}: #{values}" }
         source = values.map {|v| model.index_key_for(attr, v) }
         target = model.key_for( attr, source.reduce(&:*), :union ).volatile
         apply(:sunionstore, source.shift, source, target)
@@ -1434,7 +1434,6 @@ module Ohm
     
     # Optionally digest a long key name with a hash function if the key is longer than the hash
     def self.digest(value)
-      puts "Ohm::digest #{value}"
       value
     end
 
@@ -1748,11 +1747,11 @@ module Ohm
     end
 
     if !defined?(debug)
-      def self.debug(msg)
-        db.client.logger.debug(msg) if db && db.client && db.client.logger && db.client.logger.respond_to?(:debug)
+      def self.debug(&msg)
+         logger.debug(yield) if logger && log_level == Logger::DEBUG
       end
     end
-        
+
     # Makes the model connect to a different Redis instance. This is useful
     # for scaling a large application, where one model can be stored in a
     # different Redis instance, and some other groups of models can be
@@ -1940,10 +1939,18 @@ module Ohm
     #   u = User.find(...)  # User is the root, not MyModel::Base
     #
     class << self
-      attr_accessor :base
+      attr_accessor :base, :logger, :log_level
       silence_warnings do
         def base
           @base ||= self
+        end
+        
+        def logger
+          @logger || superclass.logger
+        end
+        
+        def log_level
+          @log_level || superclass.log_level
         end
       end
     end
