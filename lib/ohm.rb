@@ -1507,14 +1507,23 @@ module Ohm
     def create
       return unless valid?
       initialize_id
+      _save
+    end
 
+  protected:
+    # Create or update the object with mutex (internal)
+    #
+    # @return [Ohm::Model, nil] The saved object or nil if it fails
+    #                           validation.
+    def _save
       mutex do
-        create_model_membership
+        create_model_membership if new?
         write
         add_to_indices
       end
     end
-
+  
+  public:
     # Create or update this object based on the state of #new?.
     #
     # @return [Ohm::Model, nil] The saved object or nil if it fails
@@ -1522,11 +1531,7 @@ module Ohm
     def save
       return create if new?
       return unless valid?
-
-      mutex do
-        write
-        update_indices
-      end
+      _save
     end
 
     # Update this object, optionally accepting new attributes.
@@ -1561,7 +1566,8 @@ module Ohm
       delete_model_membership
       self
     end
-
+    alias_method :destroy, :delete
+    
     # Increment the counter denoted by :att.
     #
     # @param [Symbol] att Attribute to increment.
@@ -1747,9 +1753,11 @@ module Ohm
     end
 
     if !defined?(debug)
-      def self.debug(&msg)
-         logger.debug(yield) if logger && log_level == Logger::DEBUG
+      def self.debug(*msg, &block)
+         logger.debug( Array(msg).first || yield ) if logger && log_level == Logger::DEBUG
       end
+      
+      def debug(*msg, &block); self.class.debug(*msg, &block); end
     end
 
     # Makes the model connect to a different Redis instance. This is useful
@@ -1861,18 +1869,18 @@ module Ohm
     #
     # @see Ohm::Model::Wrapper
     # @see http://en.wikipedia.org/wiki/Lazy_evaluation Lazy evaluation
-    def self.const_missing(name)
-      wrapper = Wrapper.new(name) { const_get(name) }
-
-      # Allow others to hook to const_missing.
-      begin
-        super(name)
-      rescue NameError
-      end
-
-      wrapper
-    end
-
+    # def self.const_missing(name)
+      # wrapper = Wrapper.new(name) { const_get(name) }
+# 
+      # # Allow others to hook to const_missing.
+      # begin
+        # super(name)
+      # rescue NameError
+      # end
+# 
+      # wrapper
+    # end
+# 
   private
 
     # roll up all the attribute names from self and all superclasses
