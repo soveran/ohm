@@ -1397,8 +1397,8 @@ module Ohm
     #
     # @param  [Hash] args attribute-value pairs for the object.
     # @return [Ohm::Model] an instance of the class you're trying to create.
-    def self.create(*args)
-      model = new(*args)
+    def self.create(*args, &block)
+      model = new(*args, &block)
       model.create
       model
     end
@@ -1480,19 +1480,21 @@ module Ohm
       @_memo ||= {}
       @_attributes ||= Hash.new { |hash, key| hash[key] = read_remote(key) }
       super
-      update_attributes(attrs)
+      update_local(attrs)
     end
 
     # instantiate an instance of a model, or possibly a subclass of a model according to
     # its _type attribute if it exists
-    def self.new(attrs = {})
+    def self.new(attrs = {}, &block)
       type = attrs[:_type] || ( attrs[:id] && self.polymorph && _read_remote(root.key[attrs[:id]], :_type) )
       (attrs = attrs.dup).delete(:_type)
       if type && ( klass = constantize(type.to_s) ) && klass != self
-        klass.new( attrs )
+        instance = klass.new( attrs )
       else
-        super
+        instance = super
       end
+      yield instance if block_given?
+      instance
     end
     
     # @return [true, false] Whether or not this object has an id.
@@ -1507,23 +1509,14 @@ module Ohm
     def create
       return unless valid?
       initialize_id
-      _save
-    end
 
-  protected:
-    # Create or update the object with mutex (internal)
-    #
-    # @return [Ohm::Model, nil] The saved object or nil if it fails
-    #                           validation.
-    def _save
       mutex do
-        create_model_membership if new?
+        create_model_membership
         write
         add_to_indices
       end
     end
-  
-  public:
+
     # Create or update this object based on the state of #new?.
     #
     # @return [Ohm::Model, nil] The saved object or nil if it fails
@@ -1531,7 +1524,11 @@ module Ohm
     def save
       return create if new?
       return unless valid?
-      _save
+
+      mutex do
+        write
+        update_indices
+      end
     end
 
     # Update this object, optionally accepting new attributes.
@@ -1541,16 +1538,17 @@ module Ohm
     # @return [Ohm::Model, nil] The updated object or nil if it fails
     #                           validation.
     def update(attrs)
-      update_attributes(attrs)
+      update_local(attrs)
       save
     end
-
+    alias_method :update_attributes, :update
+    
     # Locally update all attributes without persisting the changes.
     # Internally used by {Ohm::Model#initialize} and {Ohm::Model#update}
     # to set attribute value pairs.
     #
     # @param [Hash] attrs Attribute value pairs.
-    def update_attributes(attrs)
+    def update_local(attrs)
       attrs.each do |key, value|
         send(:"#{key}=", value)
       end
