@@ -1552,6 +1552,7 @@ module Ohm
       attrs.each do |key, value|
         send(:"#{key}=", value)
       end
+      self
     end
 
     # Delete this object from the _Redis_ datastore, ensuring that all
