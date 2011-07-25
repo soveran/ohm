@@ -1507,7 +1507,7 @@ module Ohm
     # @return [Ohm::Model, nil] The newly created object or nil if it fails
     #                           validation.
     def create
-      return unless valid?
+      return false unless valid?
       initialize_id
 
       mutex do
@@ -1523,7 +1523,7 @@ module Ohm
     #                           validation.
     def save
       return create if new?
-      return unless valid?
+      return false unless valid?
 
       mutex do
         write
