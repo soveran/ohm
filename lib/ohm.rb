@@ -1734,7 +1734,7 @@ module Ohm
     #
     # Useful for debugging and for doing irb work.
     def inspect
-      everything = (attributes + collections + counters).map do |att|
+      everything = attributes_for_inspect.map do |att|
         value = begin
                   send(att)
                 rescue MissingID
@@ -1751,6 +1751,11 @@ module Ohm
       )
     end
 
+    # Return the list of attributes, collections, counters etc. for inspect
+    def attributes_for_inspect
+      (attributes + collections + counters)
+    end
+    
     if !defined?(debug)
       def self.debug(*msg, &block)
          logger.debug( Array(msg).first || yield ) if logger && log_level == Logger::DEBUG
