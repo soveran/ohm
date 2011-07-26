@@ -1751,11 +1751,6 @@ module Ohm
       )
     end
 
-    # Return the list of attributes, collections, counters etc. for inspect
-    def attributes_for_inspect
-      (attributes + collections + counters)
-    end
-    
     if !defined?(debug)
       def self.debug(*msg, &block)
          logger.debug( Array(msg).first || yield ) if logger && log_level == Logger::DEBUG
