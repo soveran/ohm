@@ -1529,6 +1529,7 @@ module Ohm
         write
         update_indices
       end
+      true
     end
 
     # Update this object, optionally accepting new attributes.
@@ -1808,6 +1809,12 @@ module Ohm
     end
     
   protected
+
+    # Return the list of attributes, collections, counters etc. for inspect
+    def attributes_for_inspect
+      (attributes + collections + counters)
+    end
+    
     attr_writer :id
 
 
