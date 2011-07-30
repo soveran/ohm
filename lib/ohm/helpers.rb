@@ -1,6 +1,22 @@
+# some core_ext methods poached  from active_support
 unless nil.respond_to?(:empty?)
   class NilClass
     def empty?; true; end
+  end
+end
+
+unless Array.respond_to?(:wrap)
+  class Array
+  # File activesupport/lib/active_support/core_ext/array/wrap.rb, line 39
+    def self.wrap(object)
+      if object.nil?
+        []
+      elsif object.respond_to?(:to_ary)
+        object.to_ary
+      else
+        [object]
+      end
+    end
   end
 end
 
