@@ -703,6 +703,8 @@ module Ohm
 
       # generate list of source indices and a target volatile index for the find
       # include the subclass index if scoped to a subclass
+      #FIXME nil values?  e.g. id: nil
+      #TODO pass objects for refs, i.e. find( refd: obj ) as well as find( refd_id: obj.id )
       def find_source(options, op)
         source = keys(options)
         target = source.inject(key.volatile) { |chain, other| chain.send(op, other) }
@@ -731,9 +733,9 @@ module Ohm
       end
       
       def union_key_for(attr, values)
-        model.debug { "union_key_for: #{attr}: #{values}" }
         source = values.map {|v| model.index_key_for(attr, v) }
         target = model.key_for( attr, source.reduce(&:*), :union ).volatile
+        model.debug { "union_key_for: #{attr}: #{target} <= #{values}" }
         apply(:sunionstore, source.shift, source, target)
         target
       end
@@ -1073,6 +1075,7 @@ module Ohm
     @@counters    = Hash.new { |hash, key| hash[key] = [] }
     @@indices     = Hash.new { |hash, key| hash[key] = [] }
     @@types       = Hash.new { |hash, key| hash[key] = {} }
+    @@serializers = Hash.new { |hash, key| hash[key] = {} }
 
     def id
       @id or raise MissingID
@@ -2037,6 +2040,7 @@ module Ohm
     #
     # @param  [Symbol] att The attribute you want to set.
     # @param  [#to_s]  value The value of the attribute you want to set.
+    # @return [#to_s]  returns value set
     def write_local(att, value)
       @_attributes[att] = value
     end
