@@ -1076,9 +1076,13 @@ module Ohm
     @@indices     = Hash.new { |hash, key| hash[key] = [] }
     @@types       = Hash.new { |hash, key| hash[key] = {} }
     @@serializers = Hash.new { |hash, key| hash[key] = {} }
-
+    
     def id
       @id or raise MissingID
+    end
+
+    def changed?
+      @changed
     end
 
     # Defines a string attribute for the model. This attribute will be
@@ -1532,7 +1536,6 @@ module Ohm
         write
         update_indices
       end
-      true
     end
 
     # Update this object, optionally accepting new attributes.
@@ -1820,6 +1823,9 @@ module Ohm
     
     attr_writer :id
 
+    def changed!
+      @changed = true
+    end
 
     # Write all the attributes and counters of this object. The operation
     # is actually a 2-step process:
@@ -1845,10 +1851,17 @@ module Ohm
           ret
         }
         atts.unshift([:_type, self.class.name]) if self.class != root
-        db.multi do
-          key.del
-          key.hmset(*atts.flatten) if atts.any?
-        end
+        write_remotes(atts)
+      end
+    end
+
+    # persist a list of attribute/values remotely
+    # atts is an array of [ a1, v1, a2, v2... ] or an attributes hash
+    def write_remotes( atts = nil )
+      atts ||= @_attributes
+      db.multi do
+        key.del
+        key.hmset(*atts.flatten) if atts.any?
       end
     end
 
@@ -1878,18 +1891,18 @@ module Ohm
     #
     # @see Ohm::Model::Wrapper
     # @see http://en.wikipedia.org/wiki/Lazy_evaluation Lazy evaluation
-    # def self.const_missing(name)
-      # wrapper = Wrapper.new(name) { const_get(name) }
-# 
-      # # Allow others to hook to const_missing.
-      # begin
-        # super(name)
-      # rescue NameError
-      # end
-# 
-      # wrapper
-    # end
-# 
+    def self.const_missing(name)
+      wrapper = Wrapper.new(name) { const_get(name) }
+
+      # Allow others to hook to const_missing.
+      begin
+        super(name)
+      rescue NameError
+      end
+
+      wrapper
+    end
+
   private
 
     # roll up all the attribute names from self and all superclasses
@@ -1963,11 +1976,13 @@ module Ohm
         end
         
         def logger
-          @logger || superclass.logger
+          @logger ||= nil
+          @logger || ( super rescue nil )
         end
         
         def log_level
-          @log_level || superclass.log_level
+          @log_level ||= nil
+          @log_level || ( super rescue nil )
         end
       end
     end
@@ -2042,9 +2057,14 @@ module Ohm
     # @param  [#to_s]  value The value of the attribute you want to set.
     # @return [#to_s]  returns value set
     def write_local(att, value)
-      @_attributes[att] = value
+      _write_local(att, value)
+      changed!
     end
 
+    def _write_local(att, value)
+      @_attributes[att] = value
+    end
+    
     # Used internally be the @_attributes hash to lazily load attributes
     # when you need them. You may also use this in your code if you know what
     # you are doing.
@@ -2074,6 +2094,7 @@ module Ohm
     end
 
     # Read attributes en masse remotely.
+    #FIXME implement prefetch, hmget etc
     def read_remotes(attrs)
       attrs.map do |att|
         read_remote(att)
