@@ -154,9 +154,9 @@ module Ohm
     # Default is to call serializer.to_val
     # This gives a convenient override point for simple customizations
     def parse( name, str, serializer )
-      d = serializer.to_val( str )
+      serializer.to_val( str )
     rescue StandardError => e
-      puts  "parse: #{name} #{str} #{serializer}: error #{e.inspect}"
+      debug { "parse: #{name} #{str} #{serializer}: error #{e.inspect}" }
       nil
     end
 
