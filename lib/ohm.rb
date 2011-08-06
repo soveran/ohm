@@ -4,10 +4,10 @@ require "base64"
 require "redis"
 require "nest"
 
+require File.join(File.dirname(__FILE__), "ohm", "compat-1.8.6")
 require File.join(File.dirname(__FILE__), "ohm", "helpers")
 require File.join(File.dirname(__FILE__), "ohm", "pattern")
 require File.join(File.dirname(__FILE__), "ohm", "validations")
-require File.join(File.dirname(__FILE__), "ohm", "compat-1.8.6")
 require File.join(File.dirname(__FILE__), "ohm", "key")
 
 
@@ -1076,13 +1076,23 @@ module Ohm
     @@indices     = Hash.new { |hash, key| hash[key] = [] }
     @@types       = Hash.new { |hash, key| hash[key] = {} }
     @@serializers = Hash.new { |hash, key| hash[key] = {} }
-    
+
     def id
       @id or raise MissingID
     end
 
     def changed?
       @changed
+    end
+
+    # shortcut for reading an attribute value of the model
+    def [](attr)
+      send(self, attr)
+    end
+    
+    # shortcut for writing an attribute value
+    def []=(attr, val)
+      send(:"#{attr}=", val)
     end
 
     # Defines a string attribute for the model. This attribute will be
@@ -1359,6 +1369,11 @@ module Ohm
     # @see Ohm::Model.attribute
     def self.types(klass=nil)
       klass ? @@types[klass] : @@types[root].merge(@@types[base])
+    end
+
+    # Map of the attribute serializers within a class
+    def self.serializers(klass=root)
+      @@serializers[klass]
     end
       
     # All the defined counters within a class.
@@ -2057,8 +2072,7 @@ module Ohm
     # @param  [#to_s]  value The value of the attribute you want to set.
     # @return [#to_s]  returns value set
     def write_local(att, value)
-      _write_local(att, value)
-      changed!
+      changed! if read_local( att ) != _write_local(att, value)
     end
 
     def _write_local(att, value)
