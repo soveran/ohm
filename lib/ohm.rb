@@ -1898,9 +1898,9 @@ module Ohm
       begin
         super(name)
       rescue NameError
+        wrapper
       end
 
-      wrapper
     end
 
   private
