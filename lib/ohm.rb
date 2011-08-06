@@ -4,10 +4,12 @@ require "base64"
 require "redis"
 require "nest"
 
+require File.join(File.dirname(__FILE__), "ohm", "compat-1.8.6")
+require File.join(File.dirname(__FILE__), "ohm", "helpers")
 require File.join(File.dirname(__FILE__), "ohm", "pattern")
 require File.join(File.dirname(__FILE__), "ohm", "validations")
-require File.join(File.dirname(__FILE__), "ohm", "compat-1.8.6")
 require File.join(File.dirname(__FILE__), "ohm", "key")
+
 
 module Ohm
 
@@ -511,6 +513,7 @@ module Ohm
       #      Command Reference.
       def <<(model)
         key.sadd(model.id)
+        self
       end
       alias add <<
 
@@ -599,11 +602,10 @@ module Ohm
       # @param  [Hash] options A hash of key value pairs.
       # @return [Ohm::Model::Set] A set satisfying the filter passed.
       def find(options)
-        source = keys(options)
-        target = source.inject(key.volatile) { |chain, other| chain + other }
-        apply(:sinterstore, key, source, target)
+        source, target = find_source(options, :+)
+        apply(:sinterstore, key, source, target)        
       end
-
+      
       # Similar to find except that it negates the criteria.
       #
       # @example
@@ -623,8 +625,7 @@ module Ohm
       # @param  [Hash] options A hash of key value pairs.
       # @return [Ohm::Model::Set] A set satisfying the filter passed.
       def except(options)
-        source = keys(options)
-        target = source.inject(key.volatile) { |chain, other| chain - other }
+        source, target = find_source(options, :-)
         apply(:sdiffstore, key, source, target)
       end
 
@@ -700,18 +701,43 @@ module Ohm
         Set.new(target, Wrapper.wrap(model))
       end
 
+      # generate list of source indices and a target volatile index for the find
+      # include the subclass index if scoped to a subclass
+      #FIXME nil values?  e.g. id: nil
+      #TODO pass objects for refs, i.e. find( refd: obj ) as well as find( refd_id: obj.id )
+      def find_source(options, op)
+        source = keys(options)
+        target = source.inject(key.volatile) { |chain, other| chain.send(op, other) }
+#        model.debug "find: #{model} #{options}: #{key} #{op} #{source} => #{target}"
+        [source, target]
+      end
+
       # @private
       #
       # Transform a hash of attribute/values into an array of keys.
       def keys(hash)
+        model.debug { "#{model.name}.find: #{key} : #{hash}" }
         [].tap do |keys|
-          hash.each do |key, values|
-            values = [values] unless values.kind_of?(Array)
-            values.each do |v|
-              keys << model.index_key_for(key, v)
+          hash.each do |attr, values|
+            # nb: String is Enumerable in 1.8.x...
+            attr_type = model.types[attr]
+            if !(Enumerable === values) || ( attr_type && attr_type < Enumerable && attr_type != String )
+              Array(values).each do |v|
+                keys << model.index_key_for(attr, v)
+              end
+            else
+              keys << union_key_for(attr,values)
             end
           end
-        end
+        end.uniq
+      end
+      
+      def union_key_for(attr, values)
+        source = values.map {|v| model.index_key_for(attr, v) }
+        target = model.key_for( attr, source.reduce(&:*), :union ).volatile
+        model.debug { "union_key_for: #{attr}: #{target} <= #{values}" }
+        apply(:sunionstore, source.shift, source, target)
+        target
       end
     end
 
@@ -738,17 +764,20 @@ module Ohm
       #
       # If we want to search for example all `Posts` entitled "ruby" or
       # "redis", then it doesn't make sense to do an INTERSECTION with
-      # `Post.key[:all]` since it would be redundant.
+      # `Post.key[:all]` since it would be redundant, unless we're constrained
+      # to a subclass of Post and the index is on a superclass.
       #
-      # The implementation of {Ohm::Model::Index#find} avoids this redundancy.
+      # The implementation of {Ohm::Model::Index#find} avoids this redundancy
+      # for the single index case.
       #
       # @see Ohm::Model::Set#find find in Ohm::Model::Set.
       # @see Ohm::Model.find find in Ohm::Model.
       def find(options)
-        keys = keys(options)
-        return super(options) if keys.size > 1
-
-        Set.new(keys.first, Wrapper.wrap(model))
+        if options.keys.size == 1 && model.indices(model).include?(options.keys.first)
+          Set.new(keys(options).first, Wrapper.wrap(model))
+        else
+          super(options)
+        end
       end
     end
 
@@ -807,6 +836,7 @@ module Ohm
       #      in Redis Command Reference.
       def <<(model)
         key.rpush(model.id)
+        self
       end
       alias push <<
 
@@ -949,7 +979,7 @@ module Ohm
         indices = Array(atts).map { |att| index_key_for(att, send(att)) }
         result  = db.sinter(*indices)
 
-        assert result.empty? || !new? && result.include?(id.to_s), error
+        assert result.empty? || !new? && result == Array(id.to_s), error
       end
     end
 
@@ -1044,9 +1074,25 @@ module Ohm
     @@collections = Hash.new { |hash, key| hash[key] = [] }
     @@counters    = Hash.new { |hash, key| hash[key] = [] }
     @@indices     = Hash.new { |hash, key| hash[key] = [] }
+    @@types       = Hash.new { |hash, key| hash[key] = {} }
+    @@serializers = Hash.new { |hash, key| hash[key] = {} }
 
     def id
       @id or raise MissingID
+    end
+
+    def changed?
+      @changed
+    end
+
+    # shortcut for reading an attribute value of the model
+    def [](attr)
+      send(self, attr)
+    end
+    
+    # shortcut for writing an attribute value
+    def []=(attr, val)
+      send(:"#{attr}=", val)
     end
 
     # Defines a string attribute for the model. This attribute will be
@@ -1067,7 +1113,7 @@ module Ohm
         write_local(name, value)
       end
 
-      attributes << name unless attributes.include?(name)
+      attributes(self) << name unless attributes.include?(name)
     end
 
     # Defines a counter attribute for the model. This attribute can't be
@@ -1079,7 +1125,7 @@ module Ohm
         read_local(name).to_i
       end
 
-      counters << name unless counters.include?(name)
+      counters(self) << name unless counters.include?(name)
     end
 
     # Defines a list attribute for the model. It can be accessed only after
@@ -1111,7 +1157,8 @@ module Ohm
     # @param [Symbol] name Name of the list.
     def self.list(name, model)
       define_memoized_method(name) { List.new(key[name], Wrapper.wrap(model)) }
-      collections << name unless collections.include?(name)
+      define_method(:"#{name}=") { |value| send(name).replace(value) }
+      collections(self) << name unless collections.include?(name)
     end
 
     # Defines a set attribute for the model. It can be accessed only after
@@ -1122,7 +1169,8 @@ module Ohm
     # @param [Symbol] name Name of the set.
     def self.set(name, model)
       define_memoized_method(name) { Set.new(key[name], Wrapper.wrap(model)) }
-      collections << name unless collections.include?(name)
+      define_method(:"#{name}=") { |value| send(name).replace(value) }
+      collections(self) << name unless collections.include?(name)
     end
 
     # Creates an index (a set) that will be used for finding instances.
@@ -1142,7 +1190,7 @@ module Ohm
     #
     # @param [Symbol] name Name of the attribute to be indexed.
     def self.index(att)
-      indices << att unless indices.include?(att)
+      indices(self) << att unless indices.include?(att)
     end
 
     # Define a reference to another object.
@@ -1184,7 +1232,7 @@ module Ohm
       reader = :"#{name}_id"
       writer = :"#{name}_id="
 
-      attributes << reader unless attributes.include?(reader)
+      attributes(self) << reader unless attributes.include?(reader)
 
       index reader
 
@@ -1313,14 +1361,25 @@ module Ohm
 
     # All the defined attributes within a class.
     # @see Ohm::Model.attribute
-    def self.attributes
-      @@attributes[self]
+    def self.attributes(klass=nil)
+      klass ? @@attributes[klass] : all_ancestors(@@attributes)
     end
 
+    # Map of the types of defined attributes within a class.
+    # @see Ohm::Model.attribute
+    def self.types(klass=nil)
+      klass ? @@types[klass] : @@types[root].merge(@@types[base])
+    end
+
+    # Map of the attribute serializers within a class
+    def self.serializers(klass=root)
+      @@serializers[klass]
+    end
+      
     # All the defined counters within a class.
     # @see Ohm::Model.counter
-    def self.counters
-      @@counters[self]
+    def self.counters(klass=nil)
+      klass ? @@counters[klass] : all_ancestors(@@counters)
     end
 
     # All the defined collections within a class. This will be comprised of
@@ -1338,14 +1397,14 @@ module Ohm
     #
     # @see Ohm::Model.list
     # @see Ohm::Model.set
-    def self.collections
-      @@collections[self]
+    def self.collections(klass=nil)
+      klass ? @@collections[klass] : all_ancestors(@@collections)
     end
 
     # All the defined indices within a class.
     # @see Ohm::Model.index
-    def self.indices
-      @@indices[self]
+    def self.indices(klass=nil)
+      klass ? @@indices[klass] : all_ancestors(@@indices)
     end
 
     # Convenience method to create and return the newly created object.
@@ -1360,8 +1419,8 @@ module Ohm
     #
     # @param  [Hash] args attribute-value pairs for the object.
     # @return [Ohm::Model] an instance of the class you're trying to create.
-    def self.create(*args)
-      model = new(*args)
+    def self.create(*args, &block)
+      model = new(*args, &block)
       model.create
       model
     end
@@ -1392,7 +1451,12 @@ module Ohm
     # @return [String] A string which is safe to use as a key.
     # @see Ohm::Model.index_key_for
     def self.encode(value)
-      Base64.encode64(value.to_s).gsub("\n", "")
+      Base64.encode64(digest(value.to_s)).gsub("\n", "")
+    end
+    
+    # Optionally digest a long key name with a hash function if the key is longer than the hash
+    def self.digest(value)
+      value
     end
 
     # Constructor for all subclasses of {Ohm::Model}, which optionally
@@ -1435,11 +1499,26 @@ module Ohm
     # @param [Hash] attrs Attribute value pairs.
     def initialize(attrs = {})
       @id = nil
-      @_memo = {}
-      @_attributes = Hash.new { |hash, key| hash[key] = read_remote(key) }
-      update_attributes(attrs)
+      @_memo ||= {}
+      @_attributes ||= Hash.new { |hash, key| hash[key] = read_remote(key) }
+      super
+      update_local(attrs)
     end
 
+    # instantiate an instance of a model, or possibly a subclass of a model according to
+    # its _type attribute if it exists
+    def self.new(attrs = {}, &block)
+      type = attrs[:_type] || ( attrs[:id] && self.polymorph && _read_remote(root.key[attrs[:id]], :_type) )
+      (attrs = attrs.dup).delete(:_type)
+      if type && ( klass = constantize(type.to_s) ) && klass != self
+        instance = klass.new( attrs )
+      else
+        instance = super
+      end
+      yield instance if block_given?
+      instance
+    end
+    
     # @return [true, false] Whether or not this object has an id.
     def new?
       !@id
@@ -1450,7 +1529,7 @@ module Ohm
     # @return [Ohm::Model, nil] The newly created object or nil if it fails
     #                           validation.
     def create
-      return unless valid?
+      return false unless valid?
       initialize_id
 
       mutex do
@@ -1466,7 +1545,7 @@ module Ohm
     #                           validation.
     def save
       return create if new?
-      return unless valid?
+      return false unless valid?
 
       mutex do
         write
@@ -1481,19 +1560,21 @@ module Ohm
     # @return [Ohm::Model, nil] The updated object or nil if it fails
     #                           validation.
     def update(attrs)
-      update_attributes(attrs)
+      update_local(attrs)
       save
     end
-
+    alias_method :update_attributes, :update
+    
     # Locally update all attributes without persisting the changes.
     # Internally used by {Ohm::Model#initialize} and {Ohm::Model#update}
     # to set attribute value pairs.
     #
     # @param [Hash] attrs Attribute value pairs.
-    def update_attributes(attrs)
+    def update_local(attrs)
       attrs.each do |key, value|
         send(:"#{key}=", value)
       end
+      self
     end
 
     # Delete this object from the _Redis_ datastore, ensuring that all
@@ -1506,7 +1587,8 @@ module Ohm
       delete_model_membership
       self
     end
-
+    alias_method :destroy, :delete
+    
     # Increment the counter denoted by :att.
     #
     # @param [Symbol] att Attribute to increment.
@@ -1674,7 +1756,7 @@ module Ohm
     #
     # Useful for debugging and for doing irb work.
     def inspect
-      everything = (attributes + collections + counters).map do |att|
+      everything = attributes_for_inspect.map do |att|
         value = begin
                   send(att)
                 rescue MissingID
@@ -1689,6 +1771,14 @@ module Ohm
               new? ? "?" : id,
               everything.map {|e| e.join("=") }.join(" ")
       )
+    end
+
+    if !defined?(debug)
+      def self.debug(*msg, &block)
+         logger.debug( Array(msg).first || yield ) if logger && log_level == Logger::DEBUG
+      end
+      
+      def debug(*msg, &block); self.class.debug(*msg, &block); end
     end
 
     # Makes the model connect to a different Redis instance. This is useful
@@ -1718,17 +1808,39 @@ module Ohm
       self.db = Ohm.connection(*options)
     end
 
-    # @return [Ohm::Key] A key scoped to the model which uses this object's
+    # @return [Ohm::Key] A key scoped to the model root which uses this object's
     #                    id.
     #
     # @see http://github.com/soveran/nest The Nest library.
     def key
-      self.class.key[id]
+      root.key[id]
     end
 
+    def root
+      self.class.root
+    end
+    
+    def self.root
+      @root ||= ( !(base == superclass || base == self) && superclass.respond_to?(:root) ) ? superclass.root : self
+    end
+
+    def self.polymorph
+      @_descendants ||= descendants
+      @_polymorph ||= self < root || ( self == root && !@_descendants.empty? )
+    end
+    
   protected
+
+    # Return the list of attributes, collections, counters etc. for inspect
+    def attributes_for_inspect
+      (attributes + collections + counters)
+    end
+    
     attr_writer :id
 
+    def changed!
+      @changed = true
+    end
 
     # Write all the attributes and counters of this object. The operation
     # is actually a 2-step process:
@@ -1753,11 +1865,18 @@ module Ohm
           ret.push(att, value) if not value.empty?
           ret
         }
+        atts.unshift([:_type, self.class.name]) if self.class != root
+        write_remotes(atts)
+      end
+    end
 
-        db.multi do
-          key.del
-          key.hmset(*atts.flatten) if atts.any?
-        end
+    # persist a list of attribute/values remotely
+    # atts is an array of [ a1, v1, a2, v2... ] or an attributes hash
+    def write_remotes( atts = nil )
+      atts ||= @_attributes
+      db.multi do
+        key.del
+        key.hmset(*atts.flatten) if atts.any?
       end
     end
 
@@ -1794,13 +1913,17 @@ module Ohm
       begin
         super(name)
       rescue NameError
+        wrapper
       end
 
-      wrapper
     end
 
   private
 
+    # roll up all the attribute names from self and all superclasses
+    def self.all_ancestors(attr)
+      ancestors.map { |klass| attr[klass] }.flatten
+    end
     # Provides access to the Redis database. This is shared accross all models and instances.
     def self.db
       Ohm.threaded[self] || Ohm.redis
@@ -1840,11 +1963,48 @@ module Ohm
     #   end
     #
     def initialize_id
-      @id ||= self.class.key[:id].incr.to_s
+      @id ||= root.key[:id].incr.to_s
     end
 
     def db
       self.class.db
+    end
+
+    # base is the superclass of root. Normally this is Ohm::Model in which case all user models
+    # that inherit from Ohm::Model will have their own roots.
+    #
+    # @example
+    #
+    #   class MyModel::Base < Ohm::Model
+    #     self.base = self
+    #   end
+    #
+    #   class User < MyModel::Base; end
+    #   u = User.create
+    #   u = User.find(...)  # User is the root, not MyModel::Base
+    #
+    class << self
+      attr_accessor :base, :logger, :log_level
+      silence_warnings do
+        def base
+          @base ||= self
+        end
+        
+        def logger
+          @logger ||= nil
+          @logger || ( super rescue nil )
+        end
+        
+        def log_level
+          @log_level ||= nil
+          @log_level || ( super rescue nil )
+        end
+      end
+    end
+
+    def self.inherited(child)
+      child.base = self.base
+      @_descendants = nil
     end
 
     def delete_attributes(atts)
@@ -1853,11 +2013,13 @@ module Ohm
 
     def create_model_membership
       self.class.all << self
+      root.all << self if self.class != root
     end
 
     def delete_model_membership
       key.del
       self.class.all.delete(self)
+      root.all.delete(self)  if self.class != root
     end
 
     def update_indices
@@ -1878,7 +2040,7 @@ module Ohm
 
     def self.collection?(value)
       value.kind_of?(Enumerable) &&
-      value.kind_of?(String) == false
+        value.kind_of?(String) == false
     end
 
     def add_to_index(att, value = send(att))
@@ -1908,10 +2070,15 @@ module Ohm
     #
     # @param  [Symbol] att The attribute you want to set.
     # @param  [#to_s]  value The value of the attribute you want to set.
+    # @return [#to_s]  returns value set
     def write_local(att, value)
-      @_attributes[att] = value
+      changed! if read_local( att ) != _write_local(att, value)
     end
 
+    def _write_local(att, value)
+      @_attributes[att] = value
+    end
+    
     # Used internally be the @_attributes hash to lazily load attributes
     # when you need them. You may also use this in your code if you know what
     # you are doing.
@@ -1919,12 +2086,18 @@ module Ohm
     # @param  [Symbol] att The attribute you you want to get.
     # @return [String] The value of att.
     def read_remote(att)
-      unless new?
-        value = key.hget(att)
-        value.respond_to?(:force_encoding) ?
-          value.force_encoding("UTF-8") :
-          value
-      end
+      self.class._read_remote(key,att) unless new?
+    end
+
+    # Used internally to read a remote attribute and force the encoding
+    #
+    # @param  [Symbol] att The attribute you you want to get.
+    # @return [String] The value of att.
+    def self._read_remote(key,att)
+      value = key.hget(att)
+      value.respond_to?(:force_encoding) ?
+        value.force_encoding("UTF-8") :
+        value
     end
 
     # Read attributes en masse locally.
@@ -1935,6 +2108,7 @@ module Ohm
     end
 
     # Read attributes en masse remotely.
+    #FIXME implement prefetch, hmget etc
     def read_remotes(attrs)
       attrs.map do |att|
         read_remote(att)
@@ -1964,13 +2138,18 @@ module Ohm
     # @return [Ohm::Key] A {Ohm::Key key} which you can treat as a string,
     #                    but also do Redis operations on.
     def self.index_key_for(name, value)
+      key_for(name, value, :index)
+    end
+
+    # generate a given kind of key. kind = [:index, :union, ...]
+    def self.key_for(name, value, kind = :index)
       raise IndexNotFound, name unless indices.include?(name)
-      key[name][encode(value)]
+      root.key[name][encode(value)]
     end
 
     # Thin wrapper around {Ohm::Model.index_key_for}.
     def index_key_for(att, value)
-      self.class.index_key_for(att, value)
+      self.class.key_for(att, value, :index)
     end
 
     # Lock the object so no other instances can modify it.

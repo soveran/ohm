@@ -1,4 +1,4 @@
-require "benchmarks/common"
+require File.expand_path("./common", File.dirname(__FILE__))
 
 1000.times do |i|
   Event.create(:name => "Redis Meetup #{i}", :location => "At my place")

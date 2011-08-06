@@ -1,4 +1,4 @@
-require "benchmarks/common"
+require File.expand_path("./common", File.dirname(__FILE__))
 
 benchmark "Create Events" do
   i = Sequence[:events].succ!

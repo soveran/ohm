@@ -383,7 +383,7 @@ def monitor
   log = []
 
   monitor = Thread.new do
-    Redis.connect.monitor do |line|
+    Ohm.redis.monitor do |line|
       break if line =~ /ping/
       log << line
     end
@@ -655,17 +655,17 @@ class MyActiveRecordModel
   end
 end
 
+class ::Appointment < Ohm::Model
+  attribute :text
+  reference :subscriber, lambda { |id| MyActiveRecordModel.find(id) }
+end
+
 class ::Calendar < Ohm::Model
   list :holidays, lambda { |v| Date.parse(v) }
   list :subscribers, lambda { |id| MyActiveRecordModel.find(id) }
   list :appointments, Appointment
 
   set :events, lambda { |id| MyActiveRecordModel.find(id) }
-end
-
-class ::Appointment < Ohm::Model
-  attribute :text
-  reference :subscriber, lambda { |id| MyActiveRecordModel.find(id) }
 end
 
 setup do
@@ -899,7 +899,7 @@ class ::Make < Ohm::Model
 end
 
 setup do
-  Car.connect(:db => 15)
+  Car.connect(Ohm.options.first.merge(:db => 15))
   Car.db.flushdb
 end
 
@@ -907,8 +907,8 @@ test "save to the selected database" do
   car = Car.create(:name => "Twingo")
   make = Make.create(:name => "Renault")
 
-  assert ["1"] == Redis.connect.smembers("Make:all")
-  assert [] == Redis.connect.smembers("Car:all")
+  assert ["1"] == Ohm.redis.smembers("Make:all")
+  assert [] == Ohm.redis.smembers("Car:all")
 
   assert ["1"] == Car.db.smembers("Car:all")
   assert [] == Car.db.smembers("Make:all")
@@ -927,10 +927,10 @@ test "allow changing the database" do
 
   assert ["1"] == Car.all.key.smembers
 
-  Car.connect
+  Car.connect(Ohm.options.first)
   assert [] == Car.all.key.smembers
 
-  Car.connect :db => 15
+  Car.connect(Ohm.options.first.merge(:db => 15))
   assert ["1"] == Car.all.key.smembers
 end
 
