@@ -196,7 +196,6 @@ module Ohm
       def serializer(type_or_name, serializer, options={})
         # allow subclasses to override serializers by type, but define per-attribute serializers on the root
         if serializer
-          puts "serializer: #{type_or_name} #{serializer.inspect} #{options}"
           serializer = serializer.new(options) if Class === serializer
           serializers(self)[type_or_name] = serializer
         else
@@ -217,7 +216,6 @@ module Ohm
         class_eval <<-RUBY, __FILE__, __LINE__ + 1
           def #{name}
             unless #{type} === ( v = read_local(:#{name}) )
-              puts "#{name} accessor: #{type}: \#{v} \#{v.class}"
               _write_local(:#{name}, v = parse( :#{name}, v, self.class.send(:_serializer, :#{name}, #{type}) ) || v ) if v
             end
             v
