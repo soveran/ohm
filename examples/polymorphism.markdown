@@ -72,15 +72,42 @@ What if your model roots derive from a common application base class, `ModelBase
 Typecasts
 ------
 
-`Typecast` from Ohm-contrib is now part of the core. Model `attribute` declarations accept a type (class) name:
+`Typecast` from Ohm-contrib is deprecated in favor of `Serialized` which is now part of the core.
 
-    require 'ohm/typecast'
+Serialized
+-----
+
+`Serialized` is the new module name for typed attributes. It should be mostly source compatible with `Typecast`, but unlike that approach, it avoids the use of proxies for the values.
+
+With `Serialized`, model `attribute` declarations accept a type (class) name:
+
+    require 'ohm/serialized'
     class User < Ohm::Model
-      include Ohm::Typecast
+      include Ohm::Serialized
       attribute :name   # String
       attribute :score, Integer
       attribute :last_login, Time
+      attribute :opts, Hash
     end
+
+Attribute values are serialized from the declared type to String on assignment, and converted back when the attribute is read. The serialization happens using a `Serializer` based on the declared attribute type.
+
+Serializers
+-----
+
+The new `Serialized` module uses `Serializers` to convert primitive values to `String`s for writing to the database, and back to objects when read. `Serializers` are defined for all the basic attribute types, including `Integer`, `Float`, `Decimal`, `Boolean`, `Date`, `Time`, `Hash`, and `Array`.
+
+The `HashSerializer` and `ArraySerializer` use `JSON` to represent their values as `String`.  This has inherent limitations as sub-objects of these structures are not presently deserialized to objects, but only primitive values. It's easy to define another serialization mechanism, however. See the source for examples.
+
+`HashSerializer` by default symbolizes its keys on deserialization. To change this for an attribute, use the `symbolize_keys: false` option when declaring the attribute:
+
+    attribute :names, Hash, symbolize_keys: false
+
+The default serializers can be overriden or a custom serializer provided for an attribute with the `serializer:` option when declaring the attribute:
+
+    attribute :start, Time, serializer: MyCustomTimeSerializer
+
+If you define a custom serializer for your own class or to override a default serializer, when you name your serializer either `<Class>::Serializer` or `<Class>Serializer` then you won't need to specify it with the `serializer:` option.
 
 Timestamps
 ------
