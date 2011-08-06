@@ -1,4 +1,4 @@
-require 'ohm/typecast'
+require File.join(File.dirname(__FILE__), "serialized")
 module Ohm
   # Provides typecast created_at / updated_at timestamps that preserve microseconds.
   #
@@ -18,10 +18,23 @@ module Ohm
   #   # => true
 
   module Timestamps
-    Timestamp = Ohm::Types::Timestamp
+    # Time including microseconds
+    class Timestamp < Time
+      def to_s
+        utc.iso8601(6)
+      end
+      alias_method :to_str, :to_s
+      alias_method :inspect, :to_s
+      
+      def self.to_val( str )
+        parse(str).utc
+      end
+      
+      Serializer = Ohm::Serializer
+    end
     
     def self.included(base)
-      base.send(:include, Ohm::Typecast)
+      base.send(:include, Ohm::Serialized)
       base.attribute :created_at, Timestamp
       base.attribute :updated_at, Timestamp
     end
