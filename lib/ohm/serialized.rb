@@ -43,21 +43,21 @@ module Ohm
     class IntegerSerializer < Serializer
       def initialize(type=nil); super( Fixnum ); end
       def to_val( str )
-        str.to_i if str
+        Integer(str) if str
       end
     end
 
     class FloatSerializer < Serializer
       def initialize(type=nil); super( Float ); end
       def to_val( str )
-        str.to_f if str
+        Float(str) if str
       end
     end
 
     class DecimalSerializer < Serializer
       def initialize(type=nil); super( BigDecimal ); end
       def to_val( str )
-        BigDecimal( str ) if str
+        BigDecimal(str) if str
       end
     end
     
