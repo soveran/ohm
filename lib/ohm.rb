@@ -1860,7 +1860,7 @@ module Ohm
     def write
       unless (attributes + counters).empty?
         atts = (attributes + counters).inject([]) { |ret, att|
-          value = send(att).to_s
+          value = serialize(att)
 
           ret.push(att, value) if not value.empty?
           ret
@@ -1868,6 +1868,13 @@ module Ohm
         atts.unshift([:_type, self.class.name]) if self.class != root
         write_remotes(atts)
       end
+      @changed = false
+    end
+    
+    # Get and serialize the attribute value for att for writing to the database
+    # This is a hook used e.g. by Serialized 
+    def serialize(att)
+      send(att).to_s
     end
 
     # persist a list of attribute/values remotely

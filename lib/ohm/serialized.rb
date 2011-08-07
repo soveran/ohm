@@ -182,7 +182,8 @@ module Ohm
     # Called when writing the object's attributes to the db
     def serialize( att )
       serializer = _serializer(att)
-      serializer ? serializer.to_str( send(att) ) : super
+      val = send(att)
+      serializer ? serializer.to_str(val) || val : super
     end
 
     module ClassMethods
