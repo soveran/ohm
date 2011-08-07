@@ -20,7 +20,8 @@ module Ohm
     end
     
     def to_str( val )
-      !val.nil? && ( val.respond_to?(:to_str) ? val.to_str : val.to_s )
+      puts "Serializer#to_str: #{@type}: #{val} #{val.class} #{val.respond_to?(:to_str)}"
+      val.respond_to?(:to_str) ? val.to_str : val.to_s  unless val.nil?
     end
     
     def extract_options!(*options)
@@ -61,29 +62,41 @@ module Ohm
       end
     end
     
-    class DateTimeSerializer < Serializer
-      def to_val( str )
-        @type.parse( str ) if String === str
-      end
-    end
-    
-    class DateSerializer < DateTimeSerializer
+    class DateSerializer < Serializer
       def initialize(*args)
         super(Date, extract_options!(*args))
       end
       
       def to_str( val )
-        val.iso8601 if val
+        val.iso8601 if @type === val
+      end
+      
+      ISO8601 = /\A\d{4}-\d{2}-\d{2}\Z/
+      
+      def to_val( str )
+        unless str.nil? || @type === str
+          s = str.to_s
+          @type.parse( s ) if s =~ ISO8601
+        end
       end
     end
-    
-    class TimeSerializer < DateTimeSerializer
+
+    class TimeSerializer < Serializer
       def initialize(*args)
         super(Time, extract_options!(*args))
       end
       
+      ISO8601 = /\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.[0-9]*)?(Z|[-+]\d{2}?(:\d{2})?)\Z/
+      
       def to_str( val )
-        val.iso8601(options[:precision] || 0) if val
+        val.iso8601(options[:precision] || 0) if @type === val
+      end
+
+      def to_val( str )
+        unless str.nil? || @type === str
+          s = str.to_s
+          @type.parse( s ) if s =~ ISO8601
+        end
       end
     end
     
@@ -153,11 +166,18 @@ module Ohm
     # Parse str for attribute name with given serializer
     # Default is to call serializer.to_val
     # This gives a convenient override point for simple customizations
-    def parse( name, str, serializer )
+    def parse( name, str, serializer = _serializer(name) )
       serializer.to_val( str )
-    rescue StandardError => e
+     rescue StandardError => e
       debug { "parse: #{name} #{str} #{serializer}: error #{e.inspect}" }
       nil
+    end
+
+    # Get and serialize the attribute value for att using the associated serializer
+    # Called when writing the object's attributes to the db
+    def serialize( att )
+      serializer = _serializer(att)
+      serializer ? serializer.to_str( send(att) ) : super
     end
 
     module ClassMethods
@@ -205,7 +225,8 @@ module Ohm
   
     protected
       # find the serializer by attribute name or type
-      def _serializer(name, type, klass=self)
+      def _serializer(name, klass=self)
+        type = types(root)[name]
         serializers(klass)[name] || serializers(klass)[type] || serializers(root)[type] || ( serializers(base)[type] ||= Serializer.default(type) )
       end
      
@@ -216,20 +237,23 @@ module Ohm
         class_eval <<-RUBY, __FILE__, __LINE__ + 1
           def #{name}
             unless #{type} === ( v = read_local(:#{name}) )
-              _write_local(:#{name}, v = parse( :#{name}, v, self.class.send(:_serializer, :#{name}, #{type}) ) || v ) if v
+              _write_local(:#{name}, v = parse( :#{name}, v ) || v ) if v
             end
             v
           end
           
           def #{name}=( v )
-            unless String === v
-              v = self.class.send(:_serializer, :#{name}, #{type}).to_str(v) if v
-            end
             write_local(:#{name}, v)
           end
         RUBY
       end
     end
     
+   protected
+    # instance methods
+    def _serializer(name, klass=self)
+      self.class.send(:_serializer, name, self)
+    end    
+
   end
 end
