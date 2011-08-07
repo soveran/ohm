@@ -30,10 +30,15 @@ module Ohm
     def self.default(type)
       # try to find a serializer for the type in the type, in the current scope, or in Ohm::Serializers
       # or just return a generic serializer if not found
-      klass = ( constantize("#{type}::Serializer") rescue nil || 
-                constantize("#{type}Serializer") rescue nil ||
-                constantize("Ohm::Serializers::#{type}Serializer") rescue nil )
+      klass = ( find_class("#{type}::Serializer") || 
+                find_class("#{type}Serializer") ||
+                find_class("Ohm::Serializers::#{type}Serializer") )
       (klass || self).new(type)
+    end
+
+   protected
+    def self.find_class( name )
+      ( klass = constantize( name ) ) && !( Ohm::Model::Wrapper === klass )  rescue nil
     end
   end
 
