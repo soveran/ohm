@@ -20,11 +20,11 @@ module Ohm
   module Timestamps
     # Time including microseconds
     class Timestamp < Time
-      def to_s
+      def to_str
         utc.iso8601(6)
       end
-      alias_method :to_str, :to_s
-      alias_method :inspect, :to_s
+      alias_method :inspect, :to_str
+      alias_method :to_s, :to_str
       
       def self.to_val( str )
         parse(str).utc
@@ -41,7 +41,7 @@ module Ohm
 
   protected
     def write
-      ts = Timestamp.now.to_s
+      ts = Timestamp.now
       self.updated_at = ts
       # set created_at here too so it is the same as the first updated_at
       self.created_at ||= ts
