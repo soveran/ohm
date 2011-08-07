@@ -16,11 +16,10 @@ module Ohm
     end
 
     def to_val( str )
-      !str.nil? && ( @type.respond_to?(:to_val) ? @type.to_val( str ) : @type.new(str) )
+      @type.respond_to?(:to_val) ? @type.to_val( str ) : @type.new(str)  unless str.nil?
     end
     
     def to_str( val )
-      puts "Serializer#to_str: #{@type}: #{val} #{val.class} #{val.respond_to?(:to_str)}"
       val.respond_to?(:to_str) ? val.to_str : val.to_s  unless val.nil?
     end
     
