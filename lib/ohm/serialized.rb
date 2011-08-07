@@ -38,7 +38,8 @@ module Ohm
 
    protected
     def self.find_class( name )
-      ( klass = constantize( name ) ) && !( Ohm::Model::Wrapper === klass )  rescue nil
+      klass = constantize( name ) rescue nil
+      klass unless Ohm::Model::Wrapper === klass
     end
   end
 
