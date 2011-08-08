@@ -1500,7 +1500,7 @@ module Ohm
     def initialize(attrs = {})
       @id = nil
       @_memo ||= {}
-      @_attributes ||= Hash.new { |hash, key| hash[key] = read_remote(key) }
+      @_attributes ||= Hash.new { |hash, key| hash[key] = lazy_fetch(key) }
       super
       update_local(attrs)
     end
@@ -1508,7 +1508,7 @@ module Ohm
     # instantiate an instance of a model, or possibly a subclass of a model according to
     # its _type attribute if it exists
     def self.new(attrs = {}, &block)
-      type = attrs[:_type] || ( attrs[:id] && self.polymorph && _read_remote(root.key[attrs[:id]], :_type) )
+      type = attrs[:_type] || ( attrs[:id] && self.polymorph && read_remote(root.key[attrs[:id]], :_type) )
       (attrs = attrs.dup).delete(:_type)
       if type && ( klass = constantize(type.to_s) ) && klass != self
         instance = klass.new( attrs )
@@ -2092,15 +2092,15 @@ module Ohm
     #
     # @param  [Symbol] att The attribute you you want to get.
     # @return [String] The value of att.
-    def read_remote(att)
-      self.class._read_remote(key,att) unless new?
+    def lazy_fetch(att)
+      self.class.read_remote(key,att) unless new?
     end
-
+    
     # Used internally to read a remote attribute and force the encoding
     #
     # @param  [Symbol] att The attribute you you want to get.
     # @return [String] The value of att.
-    def self._read_remote(key,att)
+    def self.read_remote(key,att)
       value = key.hget(att)
       value.respond_to?(:force_encoding) ?
         value.force_encoding("UTF-8") :
