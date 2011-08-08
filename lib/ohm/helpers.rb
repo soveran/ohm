@@ -21,8 +21,10 @@ unless Array.respond_to?(:wrap)
 end
 
 unless Array.respond_to?(:extract_options!)
-  def extract_options!(*options)
-    ( options.pop if Hash === options.last ) || {}
+  class Array
+    def extract_options!(*options)
+      ( options.pop if Hash === options.last ) || {}
+    end
   end
 end
 
