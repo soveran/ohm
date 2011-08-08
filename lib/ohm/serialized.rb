@@ -23,17 +23,18 @@ module Ohm
       val.respond_to?(:to_str) ? val.to_str : val.to_s  unless val.nil?
     end
     
-    def extract_options!(*options)
-      ( options.pop if Hash === options.last ) || {}
-    end
-    
-    def self.default(type)
+    def self.default(type, options={})
       # try to find a serializer for the type in the type, in the current scope, or in Ohm::Serializers
       # or just return a generic serializer if not found
       klass = ( find_class("#{type}::Serializer") || 
                 find_class("#{type}Serializer") ||
                 find_class("Ohm::Serializers::#{type}Serializer") )
-      (klass || self).new(type)
+#      puts "Serializer.default: #{type}: #{klass.inspect}"
+      (klass || self).new(type, options)
+    end
+
+    def inspect
+      "<#{self.class.name}:#{type} options=#{options}>"
     end
 
    protected
@@ -47,30 +48,28 @@ module Ohm
     Serializer = Ohm::Serializer
     
     class IntegerSerializer < Serializer
-      def initialize(type=nil); super( Fixnum ); end
+      def initialize(*args); super( Fixnum, args.extract_options! ); end
       def to_val( str )
         Integer(str) if str
       end
     end
 
     class FloatSerializer < Serializer
-      def initialize(type=nil); super( Float ); end
+      def initialize(*args); super( Float, args.extract_options! ); end
       def to_val( str )
         Float(str) if str
       end
     end
 
     class DecimalSerializer < Serializer
-      def initialize(type=nil); super( BigDecimal ); end
+      def initialize(*args); super( BigDecimal, args.extract_options! ); end
       def to_val( str )
         BigDecimal(str) if str
       end
     end
     
     class DateSerializer < Serializer
-      def initialize(*args)
-        super(Date, extract_options!(*args))
-      end
+      def initialize(*args); super( Date, args.extract_options! ); end
       
       def to_str( val )
         val.iso8601 if @type === val
@@ -87,9 +86,7 @@ module Ohm
     end
 
     class TimeSerializer < Serializer
-      def initialize(*args)
-        super(Time, extract_options!(*args))
-      end
+      def initialize(*args); super( Time, args.extract_options! ); end
       
       ISO8601 = /\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.[0-9]*)?(Z|[-+]\d{2}?(:\d{2})?)\Z/
       
@@ -106,12 +103,12 @@ module Ohm
     end
     
     class JSONSerializer < Serializer
-      def initialize(type=nil, options={ symbolize_keys:true })
-        super
+      def initialize(type, options={})
+        super( type, { symbolize_keys: true }.merge( options ) )
       end
 
       def to_val( str )
-        JSON.parse( str, options ) if str
+        JSON.parse( str, options ) if str  #TODO options.slice(:symbolize_keys)
       rescue JSON::ParserError
         nil
       end
@@ -125,13 +122,13 @@ module Ohm
     
     class HashSerializer < JSONSerializer
       def initialize(*args)
-        super( Hash, { symbolize_keys: true }.merge( extract_options!(*args) ) )
+        super( Hash, args.extract_options!)
       end
     end
     
     class ArraySerializer < JSONSerializer
       def initialize(*args)
-        super( Array, { symbolize_keys: true }.merge( extract_options!(*args) ) )
+        super( Array, args.extract_options! )
       end
     end
   end
@@ -172,6 +169,7 @@ module Ohm
     # Default is to call serializer.to_val
     # This gives a convenient override point for simple customizations
     def parse( name, str, serializer = _serializer(name) )
+#      puts "parse: _serializer(#{name}): #{serializer.inspect}"
       serializer.to_val( str )
      rescue StandardError => e
       debug { "parse: #{name} #{str} #{serializer}: error #{e.inspect}" }
@@ -188,7 +186,7 @@ module Ohm
 
     module ClassMethods
       # Allow for first-class attributes without proxies
-      # Values are deserialized when accessed and reserialized on validation, if valid
+      # Values are deserialized when accessed and reserialized on write/save to db, if valid
       # Default serialization is with to_s and deserialization with new(s)
       def attribute(name, type = String, options = {})
         options = options.dup
@@ -203,36 +201,43 @@ module Ohm
       # Find or declare a serializer for given attribute type by model class
       # Serializer may be set for this model subclass, our root class or globally for the base model
       # Serializer may be further overridden via the attribute serializer: option
+      # All built-in serializers accept the default: val option to initialize the attribute
       #
       # @example
       #
       # class MyModel < Ohm::Model
-      #   # serialize all Date attributes with MyDateSerializer instead of the default
-      #   serializer Date, MyDateSerializer
+      #   # serialize all Date attributes with MyDateSerializer, and initialize with a default value of today
+      #   serializer Date, MyDateSerializer, default: Date.today
       #   attribute start_date, Date
       #
       #   # symbolize the keys of just this hash attribute
       #   attribute flags, Hash, serializer: SymbolizedKeysHashSerializer.new
       #
       #   # another way is using the built-in option of the default HashSerializer
-      #   attribute flags, Hash, symbolize_keys: true
+      #   attribute flags, Hash, symbolize_keys: true, default: {}
       #
       # end
       #
-      def serializer(type_or_name, serializer, options={})
-        # allow subclasses to override serializers by type, but define per-attribute serializers on the root
-        if serializer
-          serializer = serializer.new(options) if Class === serializer
+      def serializer(type_or_name, *args)
+        options = args.extract_options!
+        serializer = args.shift
+        # allow subclasses to override serializers and options by type or by name
+        type = ( Class === type_or_name )? type_or_name : types[type_or_name]
+        # if given a serializer instance, use it; if given a class instantiate it or the default serializer with the given options
+        if serializer || !options.empty?
+          serializer = serializer.new(options) if Class === serializer 
+          serializer ||= Serializer.default(type, options)
           serializers(self)[type_or_name] = serializer
         else
           serializers(self).delete(type_or_name)
         end
+
       end
   
     protected
       # find the serializer by attribute name or type
       def _serializer(name, klass=self)
-        type = types(root)[name]
+        type = types[name]
         serializers(klass)[name] || serializers(klass)[type] || serializers(root)[type] || ( serializers(base)[type] ||= Serializer.default(type) )
       end
      
@@ -257,8 +262,20 @@ module Ohm
     
    protected
     # instance methods
-    def _serializer(name, klass=self)
-      self.class.send(:_serializer, name, self)
+    
+    # override to provide default value for initialization of typed attributes
+    def lazy_fetch(att)
+      unless ( v = super )
+        v = ( s = _serializer(att) )? s.options[:default] : nil
+        # if the default value is a proc, call it optionally passing the obj and att
+        v = v.call(*[self,att][0...v.arity]) if Proc === v
+      end
+      v
+    end
+
+    # convenience method to get serializer for attribute/type
+    def _serializer(name)
+      self.class.send(:_serializer, name)
     end    
 
   end
