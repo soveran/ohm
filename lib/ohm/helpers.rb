@@ -20,6 +20,12 @@ unless Array.respond_to?(:wrap)
   end
 end
 
+unless Array.respond_to?(:extract_options!)
+  def extract_options!(*options)
+    ( options.pop if Hash === options.last ) || {}
+  end
+end
+
 unless defined?(silence_warnings)
   def silence_warnings; yield; end
 end
