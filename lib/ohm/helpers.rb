@@ -22,8 +22,8 @@ end
 
 unless Array.respond_to?(:extract_options!)
   class Array
-    def extract_options!(*options)
-      ( options.pop if Hash === options.last ) || {}
+    def extract_options!
+      ( pop if Hash === last ) || {}
     end
   end
 end
