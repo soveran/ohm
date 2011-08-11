@@ -1530,15 +1530,9 @@ module Ohm
     #                           validation.
     def create
       return false unless valid?
-      initialize_id
-
-      mutex do
-        create_model_membership
-        write
-        add_to_indices
-      end
+      _create
     end
-
+    
     # Create or update this object based on the state of #new?.
     #
     # @return [Ohm::Model, nil] The saved object or nil if it fails
@@ -1546,13 +1540,9 @@ module Ohm
     def save
       return create if new?
       return false unless valid?
-
-      mutex do
-        write
-        update_indices
-      end
+      _save
     end
-
+    
     # Update this object, optionally accepting new attributes.
     #
     # @param [Hash] attrs Attribute value pairs to use for the updated
@@ -1777,7 +1767,7 @@ module Ohm
       def self.debug(*msg, &block)
          logger.debug( Array(msg).first || yield ) if logger && log_level == Logger::DEBUG
       end
-      
+
       def debug(*msg, &block); self.class.debug(*msg, &block); end
     end
 
@@ -1825,10 +1815,12 @@ module Ohm
     end
 
     def self.polymorph
+      #TODO test whether this memo is a problem if not all the descendants are yet loaded/autoloaded
+      # e.g. keep set of seen model classes and clear memo if self not already in set
       @_descendants ||= descendants
       @_polymorph ||= self < root || ( self == root && !@_descendants.empty? )
     end
-    
+
   protected
 
     # Return the list of attributes, collections, counters etc. for inspect
@@ -1841,6 +1833,26 @@ module Ohm
     def changed!
       @changed = true
     end
+
+    # internal create action
+    def _create
+      initialize_id
+
+      mutex do
+        create_model_membership
+        write
+        add_to_indices
+      end
+    end
+
+    # internal save action
+    def _save
+      mutex do
+        write
+        update_indices
+      end
+    end
+
 
     # Write all the attributes and counters of this object. The operation
     # is actually a 2-step process:
@@ -1998,13 +2010,11 @@ module Ohm
         end
         
         def logger
-          @logger ||= nil
-          @logger || ( super rescue nil )
+          @logger || superclass.logger rescue nil
         end
-        
+
         def log_level
-          @log_level ||= nil
-          @log_level || ( super rescue nil )
+          @log_level || superclass.log_level rescue nil
         end
       end
     end
