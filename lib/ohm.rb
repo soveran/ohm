@@ -2010,11 +2010,11 @@ module Ohm
         end
         
         def logger
-          @logger || superclass.logger rescue nil
+          @logger ||= nil || superclass.logger rescue nil
         end
 
         def log_level
-          @log_level || superclass.log_level rescue nil
+          @log_level ||= nil || superclass.log_level rescue nil
         end
       end
     end
