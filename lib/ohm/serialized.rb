@@ -1,7 +1,7 @@
 require 'bigdecimal'
 require 'time'
 require 'date'
-require 'yajl/json_gem' unless defined? JSON
+require 'yajl/json_gem'  unless defined? JSON
 
 module Ohm
 
@@ -21,6 +21,10 @@ module Ohm
     
     def to_str( val )
       val.respond_to?(:to_str) ? val.to_str : val.to_s  unless val.nil?
+    end
+    
+    def key_for( val )
+      to_str( @type === val ? val : to_val( str ) )
     end
     
     def self.default(type, options={})
@@ -178,13 +182,13 @@ module Ohm
 
     # Get and serialize the attribute value for att using the associated serializer
     # Called when writing the object's attributes to the db
-    def serialize( att )
+    def serialize( att, val=send(att) )
       serializer = _serializer(att)
-      val = send(att)
       serializer ? serializer.to_str(val) || val : super
     end
 
     module ClassMethods
+      
       # Allow for first-class attributes without proxies
       # Values are deserialized when accessed and reserialized on write/save to db, if valid
       # Default serialization is with to_s and deserialization with new(s)
@@ -231,7 +235,6 @@ module Ohm
         else
           serializers(self).delete(type_or_name)
         end
-
       end
   
     protected
@@ -258,8 +261,19 @@ module Ohm
           end
         RUBY
       end
+
+      # serialize the key value
+      def key_for(name, value, kind = :index)
+        #TODO serializers for indexed transient attributes?
+        serializer = _serializer(name)
+        if serializer
+          root.key[name][encode( ( serializer.key_for(value) rescue nil ) || value )]
+        else
+          super
+        end
+      end
     end
-    
+
    protected
     # instance methods
     

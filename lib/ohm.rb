@@ -1885,8 +1885,8 @@ module Ohm
     
     # Get and serialize the attribute value for att for writing to the database
     # This is a hook used e.g. by Serialized 
-    def serialize(att)
-      send(att).to_s
+    def serialize(att, val=send(att))
+      val.to_s
     end
 
     # persist a list of attribute/values remotely
@@ -2155,18 +2155,19 @@ module Ohm
     # @return [Ohm::Key] A {Ohm::Key key} which you can treat as a string,
     #                    but also do Redis operations on.
     def self.index_key_for(name, value)
+      raise IndexNotFound, name unless indices.include?(name)
       key_for(name, value, :index)
     end
 
     # generate a given kind of key. kind = [:index, :union, ...]
     def self.key_for(name, value, kind = :index)
-      raise IndexNotFound, name unless indices.include?(name)
+      debug { "Ohm#key_for:#{name}.#{kind} #{value}"}
       root.key[name][encode(value)]
     end
 
     # Thin wrapper around {Ohm::Model.index_key_for}.
     def index_key_for(att, value)
-      self.class.key_for(att, value, :index)
+      self.class.index_key_for(att, value)
     end
 
     # Lock the object so no other instances can modify it.
