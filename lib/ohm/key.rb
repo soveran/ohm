@@ -36,6 +36,14 @@ module Ohm
     def *(other)
       self.class.new("#{self}_#{other}", redis)
     end
+    
+    # Produces a random key prefixed with itself.  This is primarily
+    # used for storing transient and intermediate results on sets.
+    # NB the key name is not guaranteed to be unique, but almost surely so as 1/64**len
+    def unique(len=16)
+      require 'securerandom'
+      self[SecureRandom.urlsafe_base64(len)]
+    end
   end
 end
 
