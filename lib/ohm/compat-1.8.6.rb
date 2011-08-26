@@ -23,6 +23,14 @@ unless respond_to?(:tap)
   end
 end
 
+unless Base64.respond_to?(:strict_encode64)
+  module Base64
+    def self.strict_encode64(s)
+      encode64(s).strip
+    end
+  end
+end
+
 module Ohm
   if defined?(BasicObject)
     BasicObject = ::BasicObject
