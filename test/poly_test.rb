@@ -116,3 +116,20 @@ test "namespaced derived class works normally" do
   assert Power::User === User.find( name: @pu.name ).first
 end
 
+test "id index returns subclasses" do
+  @su = Hacker.create( name: 'lenny', kernel: 'debian', alias: 'condor' )
+  assert Hacker === SuperUser[@su.id]
+end
+
+test "subclass id index doesn't return superclasses" do
+  @su = SuperUser.create( name: 'lenny', kernel: 'debian' )
+  assert Hacker[@su.id] == nil
+end
+
+test "promote type of existing object" do
+  @su = Hacker.create( name: 'lenny', kernel: 'debian', alias: 'kvm' )
+  assert Hacker === SuperUser[@su.id]
+  SuperUser.create( _type: SuperUser, id: @su.id )
+  assert SuperUser == SuperUser[@su.id].class
+  assert !Hacker.exists?(@su.id)
+end
