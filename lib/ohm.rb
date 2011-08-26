@@ -705,6 +705,7 @@ module Ohm
       # include the subclass index if scoped to a subclass
       #FIXME nil values?  e.g. id: nil
       #TODO pass objects for refs, i.e. find( refd: obj ) as well as find( refd_id: obj.id )
+      #TODO union of array of condition hashes
       def find_source(options, op)
         source = keys(options)
         target = source.inject(key.volatile) { |chain, other| chain.send(op, other) }
@@ -715,6 +716,7 @@ module Ohm
       # @private
       #
       # Transform a hash of attribute/values into an array of keys.
+      #TODO nil values, Set values, ids, refs
       def keys(hash)
         model.debug { "#{model.name}.find: #{key} : #{hash}" }
         [].tap do |keys|
@@ -1087,7 +1089,7 @@ module Ohm
 
     # shortcut for reading an attribute value of the model
     def [](attr)
-      send(self, attr)
+      send(attr)
     end
     
     # shortcut for writing an attribute value
@@ -1330,7 +1332,7 @@ module Ohm
     # @return [Ohm::Model, nil] The instance of Ohm::Model or nil of it does
     #                           not exist.
     def self.[](id)
-      new(:id => id) if id && exists?(id)
+      new(:id => id) if id && root.exists?(id)
     end
 
     # @private Used for conveniently doing [1, 2].map(&Post) for example.
@@ -1420,7 +1422,8 @@ module Ohm
     # @param  [Hash] args attribute-value pairs for the object.
     # @return [Ohm::Model] an instance of the class you're trying to create.
     def self.create(*args, &block)
-      model = new(*args, &block)
+      attrs = args.extract_options!.merge( _type: self )
+      model = new(*( args + [attrs] ), &block)
       model.create
       model
     end
@@ -1451,7 +1454,7 @@ module Ohm
     # @return [String] A string which is safe to use as a key.
     # @see Ohm::Model.index_key_for
     def self.encode(value)
-      Base64.encode64(digest(value.to_s)).gsub("\n", "")
+      Base64.strict_encode64(digest(value.to_s))
     end
     
     # Optionally digest a long key name with a hash function if the key is longer than the hash
@@ -1509,13 +1512,15 @@ module Ohm
     # its _type attribute if it exists
     def self.new(attrs = {}, &block)
       type = attrs[:_type] || ( attrs[:id] && self.polymorph && read_remote(root.key[attrs[:id]], :_type) )
-      (attrs = attrs.dup).delete(:_type)
-      if type && ( klass = constantize(type.to_s) ) && klass != self
-        instance = klass.new( attrs )
+      if type && ( klass = constantize(type.to_s) ) && klass < self
+        instance = klass.new( attrs.merge( _type: type ) )
+      elsif !klass || klass == self
+        ( attrs = attrs.dup ).delete(:_type)
+        instance = super( attrs )
       else
-        instance = super
+        instance = nil
       end
-      yield instance if block_given?
+      yield instance if instance && block_given?
       instance
     end
     
@@ -1817,10 +1822,14 @@ module Ohm
     def self.polymorph
       #TODO test whether this memo is a problem if not all the descendants are yet loaded/autoloaded
       # e.g. keep set of seen model classes and clear memo if self not already in set
-      @_descendants ||= descendants
-      @_polymorph ||= self < root || ( self == root && !@_descendants.empty? )
+      @_polymorph ||= self < root || ( self == root && !polymorphs.empty? )
     end
 
+    # all the derived models, if any
+    def self.polymorphs
+      @_descendants ||= descendants.select{|klass| klass < Ohm::Model }
+    end
+    
   protected
 
     # Return the list of attributes, collections, counters etc. for inspect
@@ -1836,11 +1845,19 @@ module Ohm
 
     # internal create action
     def _create
-      initialize_id
-
+      if new?
+        initialize_id
+      else
+        clear_model_membership
+      end
+      
       mutex do
         create_model_membership
-        write
+        begin
+          write
+        rescue Exception => e
+          raise
+        end
         add_to_indices
       end
     end
@@ -1984,7 +2001,7 @@ module Ohm
     def initialize_id
       @id ||= root.key[:id].incr.to_s
     end
-
+    
     def db
       self.class.db
     end
@@ -2037,6 +2054,10 @@ module Ohm
       key.del
       self.class.all.delete(self)
       root.all.delete(self)  if self.class != root
+    end
+
+    def clear_model_membership
+      root.polymorphs.each{|k|  k.all.delete(self) }
     end
 
     def update_indices
