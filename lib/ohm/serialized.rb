@@ -51,6 +51,13 @@ module Ohm
   module Serializers
     Serializer = Ohm::Serializer
     
+    class SymbolSerializer < Serializer
+      def initialize(*args); super( Symbol, args.extract_options! ); end
+      def to_val( str )
+        str.to_sym if str
+      end
+    end
+
     class IntegerSerializer < Serializer
       def initialize(*args); super( Fixnum, args.extract_options! ); end
       def to_val( str )
@@ -71,7 +78,7 @@ module Ohm
         BigDecimal(str) if str
       end
     end
-    
+
     class DateSerializer < Serializer
       def initialize(*args); super( Date, args.extract_options! ); end
       
