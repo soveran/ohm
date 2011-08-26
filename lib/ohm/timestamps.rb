@@ -41,7 +41,7 @@ module Ohm
 
   protected
     def write
-      ts = Timestamp.now
+      ts = Timestamp.now.to_s
       self.updated_at = ts
       # set created_at here too so it is the same as the first updated_at
       self.created_at ||= ts
