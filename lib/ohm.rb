@@ -1361,6 +1361,12 @@ module Ohm
       Ohm::Model::Index.new(key[:all], Wrapper.wrap(self))
     end
 
+    # Return an empty {Ohm::Model::Set set}
+    #FIXME this set should be read-only
+    def self.none
+      Ohm::Model::Index.new(key[:_none], Wrapper.wrap(self))
+    end
+
     # All the defined attributes within a class.
     # @see Ohm::Model.attribute
     def self.attributes(klass=nil)
@@ -1422,8 +1428,7 @@ module Ohm
     # @param  [Hash] args attribute-value pairs for the object.
     # @return [Ohm::Model] an instance of the class you're trying to create.
     def self.create(*args, &block)
-      attrs = args.extract_options!.merge( _type: self )
-      model = new(*( args + [attrs] ), &block)
+      model = new(*( [self] + args ), &block)
       model.create
       model
     end
@@ -1508,19 +1513,41 @@ module Ohm
       update_local(attrs)
     end
 
-    # instantiate an instance of a model, or possibly a subclass of a model according to
-    # its _type attribute if it exists
-    def self.new(attrs = {}, &block)
-      type = attrs[:_type] || ( attrs[:id] && self.polymorph && read_remote(root.key[attrs[:id]], :_type) )
-      if type && ( klass = constantize(type.to_s) ) && klass < self
-        instance = klass.new( attrs.merge( _type: type ) )
-      elsif !klass || klass == self
-        ( attrs = attrs.dup ).delete(:_type)
-        instance = super( attrs )
-      else
-        instance = nil
+    # Instantiate a new instance of a model, or if given an id of an existing model,
+    # instantiate it or possibly a subclass according to its _type attribute if it
+    # exists in the datastore. (I.e. polymorphic creation of the return instance.)
+    #
+    # Optionally takes a Class name as its first arg to override the dynamic typing
+    # and coerce the existing model to the given type.
+    #
+    # @example
+    #
+    #  static: return a new Cat
+    #    Cat.new( name: 'fluffy' )
+    #
+    #  polymorphic: retrieve whatever type of animal has id 3, set name
+    #    Animal.new( id: 3, name: 'pidgin' )
+    #
+    #  dynamic coercion: morph whatever type of animal has id 3 into a new Cat, set name
+    #    Animal.new( Cat, id: 3, name: 'chimera' )
+    #
+    def self.new(*args, &block)
+      attrs = args.extract_options!
+
+      type = args.shift || ( attrs[:id] && self.polymorph && read_remote(root.key[attrs[:id]], :_type) )
+      instance = 
+        if type && ( klass = constantize(type.to_s) ) && klass < self
+          klass.new( type, attrs )
+        elsif !klass || klass == self
+          super( attrs )
+        else
+          nil
+        end
+
+      if instance
+        instance.instance_variable_set(:@_type, klass) if klass
+        yield instance if block_given?
       end
-      yield instance if instance && block_given?
       instance
     end
     
@@ -1864,6 +1891,8 @@ module Ohm
 
     # internal save action
     def _save
+
+      clear_model_membership if @_type
       mutex do
         write
         update_indices
