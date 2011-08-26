@@ -129,7 +129,16 @@ end
 test "promote type of existing object" do
   @su = Hacker.create( name: 'lenny', kernel: 'debian', alias: 'kvm' )
   assert Hacker === SuperUser[@su.id]
-  SuperUser.create( _type: SuperUser, id: @su.id )
+  SuperUser.create( id: @su.id )
+  assert SuperUser == SuperUser[@su.id].class
+  assert !Hacker.exists?(@su.id)
+end
+
+test "promote type of existing object with new/save" do
+  @su = Hacker.create( name: 'lenny', kernel: 'debian', alias: 'kvm' )
+  assert Hacker === SuperUser[@su.id]
+  @su = User.new( SuperUser, id: @su.id )
+  @su.save
   assert SuperUser == SuperUser[@su.id].class
   assert !Hacker.exists?(@su.id)
 end
