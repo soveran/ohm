@@ -246,9 +246,11 @@ module Ohm
   
     protected
       # find the serializer by attribute name or type
-      def _serializer(name, klass=self)
+      def _serializer(name)
         type = types[name]
-        serializers(klass)[name] || serializers(klass)[type] || serializers(root)[type] || ( serializers(base)[type] ||= Serializer.default(type) )
+        # flatten and cache all the serializers up the tree
+        @_serializers ||= all_ancestors(serializers(nil)).reverse.reduce(&:merge)
+        @_serializers[name] || @_serializers[type] || ( serializers(base)[type] ||= Serializer.default(type) if type )
       end
      
       # Define the attribute accessors. override this to add option processing per type or per attribute
