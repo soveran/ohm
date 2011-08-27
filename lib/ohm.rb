@@ -1381,7 +1381,7 @@ module Ohm
 
     # Map of the attribute serializers within a class
     def self.serializers(klass=root)
-      @@serializers[klass]
+      klass ? @@serializers[klass] : @@serializers
     end
       
     # All the defined counters within a class.
@@ -1982,7 +1982,15 @@ module Ohm
 
     # roll up all the attribute names from self and all superclasses
     def self.all_ancestors(attr)
-      ancestors.map { |klass| attr[klass] }.flatten
+      model_ancestors.map { |klass| attr[klass] }.flatten
+    end
+    
+    # cache model ancestors
+    def self.model_ancestors
+      @_model_ancestors ||= begin
+        a = ancestors
+        a[0..a.index(base)].select{|k| k.respond_to? :model_ancestors }
+      end
     end
     # Provides access to the Redis database. This is shared accross all models and instances.
     def self.db
@@ -2207,7 +2215,7 @@ module Ohm
 
     # generate a given kind of key. kind = [:index, :union, ...]
     def self.key_for(name, value, kind = :index)
-      debug { "Ohm#key_for:#{name}.#{kind} #{value}"}
+#      debug { "Ohm#key_for:#{name}.#{kind} #{value}"}
       root.key[name][encode(value)]
     end
 
