@@ -1864,6 +1864,7 @@ module Ohm
       (attributes + collections + counters)
     end
     
+    attr :_type
     attr_writer :id
 
     def changed!
@@ -1891,8 +1892,7 @@ module Ohm
 
     # internal save action
     def _save
-
-      clear_model_membership if @_type
+      clear_model_membership if _type
       mutex do
         write
         update_indices
