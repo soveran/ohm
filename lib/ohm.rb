@@ -1545,7 +1545,7 @@ module Ohm
         end
 
       if instance
-        instance.instance_variable_set(:@_type, klass) if klass
+        instance.instance_variable_set(:@_type, klass)
         yield instance if block_given?
       end
       instance
@@ -1873,27 +1873,19 @@ module Ohm
 
     # internal create action
     def _create
-      if new?
-        initialize_id
-      else
-        clear_model_membership
-      end
-      
+      initialize_id if new?
+        
       mutex do
         create_model_membership
-        begin
-          write
-        rescue Exception => e
-          raise
-        end
+        write
         add_to_indices
       end
     end
 
     # internal save action
     def _save
-      clear_model_membership if _type
       mutex do
+        create_model_membership
         write
         update_indices
       end
@@ -2075,6 +2067,7 @@ module Ohm
     end
 
     def create_model_membership
+      clear_model_membership
       self.class.all << self
       root.all << self if self.class != root
     end
@@ -2086,7 +2079,7 @@ module Ohm
     end
 
     def clear_model_membership
-      root.polymorphs.each{|k|  k.all.delete(self) }
+      root.polymorphs.each{|k| k.all.delete(self) unless _type === k }
     end
 
     def update_indices
