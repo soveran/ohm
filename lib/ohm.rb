@@ -1428,7 +1428,8 @@ module Ohm
     # @param  [Hash] args attribute-value pairs for the object.
     # @return [Ohm::Model] an instance of the class you're trying to create.
     def self.create(*args, &block)
-      model = new(*( [self] + args ), &block)
+      args.unshift(self) if Hash === args.first && args.first.key?(:id)
+      model = new(*args, &block)
       model.create
       model
     end
@@ -1534,10 +1535,12 @@ module Ohm
     def self.new(*args, &block)
       attrs = args.extract_options!
 
-      type = args.shift || ( attrs[:id] && self.polymorph && read_remote(root.key[attrs[:id]], :_type) )
+      type =  args.shift || attrs[:id] && self.polymorph && read_remote(root.key[attrs[:id]], :_type)
+      klass = constantize( type.to_s ) if type
+
       instance = 
-        if type && ( klass = constantize(type.to_s) ) && klass < self
-          klass.new( type, attrs )
+        if klass && klass < self
+          klass.new( klass, attrs )
         elsif !klass || klass == self
           super( attrs )
         else
@@ -2067,7 +2070,7 @@ module Ohm
     end
 
     def create_model_membership
-      clear_model_membership
+      clear_model_membership if _type
       self.class.all << self
       root.all << self if self.class != root
     end
