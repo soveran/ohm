@@ -37,6 +37,11 @@ module Ohm
       self.class.new("#{self}_#{other}", redis)
     end
     
+    # Return the last (name) component of the key
+    def name
+      split(':').last
+    end
+    
     # Produces a random key prefixed with itself.  This is primarily
     # used for storing transient and intermediate results on sets.
     # NB the key name is not guaranteed to be unique, but almost surely so as 1/64**len
