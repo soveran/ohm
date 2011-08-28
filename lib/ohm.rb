@@ -360,10 +360,10 @@ module Ohm
         return [] unless key.exists
 
         opts = options.dup
-        opts.merge!(:by => model.key["*->#{att}"])
+        opts.merge!(:by => model.root.key["*->#{att}"])
 
         if opts[:get]
-          key.sort(opts.merge(:get => model.key["*->#{opts[:get]}"]))
+          key.sort(opts.merge(:get => model.root.key["*->#{opts[:get]}"]))
         else
           sort(opts)
         end
@@ -1535,7 +1535,7 @@ module Ohm
     def self.new(*args, &block)
       attrs = args.extract_options!
 
-      type =  args.shift || attrs[:id] && self.polymorph && read_remote(root.key[attrs[:id]], :_type)
+      type =  args.shift || attrs[:id] && self.polymorphic && read_remote(root.key[attrs[:id]], :_type)
       klass = constantize( type.to_s ) if type
 
       instance = 
@@ -1849,10 +1849,15 @@ module Ohm
       @root ||= ( !(base == superclass || base == self) && superclass.respond_to?(:root) ) ? superclass.root : self
     end
 
-    def self.polymorph
-      #TODO test whether this memo is a problem if not all the descendants are yet loaded/autoloaded
-      # e.g. keep set of seen model classes and clear memo if self not already in set
-      @_polymorph ||= self < root || ( self == root && !polymorphs.empty? )
+    def self.polymorphic(p=nil)
+      #TODO this is a problem if not all the descendants are yet loaded/autoloaded
+      # the subclasses must be seen in order for the root to be considered polymorphic
+      # and the _type fetching optimization in new() to be short circuited
+      # If it's not convenient to preload the subclasses then just declare the root
+      # class explicitly polymorphic(true) so that subclasses can be autoloaded
+      #TODO make this automatic by keeping a set of the polymorphs in the db
+      # i.e. root[:_types].smembers
+      @_polymorph ||= self < root || ( self == root && !polymorphs.empty? ) || p
     end
 
     # all the derived models, if any
