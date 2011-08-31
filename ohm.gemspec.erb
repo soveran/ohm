@@ -1,11 +1,11 @@
-<% require "./lib/ohm/version" -%>
+<% require "./lib/ohm/version" %>
 Gem::Specification.new do |s|
   s.name = "ohm"
   s.version = "<%= Ohm::VERSION %>"
   s.summary = %{Object-hash mapping library for Redis.}
   s.description = %Q{Ohm is a library that allows to store an object in Redis, a persistent key-value database. It includes an extensible list of validations and has very good performance.}
-  s.authors = ["Michel Martens", "Damian Janowski"]
-  s.email = ["michel@soveran.com", "djanowski@dimaion.com"]
+  s.authors = ["Michel Martens", "Damian Janowski", "tribalvibes"]
+  s.email = ["michel@soveran.com", "djanowski@dimaion.com", "tribalvibes@tribalvibes.com"]
   s.homepage = "http://github.com/soveran/ohm"
   s.files = <%= Dir["lib/**/*.rb", "README*", "LICENSE", "Rakefile", "test/**/*.rb", "test/test.conf"].inspect %>
   s.rubyforge_project = "ohm"

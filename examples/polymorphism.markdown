@@ -92,6 +92,18 @@ With `Serialized`, model `attribute` declarations accept a type (class) name:
 
 Attribute values are serialized from the declared type to String on assignment, and converted back when the attribute is read. The serialization happens using a `Serializer` based on the declared attribute type.
 
+Often it's nice to have a default value for an attribute rather than `nil`, such as an empty hash `{}` for a `Hash` attribute. This can be accomplished with the `default: value` option on the attribute declaration, which is then passed through to the serializer.
+
+  attribute :opts, Hash, default: {}
+
+You can also pass a `Proc`, e.g.:
+
+  attribute :time, Time, default: -> { Time.now }
+
+The default proc will be passed the current object and the attribute name if its arity allows, i.e.:
+
+  attribute :meta, Hash, default: {|obj,att| obj[att] = { this: att } }
+
 Serializers
 -----
 

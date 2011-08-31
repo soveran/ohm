@@ -142,3 +142,4 @@ test "promote type of existing object with new/save" do
   assert SuperUser == SuperUser[@su.id].class
   assert !Hacker.exists?(@su.id)
 end
+
