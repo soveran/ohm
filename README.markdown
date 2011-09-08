@@ -31,12 +31,12 @@ These are libraries in other languages that were inspired by Ohm.
 Articles and Presentations
 --------------------------
 
+* [Simplicty](http://files.soveran.com/simplicity)
 * [How to Redis](http://www.paperplanes.de/2009/10/30/how_to_redis.html)
 * [Redis and Ohm](http://carlopecchia.eu/blog/2010/04/30/redis-and-ohm-part1/)
 * [Ohm (Redis ORM)](http://blog.s21g.com/articles/1717) (Japanese)
 * [Redis and Ohm](http://www.slideshare.net/awksedgreep/redis-and-ohm)
-
-http://www.slideshare.net/cyx.ucron/ruby-off-rails
+* [Ruby off Rails](http://www.slideshare.net/cyx.ucron/ruby-off-rails)
 
 Getting started
 ---------------
@@ -444,7 +444,7 @@ Note that calling these methods results in new sets being created
 on the fly. This is important so that you can perform further operations
 before reading the items to the client.
 
-For more information, see [SINTERSTORE](http://code.google.com/p/redis/wiki/SinterstoreCommand) and [SDIFFSTORE](http://code.google.com/p/redis/wiki/SdiffstoreCommand).
+For more information, see [SINTERSTORE](http://redis.io/commands/sinterstore) and [SDIFFSTORE](http://redis.io/commands/sdiffstore).
 
 Validations
 -----------
