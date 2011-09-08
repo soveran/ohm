@@ -559,7 +559,7 @@ Ohm Extensions
 
 Ohm is rather small and can be extended in many ways.
 
-A lot of amazing contributions are available at [Ohm Contrib](http://labs.sinefunc.com/ohm-contrib/doc/), make sure to check them if you need to extend Ohm's functionality.
+A lot of amazing contributions are available at [Ohm Contrib](http://cyx.github.com/ohm-contrib/doc/), make sure to check them if you need to extend Ohm's functionality.
 
 Tutorials
 =========
