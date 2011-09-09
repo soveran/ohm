@@ -77,35 +77,42 @@ set the environment variable `REDIS_URL`.
 
 Here are the options for {Ohm.connect} in detail:
 
-**:url**
-:    A Redis URL of the form `redis://:<passwd>@<host>:<port>/<db>`.
-     Note that if you specify a URL and one of the other options at
-     the same time, the other options will take precedence. Also, if
-     you try and do `Ohm.connect` without any arguments, it will check
-     if `ENV["REDIS_URL"]` is set, and will use it as the argument for
-     `:url`.
+### :url
 
-**:host**
-:    Host where the Redis server is running, defaults to `"127.0.0.1"`.
+A Redis URL of the form `redis://:<passwd>@<host>:<port>/<db>`.
+Note that if you specify a URL and one of the other options at
+the same time, the other options will take precedence. Also, if
+you try and do `Ohm.connect` without any arguments, it will check
+if `ENV["REDIS_URL"]` is set, and will use it as the argument for
+`:url`.
 
-**:port**
-:    Port number, defaults to `6379`.
+### :host
 
-**:db**
-:    Database number, defaults to `0`.
+Host where the Redis server is running, defaults to `"127.0.0.1"`.
 
-**:password**
-:    It is the secret that will be sent to the Redis server. Use it if the server
-     configuration requires it. Defaults to `nil`.
+### :port
 
-**:timeout**
-:    Database timeout in seconds, defaults to `0`.
+Port number, defaults to `6379`.
 
-**:thread_safe**
-:    Initializes the client with a monitor. It has a small performance penalty, and
-     it's off by default. For thread safety, it is recommended to use a different
-     instance per thread. I you have no choice, then pass `:thread_safe => true`
-     when connecting.
+### :db
+
+Database number, defaults to `0`.
+
+### :password
+
+It is the secret that will be sent to the Redis server. Use it if the server
+configuration requires it. Defaults to `nil`.
+
+### :timeout
+
+Database timeout in seconds, defaults to `0`.
+
+### :thread_safe
+
+Initializes the client with a monitor. It has a small performance penalty, and
+it's off by default. For thread safety, it is recommended to use a different
+instance per thread. I you have no choice, then pass `:thread_safe => true`
+when connecting.
 
 Models
 ------
@@ -264,68 +271,73 @@ ordered by `id`, and {Ohm::Model::Collection#sort_by sort_by} receives
 a parameter with an attribute name, which will determine the sorting
 order. Both methods receive an options hash which is explained below:
 
-**:order**
-:    Order direction and strategy. You can pass in any of
-     the following:
+### :order
+
+Order direction and strategy. You can pass in any of the following:
 
      1. ASC
      2. ASC ALPHA (or ALPHA ASC)
      3. DESC
      4. DESC ALPHA (or ALPHA DESC)
 
-     It defaults to `ASC`.
+It defaults to `ASC`.
 
-**:start**
-:    The offset from which we should start with. Note that
-     this is 0-indexed. It defaults to `0`.
+### :start
 
-**:limit**
-:    The number of entries to get. If you don't pass in anything, it will
-     get all the results from the LIST or SET that you are sorting.
+The offset from which we should start with. Note that
+this is 0-indexed. It defaults to `0`.
 
-**:by**
-:    Key or Hash key with which to sort by. An important distinction with
-     using {Ohm::Model::Collection#sort sort} and
-     {Ohm::Model::Collection#sort_by sort_by} is that `sort_by` automatically
-     converts the passed argument with the assumption that it is a hash key
-     and it's within the current model you are sorting.
+### :limit
 
-         Post.all.sort_by(:title)     # SORT Post:all BY Post:*->title
-         Post.all.sort(:by => :title) # SORT Post:all BY title
+The number of entries to get. If you don't pass in anything, it will
+get all the results from the LIST or SET that you are sorting.
 
-**:get**
-:    A key pattern to return, e.g. `Post:*->title`. As is the case with
-     the `:by` option, using {Ohm::Model::Collection#sort sort} and
-     {Ohm::Model::Collection#sort_by sort_by} has distinct differences in
-     that `sort_by` does much of the hand-coding for you.
+### :by
 
-         Post.all.sort_by(:title, :get => :title)
-         # SORT Post:all BY Post:*->title GET Post:*->title
+Key or Hash key with which to sort by. An important distinction with
+using {Ohm::Model::Collection#sort sort} and
+{Ohm::Model::Collection#sort_by sort_by} is that `sort_by` automatically
+converts the passed argument with the assumption that it is a hash key
+and it's within the current model you are sorting.
 
-         Post.all.sort(:by => :title, :get => :title)
-         # SORT Post:all BY title GET title
+    Post.all.sort_by(:title)     # SORT Post:all BY Post:*->title
+    Post.all.sort(:by => :title) # SORT Post:all BY title
+
+### :get
+
+A key pattern to return, e.g. `Post:*->title`. As is the case with
+the `:by` option, using {Ohm::Model::Collection#sort sort} and
+{Ohm::Model::Collection#sort_by sort_by} has distinct differences in
+that `sort_by` does much of the hand-coding for you.
+
+    Post.all.sort_by(:title, :get => :title)
+    # SORT Post:all BY Post:*->title GET Post:*->title
+
+    Post.all.sort(:by => :title, :get => :title)
+    # SORT Post:all BY title GET title
 
 
-**:store**
-:    An optional key which you may use to cache the sorted result. The key
-     may or may not exist.
+### :store
 
-     This option can only be used together with `:get`.
+An optional key which you may use to cache the sorted result. The key
+may or may not exist.
 
-     The type that is used for the STORE key is a LIST.
+This option can only be used together with `:get`.
 
-       Post.all.sort_by(:title, :store => "FOO")
+The type that is used for the STORE key is a LIST.
 
-       # Get all the results stored in FOO.
-       Post.db.lrange("FOO", 0, -1)
+    Post.all.sort_by(:title, :store => "FOO")
 
-     When using temporary values, it might be a good idea to use a `volatile`
-     key. In Ohm, a volatile key means it just starts with a `~` character.
+    # Get all the results stored in FOO.
+    Post.db.lrange("FOO", 0, -1)
 
-         Post.all.sort_by(:title, :get => :title,
-                          :store => Post.key.volatile["FOO"])
+When using temporary values, it might be a good idea to use a `volatile`
+key. In Ohm, a volatile key means it just starts with a `~` character.
 
-         Post.key.volatile["FOO"].lrange 0, -1
+    Post.all.sort_by(:title, :get => :title,
+                     :store => Post.key.volatile["FOO"])
+
+    Post.key.volatile["FOO"].lrange 0, -1
 
 
 Associations
@@ -368,8 +380,8 @@ the following:
       end
     end
 
-_(The only difference with the actual implementation is that the model
-is memoized.)_
+The only difference with the actual implementation is that the model
+is memoized.
 
 The net effect here is we can conveniently set and retrieve `Post` objects,
 and also search comments using the `post_id` index.
