@@ -154,6 +154,10 @@ This is how you interact with IDs:
     Event[2]
     # => nil
 
+    # Finding all the events
+    Event.all
+    # => [#<Event @values={:id=>1, :name=>"Ohm Worldwide Conference 2031"}>]
+
 This example shows some basic features, like attribute declarations and
 validations. Keep reading to find out what you can do with models.
 
