@@ -38,7 +38,7 @@ The `all` collection for the model root contains all subclasses of the root:
     >> User.all.map(&:class)
     => [User, SuperUser]
 
-Whereas the subclass `all` collections contain only objects of that subclass:
+Whereas the subclass `all` collections contain only objects of that subclass and its descendants:
 
     >> SuperUser.all.map(&:name)
     => ["lenny"]

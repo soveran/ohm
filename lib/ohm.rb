@@ -709,7 +709,7 @@ module Ohm
       def find_source(options, op)
         source = keys(options)
         target = source.inject(key.volatile) { |chain, other| chain.send(op, other) }
-#        model.debug "find: #{model} #{options}: #{key} #{op} #{source} => #{target}"
+        model.debug { "find: #{model} #{options}: #{key} #{op} #{source} => #{target}" }
         [source, target]
       end
 
@@ -718,7 +718,7 @@ module Ohm
       # Transform a hash of attribute/values into an array of keys.
       #TODO nil values, Set values, ids, refs
       def keys(hash)
-        model.debug { "#{model.name}.find: #{key} : #{hash}" }
+#        model.debug { "#{model.name}.find: #{key} : #{hash}" }
         [].tap do |keys|
           hash.each do |attr, values|
             # nb: String is Enumerable in 1.8.x...
@@ -726,9 +726,11 @@ module Ohm
             if !(Enumerable === values) || ( attr_type && attr_type < Enumerable && attr_type != String )
               Array(values).each do |v|
                 keys << model.index_key_for(attr, v)
+#                model.debug{"attr: #{attr} v: #{v} key: #{keys.last}"}
               end
             else
               keys << union_key_for(attr,values)
+#              model.debug{"attr: #{attr} values: #{values} key: #{keys.last}"}
             end
           end
         end.uniq
@@ -775,7 +777,8 @@ module Ohm
       # @see Ohm::Model::Set#find find in Ohm::Model::Set.
       # @see Ohm::Model.find find in Ohm::Model.
       def find(options)
-        if options.keys.size == 1 && model.indices(model).include?(options.keys.first)
+        if options.keys.size == 1 && model.indices(model).include?(options.keys.first) &&
+            ( String === options.values.first || !( Enumerable === options.values.first ))
           Set.new(keys(options).first, Wrapper.wrap(model))
         else
           super(options)
