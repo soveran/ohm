@@ -1641,6 +1641,8 @@ module Ohm
     # approach of providing all the attributes and instead favors a white
     # listed approach.
     #
+    # options hash may be passed for use by subclasses (e.g., filte parameters)
+    #
     # @example
     #
     #   person = Person.create(:name => "John Doe")
@@ -1668,7 +1670,7 @@ module Ohm
     #   person = Person.create(:name => "John Doe")
     #   person.to_hash == { :id => '1', :name => "John Doe" }
     #   # => true
-    def to_hash
+    def to_hash(*options)
       attrs = {}
       attrs[:id] = id unless new?
       attrs[:errors] = errors unless errors.empty?
