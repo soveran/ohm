@@ -932,7 +932,7 @@ module Ohm
       end
     end
 
-    # All validations which need to access the _Redis_ database goes here.
+    # All validations that need access to the _Redis_ database go here.
     # As of this writing, {Ohm::Model::Validations#assert_unique} is the only
     # assertion contained within this module.
     module Validations
