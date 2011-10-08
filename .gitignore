@@ -1,3 +1,5 @@
 /pkg
 /.yardoc
 /doc
+Gemfile.lock
+.rvmrc
