@@ -1042,25 +1042,53 @@ module Ohm
 
     @@attributes  = Hash.new { |hash, key| hash[key] = [] }
     @@collections = Hash.new { |hash, key| hash[key] = [] }
-    @@counters    = Hash.new { |hash, key| hash[key] = [] }
     @@indices     = Hash.new { |hash, key| hash[key] = [] }
 
     def id
       @id or raise MissingID
     end
 
-    # Defines a string attribute for the model. This attribute will be
+    # Defines an attribute for the model. This attribute will be
     # persisted by _Redis_ as a string. Any value stored here will be
     # retrieved in its string representation.
     #
-    # If you're looking to have typecasting built in, you may want to look at
-    # Ohm::Typecast in Ohm::Contrib.
+    # If you pass a procedure as a second parameter, it will be used for
+    # typecasting the value when it is returned.
+    #
+    # @example
+    #
+    #   class Product < Ohm::Model
+    #     attribute :name
+    #     attribute :price, lambda { |x| x.to_f }
+    #     attribute :stock
+    #   end
+    #
+    #   product = Product.create(:name => "Tuna can",
+    #                            :price => 1.30,
+    #                            :stock => 150)
+    #
+    #   # As the attributes were assigned locally, they are stored in the same
+    #   # type they were supplied:
+    #   assert_equal 1.3, product.price
+    #   assert_equal 150, product.stock
+    #
+    #   # It is when the attributes are retrieved from the database that the
+    #   # typecasting comes into play.
+    #   product = Product.all.first
+    #
+    #   # Note how price is cast to a float, while stock remains as a string:
+    #   assert_equal 1.3, product.price
+    #   assert_equal "150", product.stock
+    #
+    # You can find helpers that provide syntax sugar in the Ohm::Typecast
+    # module that comes with Ohm::Contrib.
     #
     # @param name [Symbol] Name of the attribute.
+    # @param cast [Proc] Typecasting procedure.
     # @see http://cyx.github.com/ohm-contrib/doc/Ohm/Typecast.html
-    def self.attribute(name)
+    def self.attribute(name, cast = nil)
       define_method(name) do
-        read_local(name)
+        cast ? cast[read_local(name)] : read_local(name)
       end
 
       define_method(:"#{name}=") do |value|
@@ -1070,16 +1098,21 @@ module Ohm
       attributes << name unless attributes.include?(name)
     end
 
-    # Defines a counter attribute for the model. This attribute can't be
-    # assigned, only incremented or decremented. It will be zero by default.
+    # A counter is an attribute whose value is typecast as an integer.
     #
-    # @param [Symbol] name Name of the counter.
+    # It is syntax sugar for this declaration:
+    #
+    #     attribute(name, lambda { |x| x.to_i })
+    #
+    # You can increment or decrement attributes that hold a numeric value
+    # with the incr and decr functions.
+    #
+    # @param name [Symbol] Name of the counter.
+    # @see Ohm::Model.attribute
+    # @see Ohm::Model#incr
+    # @see Ohm::Model#decr
     def self.counter(name)
-      define_method(name) do
-        read_local(name).to_i
-      end
-
-      counters << name unless counters.include?(name)
+      attribute(name, lambda { |x| x.to_i })
     end
 
     # Defines a list attribute for the model. It can be accessed only after
@@ -1317,12 +1350,6 @@ module Ohm
       @@attributes[self]
     end
 
-    # All the defined counters within a class.
-    # @see Ohm::Model.counter
-    def self.counters
-      @@counters[self]
-    end
-
     # All the defined collections within a class. This will be comprised of
     # all {Ohm::Model::Set sets} and {Ohm::Model::List lists} defined within
     # your class.
@@ -1507,13 +1534,13 @@ module Ohm
       self
     end
 
-    # Increment the counter denoted by :att.
+    # Increment the attribute denoted by :att.
     #
     # @param [Symbol] att Attribute to increment.
     # @param [Fixnum] count An optional increment step to use.
     def incr(att, count = 1)
-      unless counters.include?(att)
-        raise ArgumentError, "#{att.inspect} is not a counter."
+      unless attributes.include?(att)
+        raise ArgumentError, "#{att.inspect} is not an attribute."
       end
 
       write_local(att, key.hincrby(att, count))
@@ -1599,11 +1626,6 @@ module Ohm
       self.class.attributes
     end
 
-    # Convenience wrapper for {Ohm::Model.counters}.
-    def counters
-      self.class.counters
-    end
-
     # Convenience wrapper for {Ohm::Model.collections}.
     def collections
       self.class.collections
@@ -1669,12 +1691,11 @@ module Ohm
     end
 
     # Returns everything, including {Ohm::Model.attributes attributes},
-    # {Ohm::Model.collections collections}, {Ohm::Model.counters counters},
-    # and the id of this object.
+    # {Ohm::Model.collections collections}, and the id of this object.
     #
     # Useful for debugging and for doing irb work.
     def inspect
-      everything = (attributes + collections + counters).map do |att|
+      everything = (attributes + collections).map do |att|
         value = begin
                   send(att)
                 rescue MissingID
@@ -1746,8 +1767,8 @@ module Ohm
     # @see http://code.google.com/p/redis/wiki/MultiExecCommand MULTI EXEC
     #      in the Redis Command Reference.
     def write
-      unless (attributes + counters).empty?
-        atts = (attributes + counters).inject([]) { |ret, att|
+      unless attributes.empty?
+        atts = attributes.inject([]) { |ret, att|
           value = send(att).to_s
 
           ret.push(att, value) if not value.empty?
