@@ -1861,8 +1861,13 @@ module Ohm
     end
 
     def update_indices
-      delete_from_indices
-      add_to_indices
+      indices = key[:_indices].smembers
+
+      db.multi do
+        indices.each{|index| db.srem(index, id) }
+        key[:_indices].del
+        add_to_indices
+      end
     end
 
     def add_to_indices
