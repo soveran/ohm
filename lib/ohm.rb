@@ -1286,9 +1286,9 @@ module Ohm
     # @see file:README.html#collections Collections Explained.
     def self.collection(name, model, reference = to_reference)
       model = Wrapper.wrap(model)
-      define_method(name) {
+      define_method(name) do
         model.unwrap.find(:"#{reference}_id" => send(:id))
-      }
+      end
     end
 
     # Used by {Ohm::Model.collection} to infer the reference.
@@ -1480,11 +1480,9 @@ module Ohm
       return unless valid?
       initialize_id
 
-      mutex do
-        create_model_membership
-        write
-        add_to_indices
-      end
+      self.class.all << self
+      write
+      self
     end
 
     # Create or update this object based on the state of #new?.
@@ -1495,10 +1493,8 @@ module Ohm
       return create if new?
       return unless valid?
 
-      mutex do
-        write
-        update_indices
-      end
+      write
+      self
     end
 
     # Update this object, optionally accepting new attributes.
@@ -1527,6 +1523,7 @@ module Ohm
     # indices, attributes, collections, etc are also deleted with it.
     #
     # @return [Ohm::Model] Returns a reference of itself.
+    # TODO Add WATCH/MULTI block.
     def delete
       delete_from_indices
       delete_attributes(collections) unless collections.empty?
@@ -1674,22 +1671,6 @@ module Ohm
       new? ? super : key.hash
     end
 
-    # Lock the object before executing the block, and release it once the
-    # block is done.
-    #
-    # This is used during {#create} and {#save} to ensure that no race
-    # conditions occur.
-    #
-    # @see http://code.google.com/p/redis/wiki/SetnxCommand SETNX in the
-    #      Redis Command Reference.
-    def mutex
-      lock!
-      yield
-      self
-    ensure
-      unlock!
-    end
-
     # Returns everything, including {Ohm::Model.attributes attributes},
     # {Ohm::Model.collections collections}, and the id of this object.
     #
@@ -1767,17 +1748,44 @@ module Ohm
     # @see http://code.google.com/p/redis/wiki/MultiExecCommand MULTI EXEC
     #      in the Redis Command Reference.
     def write
-      unless attributes.empty?
-        atts = attributes.inject([]) { |ret, att|
-          value = send(att).to_s
+      return if attributes.empty?
 
-          ret.push(att, value) if not value.empty?
-          ret
-        }
+      # TODO Improve
+      atts = attributes.inject([]) do |ret, att|
+        value = send(att).to_s
 
-        db.multi do
+        ret.push(att, value) unless value.empty?
+        ret
+      end
+
+      loop do
+        db.watch(key[:_indices])
+
+        # Delete from indices.
+        old_indices = key[:_indices].smembers
+
+        break if db.multi do
           key.del
           key.hmset(*atts.flatten) if atts.any?
+
+          old_indices.each do |index|
+            db.srem(index, id)
+          end
+
+          key[:_indices].del
+
+          # Add to index
+          indices.each do |att|
+            value = send(att)
+
+            if collection?(value)
+              value.each do |v|
+                add_to_index(att, v)
+              end
+            else
+              add_to_index(att, value)
+            end
+          end
         end
       end
     end
@@ -1881,18 +1889,6 @@ module Ohm
       self.class.all.delete(self)
     end
 
-    def update_indices
-      delete_from_indices
-      add_to_indices
-    end
-
-    def add_to_indices
-      indices.each do |att|
-        next add_to_index(att) unless collection?(send(att))
-        send(att).each { |value| add_to_index(att, value) }
-      end
-    end
-
     def collection?(value)
       self.class.collection?(value)
     end
@@ -1902,7 +1898,7 @@ module Ohm
       value.kind_of?(String) == false
     end
 
-    def add_to_index(att, value = send(att))
+    def add_to_index(att, value)
       index = index_key_for(att, value)
       index.sadd(id)
       key[:_indices].sadd(index)
@@ -1992,31 +1988,6 @@ module Ohm
     # Thin wrapper around {Ohm::Model.index_key_for}.
     def index_key_for(att, value)
       self.class.index_key_for(att, value)
-    end
-
-    # Lock the object so no other instances can modify it.
-    # This method implements the design pattern for locks
-    # described at: http://code.google.com/p/redis/wiki/SetnxCommand
-    #
-    # @see Model#mutex
-    def lock!
-      until key[:_lock].setnx(Time.now.to_f + 0.5)
-        next unless timestamp = key[:_lock].get
-        sleep(0.1) and next unless lock_expired?(timestamp)
-
-        break unless timestamp = key[:_lock].getset(Time.now.to_f + 0.5)
-        break if lock_expired?(timestamp)
-      end
-    end
-
-    # Release the lock.
-    # @see Model#mutex
-    def unlock!
-      key[:_lock].del
-    end
-
-    def lock_expired?(timestamp)
-      timestamp.to_f < Time.now.to_f
     end
   end
 end
