@@ -1520,14 +1520,22 @@ module Ohm
     end
 
     # Delete this object from the _Redis_ datastore, ensuring that all
-    # indices, attributes, collections, etc are also deleted with it.
+    # indices, attributes, collections, etc., are also deleted with it.
     #
     # @return [Ohm::Model] Returns a reference of itself.
-    # TODO Add WATCH/MULTI block.
     def delete
-      delete_from_indices
-      delete_attributes(collections) unless collections.empty?
-      delete_model_membership
+      transaction do
+
+        # Delete collections.
+        db.del(*collections.map { |att| key[att] }) unless collections.empty?
+
+        # Delete model membership.
+        self.class.all.delete(self)
+
+        # Delete object.
+        key.del
+      end
+
       self
     end
 
@@ -1731,7 +1739,6 @@ module Ohm
   protected
     attr_writer :id
 
-
     # Write all the attributes and counters of this object. The operation
     # is actually a 2-step process:
     #
@@ -1750,42 +1757,46 @@ module Ohm
     def write
       return if attributes.empty?
 
-      # TODO Improve
-      atts = attributes.inject([]) do |ret, att|
-        value = send(att).to_s
+      atts = []
 
-        ret.push(att, value) unless value.empty?
-        ret
+      attributes.each do |att|
+        val = send(att).to_s
+
+        unless val.empty?
+          atts.push(att, val)
+        end
       end
 
+      transaction do
+        key.del
+        key.hmset(*atts.flatten) if atts.any?
+
+        indices.each do |att|
+          value = send(att)
+
+          if collection?(value)
+            value.each { |v| add_to_index(att, v) }
+          else
+            add_to_index(att, value)
+          end
+        end
+      end
+    end
+
+    def transaction
       loop do
         db.watch(key[:_indices])
 
-        # Delete from indices.
-        old_indices = key[:_indices].smembers
+        _indices = key[:_indices].smembers
 
         break if db.multi do
-          key.del
-          key.hmset(*atts.flatten) if atts.any?
-
-          old_indices.each do |index|
+          _indices.each do |index|
             db.srem(index, id)
           end
 
           key[:_indices].del
 
-          # Add to index
-          indices.each do |att|
-            value = send(att)
-
-            if collection?(value)
-              value.each do |v|
-                add_to_index(att, v)
-              end
-            else
-              add_to_index(att, value)
-            end
-          end
+          yield
         end
       end
     end
@@ -1876,17 +1887,8 @@ module Ohm
       self.class.db
     end
 
-    def delete_attributes(atts)
-      db.del(*atts.map { |att| key[att] })
-    end
-
     def create_model_membership
       self.class.all << self
-    end
-
-    def delete_model_membership
-      key.del
-      self.class.all.delete(self)
     end
 
     def collection?(value)
@@ -1902,14 +1904,6 @@ module Ohm
       index = index_key_for(att, value)
       index.sadd(id)
       key[:_indices].sadd(index)
-    end
-
-    def delete_from_indices
-      key[:_indices].smembers.each do |index|
-        db.srem(index, id)
-      end
-
-      key[:_indices].del
     end
 
     # Get the value of a specific attribute. An important fact about
