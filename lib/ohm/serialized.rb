@@ -244,6 +244,18 @@ module Ohm
         end
       end
   
+      # serialize the key value
+      def key_for(name, value, kind = :index)
+        #TODO serializers for indexed transient attributes?
+        serializer = _serializer(name)
+        if serializer
+          root.key[name][encode( ( serializer.key_for(value) rescue nil ) || value )]
+        else
+          super
+        end
+      end
+    end
+
     protected
       # find the serializer by attribute name or type
       def _serializer(name)
@@ -271,19 +283,6 @@ module Ohm
         RUBY
       end
 
-      # serialize the key value
-      def key_for(name, value, kind = :index)
-        #TODO serializers for indexed transient attributes?
-        serializer = _serializer(name)
-        if serializer
-          root.key[name][encode( ( serializer.key_for(value) rescue nil ) || value )]
-        else
-          super
-        end
-      end
-    end
-
-   protected
     # instance methods
     
     # override to provide default value for initialization of typed attributes
