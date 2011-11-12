@@ -764,6 +764,26 @@ test "return instances of the passed model" do
   assert Post == @user.posts.first.class
 end
 
+test "remove an object from the set" do
+  post = @user.posts.first
+
+  assert @user.posts.include?(post)
+
+  @user.posts.delete(post)
+
+  assert !@user.posts.include?(post)
+end
+
+test "remove an object id from the set" do
+  post = @user.posts.first
+
+  assert @user.posts.include?(post)
+
+  @user.posts.key.srem(post.id)
+
+  assert !@user.posts.include?(post)
+end
+
 # Counters
 setup do
   @event = Event.create(:name => "Ruby Tuesday")
