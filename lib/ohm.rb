@@ -525,6 +525,13 @@ module Ohm
 
       # Thin Ruby interface wrapper for *SREM*.
       #
+      # The parameter passed is an instance model or, more specifically, an
+      # object that responds to `id`. What it does under the hood is to remove
+      # that object's `id` from the set, so this code is equivalent:
+      #
+      #     @user.posts.delete(@post)      # Calls SREM with @post.id.
+      #     @user.posts.key.srem(@post.id) # Equivalent to the code above.
+      #
       # @param [#id] member a member of this set.
       # @see http://code.google.com/p/redis/wiki/SremCommand SREM in Redis
       #      Command Reference.
