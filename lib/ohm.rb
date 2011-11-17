@@ -1094,8 +1094,14 @@ module Ohm
     # @param cast [Proc] Typecasting procedure.
     # @see http://cyx.github.com/ohm-contrib/doc/Ohm/Typecast.html
     def self.attribute(name, cast = nil)
-      define_method(name) do
-        cast ? cast[read_local(name)] : read_local(name)
+      if cast
+        define_method(name) do
+          cast[read_local(name)]
+        end
+      else
+        define_method(name) do
+          read_local(name)
+        end
       end
 
       define_method(:"#{name}=") do |value|
