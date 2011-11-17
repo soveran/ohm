@@ -1464,7 +1464,23 @@ module Ohm
         add_to_indices
       end
     end
-
+    
+    # Batch create models, when needing to fill a dataset
+    # this is twice as fast (using multi block)
+    #
+    # @param [Array] models An array of Ohm::Models
+    def self.batch_create(models)
+      cur_id = models.first.class.key[:id].get.to_i
+      db.multi do
+        models.each do |model|
+          cur_id += 1
+          model.quick_create_with_id(cur_id)
+        end
+        models.first.class.key[:id].set cur_id
+      end
+    end
+    
+    
     # Create or update this object based on the state of #new?.
     #
     # @return [Ohm::Model, nil] The saved object or nil if it fails
@@ -1764,6 +1780,31 @@ module Ohm
       end
     end
 
+    # create a model with a given id, without locking for usage in a batch operation
+    # (needed for batch_create)
+    def quick_create_with_id(id)
+      @id = id
+      create_model_membership
+      write_multi
+      add_to_indices
+    end
+
+    # write operation without multi block, because the batch_create operation 
+    # is already wrapped in a multi block (normal write will raise an exception).
+    def write_multi
+      unless (attributes + counters).empty?
+        atts = (attributes + counters).inject([]) { |ret, att|
+          value = send(att).to_s
+
+          ret.push(att, value) if not value.empty?
+          ret
+        }
+        key.del
+        key.hmset(*atts.flatten) if atts.any?
+      end
+    end
+    
+    
     # Write a single attribute both locally and remotely. It's very important
     # to know that this method skips validation checks, therefore you must
     # ensure data integrity and validity in your application code.
