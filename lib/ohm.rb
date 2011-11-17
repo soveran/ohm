@@ -810,12 +810,24 @@ module Ohm
       #
       # @param [#id] model Typically an {Ohm::Model} instance.
       #
-      # @see http://code.google.com/p/redis/wiki/RpushCommand RPUSH
-      #      in Redis Command Reference.
+      # @see http://redis.io/commands/rpush RPUSH in Redis Command Reference.
       def <<(model)
         key.rpush(model.id)
       end
       alias push <<
+
+      # The parameter passed is an instance model or, more specifically, an
+      # object that responds to `id`. What it does under the hood is to remove
+      # that object's `id` from the list, so this code is equivalent:
+      #
+      #     @user.posts.delete(@post)      # Calls LREM with 0 and @post.id.
+      #     @user.posts.key.lrem(0, @post.id) # Equivalent to the code above.
+      #
+      # @param [#id] member a member of this list.
+      # @see http://redis.io/commands/lrem LREM in Redis Command Reference.
+      def delete(model)
+        key.lrem(0, model.id)
+      end
 
       # Returns the element at index, or returns a subarray starting at
       # `start` and continuing for `length` elements, or returns a subarray
