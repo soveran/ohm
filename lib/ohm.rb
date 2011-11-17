@@ -1894,10 +1894,6 @@ module Ohm
       self.class.db
     end
 
-    def create_model_membership
-      self.class.all << self
-    end
-
     def collection?(value)
       self.class.collection?(value)
     end
