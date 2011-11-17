@@ -598,6 +598,17 @@ test "push to the head of the list with unshift" do
   assert @post.related.empty?
 end
 
+test "remove an object from the list" do
+  post = Post.create
+
+  @post.related << post
+  @post.related << Post.create
+
+  @post.related.delete(post)
+
+  assert !@post.related.include?(post)
+end
+
 test "empty the list" do
   @post.related.unshift Post.create
   @post.related.clear
