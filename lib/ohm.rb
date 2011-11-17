@@ -125,8 +125,7 @@ module Ohm
   # Clear the database. You typically use this only during testing,
   # or when you seed your site.
   #
-  # @see http://code.google.com/p/redis/wiki/FlushdbCommand FLUSHDB in the
-  #      Redis Command Reference.
+  # @see http://redis.io/commands/flushdb FLUSHDB in Redis Command Reference.
   def self.flush
     redis.flushdb
   end
@@ -330,8 +329,7 @@ module Ohm
       #   # => true
       #
       # @see file:README.html#sorting Sorting in the README.
-      # @see http://code.google.com/p/redis/wiki/SortCommand SORT in the
-      #      Redis Command Reference.
+      # @see http://redis.io/commands/sort SORT in Redis Command Reference.
       def sort(options = {})
         return [] unless key.exists
 
@@ -387,8 +385,7 @@ module Ohm
       #   post.comments.clear
       #   post.comments.size == 0
       #   # => true
-      # @see http://code.google.com/p/redis/wiki/DelCommand DEL in the Redis
-      #      Command Reference.
+      # @see http://redis.io/commands/del DEL in Redis Command Reference.
       def clear
         key.del
       end
@@ -417,8 +414,8 @@ module Ohm
       #   post.comments.map(&:id) == ["101", "102", "103"]
       #   # => true
       #
-      # @see http://code.google.com/p/redis/wiki/MultiExecCommand MULTI EXEC
-      #      in the Redis Command Reference.
+      # @see http://redis.io/commands/transactions Transactions in Redis
+      #      documentation.
       def replace(models)
         model.db.multi do
           clear
@@ -467,8 +464,8 @@ module Ohm
       #     # do something with the poem
       #   end
       #
-      # @see http://code.google.com/p/redis/wiki/SmembersCommand SMEMBERS
-      #      in Redis Command Reference.
+      # @see http://redis.io/commands/smembers SMEMBERS in Redis Command
+      #      Reference.
       def each(&block)
         key.smembers.each { |id| block.call(model.to_proc[id]) }
       end
@@ -507,8 +504,7 @@ module Ohm
       #
       # @param [#id] model Typically an instance of an {Ohm::Model} subclass.
       #
-      # @see http://code.google.com/p/redis/wiki/SaddCommand SADD in Redis
-      #      Command Reference.
+      # @see http://redis.io/commands/sadd SADD in Redis Command Reference.
       def <<(model)
         key.sadd(model.id)
       end
@@ -517,8 +513,7 @@ module Ohm
       # Thin Ruby interface wrapper for *SCARD*.
       #
       # @return [Fixnum] The total number of members for this set.
-      # @see http://code.google.com/p/redis/wiki/ScardCommand SCARD in Redis
-      #      Command Reference.
+      # @see http://redis.io/commands/scard SCARD in Redis Command Reference.
       def size
         key.scard
       end
@@ -533,8 +528,7 @@ module Ohm
       #     @user.posts.key.srem(@post.id) # Equivalent to the code above.
       #
       # @param [#id] member a member of this set.
-      # @see http://code.google.com/p/redis/wiki/SremCommand SREM in Redis
-      #      Command Reference.
+      # @see http://redis.io/commands/srem SREM in Redis Command Reference.
       def delete(member)
         key.srem(member.id)
       end
@@ -690,8 +684,7 @@ module Ohm
       # @return [true, false] Whether or not the {Ohm::Model model} instance
       #         is a member of this set.
       #
-      # @see http://code.google.com/p/redis/wiki/SismemberCommand SISMEMBER
-      #      in Redis Command Reference.
+      # @see http://redis.io/commands/sismember SISMEMBER in Redis Command Reference.
       def include?(model)
         key.sismember(model.id)
       end
@@ -788,8 +781,7 @@ module Ohm
       #     # do something with the comment
       #   end
       #
-      # @see http://code.google.com/p/redis/wiki/LrangeCommand LRANGE
-      #      in Redis Command Reference.
+      # @see http://redis.io/commands/lrange LRANGE in Redis Command Reference.
       def each(&block)
         key.lrange(0, -1).each { |id| block.call(model.to_proc[id]) }
       end
@@ -859,8 +851,7 @@ module Ohm
       #   post.comments.all == post.comments[0, -1]
       #   # => true
       #
-      # @see http://code.google.com/p/redis/wiki/LrangeCommand LRANGE
-      #      in Redis Command Reference.
+      # @see http://redis.io/commands/lrange LRANGE in Redis Command Reference.
       def [](index, limit = nil)
         case [index, limit]
         when Pattern[Fixnum, Fixnum] then
@@ -887,8 +878,7 @@ module Ohm
       # @return [Ohm::Model, nil] an {Ohm::Model} instance or nil if the list
       #         is empty.
       #
-      # @see http://code.google.com/p/redis/wiki/LpopCommand RPOP
-      #      in Redis Command Reference.
+      # @see http://redis.io/commands/rpop RPOP in Redis Command Reference.
       def pop
         model[key.rpop]
       end
@@ -899,8 +889,7 @@ module Ohm
       # @return [Ohm::Model, nil] An {Ohm::Model} instance or nil if the list
       #         is empty.
       #
-      # @see http://code.google.com/p/redis/wiki/LpopCommand LPOP
-      #      in Redis Command Reference.
+      # @see http://redis.io/commands/lpop LPOP in Redis Command Reference.
       def shift
         model[key.lpop]
       end
@@ -909,8 +898,7 @@ module Ohm
       #
       # @param [#id] model Typically an {Ohm::Model} instance.
       #
-      # @see http://code.google.com/p/redis/wiki/RpushCommand LPUSH
-      #      in Redis Command Reference.
+      # @see http://redis.io/commands/lpush LPUSH in Redis Command Reference.
       def unshift(model)
         key.lpush(model.id)
       end
@@ -927,8 +915,7 @@ module Ohm
       #
       # @return [Fixnum] The total number of elements for this list.
       #
-      # @see http://code.google.com/p/redis/wiki/LlenCommand LLEN in Redis
-      #      Command Reference.
+      # @see http://redis.io/commands/llen LLEN in Redis Command Reference.
       def size
         key.llen
       end
@@ -940,8 +927,7 @@ module Ohm
       # @return [true, false] Whether or not the {Ohm::Model} instance is
       #         an element of this list.
       #
-      # @see http://code.google.com/p/redis/wiki/LrangeCommand LRANGE
-      #      in Redis Command Reference.
+      # @see http://redis.io/commands/lrange LRANGE in Redis Command Reference.
       def include?(model)
         key.lrange(0, -1).include?(model.id)
       end
@@ -1773,12 +1759,10 @@ module Ohm
     # The DEL and HMSET operations are wrapped in a MULTI EXEC block to ensure
     # the atomicity of the write operation.
     #
-    # @see http://code.google.com/p/redis/wiki/DelCommand DEL in the
-    #      Redis Command Reference.
-    # @see http://code.google.com/p/redis/wiki/HmsetCommand HMSET in the
-    #      Redis Command Reference.
-    # @see http://code.google.com/p/redis/wiki/MultiExecCommand MULTI EXEC
-    #      in the Redis Command Reference.
+    # @see http://redis.io/commands/del DEL in Redis Command Reference.
+    # @see http://redis.io/commands/hmset HMSET in Redis Command Reference.
+    # @see http://redis.io/topics/transactions Transactions in Redis
+    #      documentation.
     def write
       return if attributes.empty?
 
@@ -1833,10 +1817,8 @@ module Ohm
     # @param [Symbol, String] att The name of the attribute to write.
     # @param [#to_s] value The value of the attribute to write.
     #
-    # @see http://code.google.com/p/redis/wiki/HdelCommand HDEL in the
-    #      Redis Command Reference.
-    # @see http://code.google.com/p/redis/wiki/HsetCommand HSET in the
-    #      Redis Command Reference.
+    # @see http://redis.io/commands/hdel HDEL in Redis Command Reference.
+    # @see http://redis.io/commands/hset HSET in Redis Command Reference.
     def write_remote(att, value)
       write_local(att, value)
 
