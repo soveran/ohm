@@ -5,9 +5,11 @@ require "redis"
 require "nest"
 
 require File.join(File.dirname(__FILE__), "ohm", "pattern")
+require File.join(File.dirname(__FILE__), "ohm", "typecast")
 require File.join(File.dirname(__FILE__), "ohm", "validations")
 require File.join(File.dirname(__FILE__), "ohm", "compat-1.8.6")
 require File.join(File.dirname(__FILE__), "ohm", "key")
+require File.join(File.dirname(__FILE__), "ohm", "railtie") if Object.const_defined?("Rails")
 
 module Ohm
 
@@ -152,6 +154,7 @@ module Ohm
   #
   # @see Model.const_missing
   class Model
+    include Ohm::Typecast
 
     # Wraps a model name for lazy evaluation.
     class Wrapper < BasicObject
@@ -1074,6 +1077,8 @@ module Ohm
 
       attributes << name unless attributes.include?(name)
     end
+    # class << self ?
+    def self.attr(name);      attribute(name);    end
 
     # Defines a counter attribute for the model. This attribute can't be
     # assigned, only incremented or decremented. It will be zero by default.

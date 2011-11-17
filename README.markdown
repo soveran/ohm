@@ -10,6 +10,52 @@ Ohm is a library for storing objects in [Redis][redis], a persistent key-value
 database. It includes an extensible list of validations and has very good
 performance.
 
+
+This Fork
+---------
+
+Ohm + Ohm-contrib + Sugar.
+
+Adds everything *I* want:
+
+* Typecasting
+* Timestamping with ZSets
+* Rails helpers to work with render, form_for...
+
+Typecast candy:
+
+    class Multi < Ohm::Model
+      attribute :body
+      # or
+      attr :body
+      # or
+      string :body
+
+      # Numeric
+      float :temp
+      number :temp # or integer :temp
+      decimal :temp
+
+      # Time
+      date :event
+      time :event
+      stamp :event
+
+      json :hash
+      bson :ary
+
+      timestamps  # rails 'created_at' and 'updated_at'
+    end
+
+Ohm methods are untouched. #attribute, etc....
+
+TODO:
+* Hooks
+* Timestamps
+* Rails/app config
+* Rails generator
+
+
 Community
 ---------
 

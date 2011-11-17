@@ -389,7 +389,8 @@ def monitor
     end
   end
 
-  sleep 0.01
+  # Had really a bad time with this, tests silent stops with < 0.1
+  sleep 0.5
 
   log.clear.tap do
     yield
