@@ -872,6 +872,15 @@ module Ohm
         self[0]
       end
 
+      # Convience method for doing list[-1], similar to Ruby's Array#last
+      # method.
+      #
+      # @return [Ohm::Model, nil] An {Ohm::Model} instance or nil if the list
+      #         is empty.
+      def last
+        self[-1]
+      end
+
       # Returns the model at the tail of this list, while simultaneously
       # removing it from the list.
       #

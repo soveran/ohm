@@ -507,6 +507,17 @@ test "return an array" do
   assert @post.related.all.kind_of?(Array)
 end
 
+test "return first/last element with #first/#last" do
+  p1 = Post.create
+  p2 = Post.create
+
+  @post.related.push(p1)
+  @post.related.push(p2)
+
+  assert_equal p1, @post.related.first
+  assert_equal p2, @post.related.last
+end
+
 test "append elements with push" do
   @post.related.push Post.create
   @post.related << Post.create
