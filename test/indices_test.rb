@@ -160,9 +160,9 @@ setup do
 end
 
 test "intersect multiple sets of results" do
-  assert [@event1] == Event.find(:days => [1, 2]).all
-  assert [@event1] == Event.find(:timeline => 1, :days => [1, 2]).all
-  assert [@event1] == Event.find(:timeline => 1).find(:days => [1, 2]).all
+  assert_equal [@event1], Event.find(:days => [1, 2]).all
+  assert_equal [@event1], Event.find(:timeline => 1, :days => [1, 2]).all
+  assert_equal [@event1], Event.find(:timeline => 1).find(:days => [1, 2]).all
 end
 
 test "compute the difference between sets" do
