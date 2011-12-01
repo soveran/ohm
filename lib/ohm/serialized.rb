@@ -243,7 +243,7 @@ module Ohm
           serializers(self).delete(type_or_name)
         end
       end
-  
+
       # serialize the key value
       def key_for(name, value, kind = :index)
         #TODO serializers for indexed transient attributes?
@@ -254,9 +254,8 @@ module Ohm
           super
         end
       end
-    end
-
-    protected
+  
+    private
       # find the serializer by attribute name or type
       def _serializer(name)
         type = types[name]
@@ -282,6 +281,7 @@ module Ohm
           end
         RUBY
       end
+    end
 
     # instance methods
     
