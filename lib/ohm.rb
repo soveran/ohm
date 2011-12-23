@@ -1365,9 +1365,8 @@ module Ohm
     end
 
     # Return an empty {Ohm::Model::Set set}
-    #FIXME this set should be read-only
     def self.none
-      Ohm::Model::Index.new(key[:_none], Wrapper.wrap(self))
+      Ohm::Model::Index.new(key.volatile.unique, Wrapper.wrap(self))
     end
 
     # All the defined attributes within a class.
