@@ -1,7 +1,11 @@
 require 'bigdecimal'
 require 'time'
 require 'date'
-require 'yajl/json_gem'  unless defined? JSON
+begin
+  require 'yajl/json_gem'
+rescue LoadError
+  puts 'Warning: Ohm::Serialized requires Yajl for symbolized_keys parsing'
+end
 
 module Ohm
 
