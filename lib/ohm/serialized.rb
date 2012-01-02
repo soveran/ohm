@@ -17,7 +17,7 @@ module Ohm
     def initialize(type, options={})
       @type = type
       @options = options
-      @options[:default] = to_str(@options[:default])
+      @options[:default] = to_str(@options[:default]) unless Proc === @options[:default]
     end
 
     def to_val( str )
