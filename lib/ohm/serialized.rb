@@ -17,6 +17,7 @@ module Ohm
     def initialize(type, options={})
       @type = type
       @options = options
+      @options[:default] = to_str(@options[:default])
     end
 
     def to_val( str )
@@ -222,13 +223,13 @@ module Ohm
       #
       # class MyModel < Ohm::Model
       #   # serialize all Date attributes with MyDateSerializer, and initialize with a default value of today
-      #   serializer Date, MyDateSerializer, default: Date.today
+      #   serializer Date, MyDateSerializer, default: -> { Date.today }
       #   attribute start_date, Date
       #
       #   # symbolize the keys of just this hash attribute
       #   attribute flags, Hash, serializer: SymbolizedKeysHashSerializer.new
       #
-      #   # another way is using the built-in option of the default HashSerializer
+      #   # another way is using the built-in option of the default HashSerializer -- this requires the Yajl gem
       #   attribute flags, Hash, symbolize_keys: true, default: {}
       #
       # end
@@ -294,7 +295,11 @@ module Ohm
       unless ( v = super )
         v = ( s = _serializer(att) )? s.options[:default] : nil
         # if the default value is a proc, call it optionally passing the obj and att
-        v = v.call(*[self,att][0...v.arity]) if Proc === v
+        v = if Proc === v
+          v.call(*[self,att][0...v.arity]) 
+        else
+          s ? s.to_val(v) : v
+        end
       end
       v
     end
