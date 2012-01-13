@@ -63,12 +63,12 @@ test "be cached in an instance variable" do
 
   @post.update(:author => Person.create(:name => "Bertrand"))
 
-  assert "Bertrand" == @post.author.name
-  assert @post.author.object_id == @post.author.object_id
+  assert_equal "Bertrand", @post.author.name
+  assert_equal @post.author.object_id, @post.author.object_id
 
   @post.update(:author_id => Person.create(:name => "Charles").id)
 
-  assert "Charles" == @post.author.name
+  assert_equal "Charles", @post.author.name
 end
 
 setup do

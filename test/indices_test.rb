@@ -22,9 +22,8 @@ class User < Ohm::Model
     @working_days ||= []
   end
 
-  def write
+  def before_save
     self.activation_code ||= "user:#{id}"
-    super
   end
 end
 
@@ -110,7 +109,7 @@ test "allow indexing by an arbitrary attribute" do
 end
 
 test "allow indexing by an attribute that is lazily set" do
-  assert [@user1] == User.find(:activation_code => "user:1").to_a
+  assert_equal [@user1], User.find(:activation_code => "user:1").to_a
 end
 
 # Indexing enumerables

@@ -694,6 +694,7 @@ module Ohm
       end
 
     protected
+
       # @private
       def apply(operation, key, source, target)
         target.send(operation, key, *source)
@@ -960,7 +961,7 @@ module Ohm
       # @overload assert_unique [:street, :city]
       #   Validates that the :street and :city pair is unique.
       def assert_unique(atts, error = [atts, :not_unique])
-        indices = Array(atts).map { |att| index_key_for(att, send(att)) }
+        indices = Array(atts).map { |att| _index_key_for(att, send(att)) }
         result  = db.sinter(*indices)
 
         assert result.empty? || !new? && result.include?(id.to_s), error
@@ -1054,13 +1055,62 @@ module Ohm
       end
     end
 
+    class Transaction
+      def watch(*keys)
+        @keys = keys if keys.any?
+      end
+
+      def read(&block)
+        @read = block
+      end
+
+      def write(&block)
+        @write = block
+      end
+
+      def commit(db)
+        loop do
+          db.watch(*@keys) if defined?(@keys)
+          vars = @read.call if defined?(@read)
+
+          break if db.multi do
+            @write.call(vars)
+          end
+        end
+      end
+    end
+
     @@attributes  = Hash.new { |hash, key| hash[key] = [] }
     @@collections = Hash.new { |hash, key| hash[key] = [] }
     @@indices     = Hash.new { |hash, key| hash[key] = [] }
 
-    def id
-      @id or raise MissingID
+    # Makes the model connect to a different Redis instance. This is useful
+    # for scaling a large application, where one model can be stored in a
+    # different Redis instance, and some other groups of models can be
+    # in another Redis instance.
+    #
+    # This approach of splitting models is a lot simpler than doing a
+    # distributed *Redis* solution and may well be the right solution for
+    # certain cases.
+    #
+    # @example
+    #
+    #   class Post < Ohm::Model
+    #     connect :port => 6380, :db => 2
+    #
+    #     attribute :body
+    #   end
+    #
+    #   # Since these settings are usually environment-specific,
+    #   # you may want to call this method from outside of the class
+    #   # definition:
+    #   Post.connect(:port => 6380, :db => 2)
+    #
+    # @see file:README.html#connecting Ohm.connect options documentation.
+    def self.connect(*options)
+      self.db = Ohm.connection(*options)
     end
+
 
     # Defines an attribute for the model. This attribute will be
     # persisted by _Redis_ as a string. Any value stored here will be
@@ -1103,16 +1153,16 @@ module Ohm
     def self.attribute(name, cast = nil)
       if cast
         define_method(name) do
-          cast[read_local(name)]
+          cast[_read_local(name)]
         end
       else
         define_method(name) do
-          read_local(name)
+          _read_local(name)
         end
       end
 
       define_method(:"#{name}=") do |value|
-        write_local(name, value)
+        _write_local(name, value)
       end
 
       attributes << name unless attributes.include?(name)
@@ -1251,12 +1301,12 @@ module Ohm
       end
 
       define_method(reader) do
-        read_local(reader)
+        _read_local(reader)
       end
 
       define_method(writer) do |value|
         @_memo.delete(name)
-        write_local(reader, value)
+        _write_local(reader, value)
       end
     end
 
@@ -1483,13 +1533,33 @@ module Ohm
     def initialize(attrs = {})
       @id = nil
       @_memo = {}
-      @_attributes = Hash.new { |hash, key| hash[key] = read_remote(key) }
-      update_attributes(attrs)
+      @_attributes = Hash.new { |hash, key| hash[key] = _read_remote(key) }
+      _update_attributes(attrs)
+    end
+
+    def id
+      @id or raise MissingID
+    end
+
+    def transaction(&block)
+      t = Transaction.new
+      yield t
+      t.commit(db)
     end
 
     # @return [true, false] Whether or not this object has an id.
     def new?
       !@id
+    end
+
+    # Callback that is executed inside the transaction when the object is
+    # first saved.
+    def before_create
+    end
+
+    # Callback that is executed inside the transaction each time the object is
+    # saved.
+    def before_save
     end
 
     # Create this model if it passes all validations.
@@ -1498,10 +1568,25 @@ module Ohm
     #                           validation.
     def create
       return unless valid?
-      initialize_id
 
-      self.class.all << self
-      write
+      transaction do |t|
+        atts = nil
+
+        t.read do
+          _initialize_id
+          before_create
+          before_save
+          atts = _flattened_attributes
+        end
+
+        t.write do
+          _save(atts)
+          _save_indices
+
+          model.key[:all].sadd(id)
+        end
+      end
+
       self
     end
 
@@ -1513,9 +1598,28 @@ module Ohm
       return create if new?
       return unless valid?
 
-      write
+      transaction do |t|
+        atts = nil
+
+        t.watch(_indices_key)
+
+        t.read do
+          _read_indices
+          before_save
+          atts = _flattened_attributes
+        end
+
+        t.write do
+
+          _delete_indices
+          _save(atts)
+          _save_indices
+        end
+      end
+
       self
     end
+
 
     # Update this object, optionally accepting new attributes.
     #
@@ -1524,19 +1628,8 @@ module Ohm
     # @return [Ohm::Model, nil] The updated object or nil if it fails
     #                           validation.
     def update(attrs)
-      update_attributes(attrs)
+      _update_attributes(attrs)
       save
-    end
-
-    # Locally update all attributes without persisting the changes.
-    # Internally used by {Ohm::Model#initialize} and {Ohm::Model#update}
-    # to set attribute value pairs.
-    #
-    # @param [Hash] attrs Attribute value pairs.
-    def update_attributes(attrs)
-      attrs.each do |key, value|
-        send(:"#{key}=", value)
-      end
     end
 
     # Delete this object from the _Redis_ datastore, ensuring that all
@@ -1544,16 +1637,16 @@ module Ohm
     #
     # @return [Ohm::Model] Returns a reference of itself.
     def delete
-      transaction do
+      transaction do |t|
+        t.read do
+          _read_indices
+        end
 
-        # Delete collections.
-        db.del(*collections.map { |att| key[att] }) unless collections.empty?
-
-        # Delete model membership.
-        self.class.all.delete(self)
-
-        # Delete object.
-        key.del
+        t.write do
+          _delete_collections
+          _delete_indices
+          _delete_instance
+        end
       end
 
       self
@@ -1568,7 +1661,7 @@ module Ohm
         raise ArgumentError, "#{att.inspect} is not an attribute."
       end
 
-      write_local(att, key.hincrby(att, count))
+      _write_local(att, key.hincrby(att, count))
     end
 
     # Decrement the counter denoted by :att.
@@ -1648,17 +1741,17 @@ module Ohm
 
     # Convenience wrapper for {Ohm::Model.attributes}.
     def attributes
-      self.class.attributes
+      model.attributes
     end
 
     # Convenience wrapper for {Ohm::Model.collections}.
     def collections
-      self.class.collections
+      model.collections
     end
 
     # Convenience wrapper for {Ohm::Model.indices}.
     def indices
-      self.class.indices
+      model.indices
     end
 
     # Implementation of equality checking. Equality is defined by two simple
@@ -1669,7 +1762,7 @@ module Ohm
     #
     # @return [true, false] Whether or not the passed object is equal.
     def ==(other)
-      other.kind_of?(self.class) && other.key == key
+      other.kind_of?(model) && other.key == key
     rescue MissingID
       false
     end
@@ -1715,37 +1808,9 @@ module Ohm
       end
 
       sprintf("#<%s:%s %s>",
-              self.class,
+              model,
               new? ? "?" : id,
-              everything.map {|e| e.join("=") }.join(" ")
-      )
-    end
-
-    # Makes the model connect to a different Redis instance. This is useful
-    # for scaling a large application, where one model can be stored in a
-    # different Redis instance, and some other groups of models can be
-    # in another Redis instance.
-    #
-    # This approach of splitting models is a lot simpler than doing a
-    # distributed *Redis* solution and may well be the right solution for
-    # certain cases.
-    #
-    # @example
-    #
-    #   class Post < Ohm::Model
-    #     connect :port => 6380, :db => 2
-    #
-    #     attribute :body
-    #   end
-    #
-    #   # Since these settings are usually environment-specific,
-    #   # you may want to call this method from outside of the class
-    #   # definition:
-    #   Post.connect(:port => 6380, :db => 2)
-    #
-    # @see file:README.html#connecting Ohm.connect options documentation.
-    def self.connect(*options)
-      self.db = Ohm.connection(*options)
+              everything.map {|e| e.join("=") }.join(" "))
     end
 
     # @return [Ohm::Key] A key scoped to the model which uses this object's
@@ -1753,90 +1818,11 @@ module Ohm
     #
     # @see http://github.com/soveran/nest The Nest library.
     def key
-      self.class.key[id]
+      model.key[id]
     end
 
   protected
     attr_writer :id
-
-    # Write all the attributes and counters of this object. The operation
-    # is actually a 2-step process:
-    #
-    # 1. Delete the current key, e.g. Post:2.
-    # 2. Set all of the new attributes (using HMSET).
-    #
-    # The DEL and HMSET operations are wrapped in a MULTI EXEC block to ensure
-    # the atomicity of the write operation.
-    #
-    # @see http://redis.io/commands/del DEL in Redis Command Reference.
-    # @see http://redis.io/commands/hmset HMSET in Redis Command Reference.
-    # @see http://redis.io/topics/transactions Transactions in Redis
-    #      documentation.
-    def write
-      return if attributes.empty?
-
-      atts = []
-
-      attributes.each do |att|
-        val = send(att).to_s
-
-        unless val.empty?
-          atts.push(att, val)
-        end
-      end
-
-      transaction do
-        key.del
-        key.hmset(*atts.flatten) if atts.any?
-
-        indices.each do |att|
-          value = send(att)
-
-          if collection?(value)
-            value.each { |v| add_to_index(att, v) }
-          else
-            add_to_index(att, value)
-          end
-        end
-      end
-    end
-
-    def transaction
-      loop do
-        db.watch(key[:_indices])
-
-        _indices = key[:_indices].smembers
-
-        break if db.multi do
-          _indices.each do |index|
-            db.srem(index, id)
-          end
-
-          key[:_indices].del
-
-          yield
-        end
-      end
-    end
-
-    # Write a single attribute both locally and remotely. It's very important
-    # to know that this method skips validation checks, therefore you must
-    # ensure data integrity and validity in your application code.
-    #
-    # @param [Symbol, String] att The name of the attribute to write.
-    # @param [#to_s] value The value of the attribute to write.
-    #
-    # @see http://redis.io/commands/hdel HDEL in Redis Command Reference.
-    # @see http://redis.io/commands/hset HSET in Redis Command Reference.
-    def write_remote(att, value)
-      write_local(att, value)
-
-      if value.to_s.empty?
-        key.hdel(att)
-      else
-        key.hset(att, value)
-      end
-    end
 
     # Wraps any missing constants lazily in {Ohm::Model::Wrapper} delaying
     # the evaluation of constants until they are actually needed.
@@ -1857,7 +1843,8 @@ module Ohm
 
   private
 
-    # Provides access to the Redis database. This is shared accross all models and instances.
+    # Provides access to the Redis database. This is shared accross all models
+    # and instances.
     def self.db
       Ohm.threaded[self] || Ohm.redis
     end
@@ -1869,99 +1856,6 @@ module Ohm
     # Allows you to do key manipulations scoped solely to your class.
     def self.key
       Key.new(self, db)
-    end
-
-    def self.exists?(id)
-      key[:all].sismember(id)
-    end
-
-    # The meat of the ID generation code for Ohm. For cases where you want to
-    # customize ID generation (i.e. use GUIDs or Base62 ids) then you simply
-    # override this method in your model.
-    #
-    # @example
-    #
-    #   module UUID
-    #     def self.new
-    #       `uuidgen`.strip
-    #     end
-    #   end
-    #
-    #   class Post < Ohm::Model
-    #
-    #   private
-    #     def initialize_id
-    #       @id ||= UUID.new
-    #     end
-    #   end
-    #
-    def initialize_id
-      @id ||= self.class.key[:id].incr.to_s
-    end
-
-    def db
-      self.class.db
-    end
-
-    def collection?(value)
-      self.class.collection?(value)
-    end
-
-    def self.collection?(value)
-      value.kind_of?(Enumerable) &&
-      value.kind_of?(String) == false
-    end
-
-    def add_to_index(att, value)
-      index = index_key_for(att, value)
-      index.sadd(id)
-      key[:_indices].sadd(index)
-    end
-
-    # Get the value of a specific attribute. An important fact about
-    # attributes in Ohm is that they are all loaded lazily.
-    #
-    # @param  [Symbol] att The attribute you you want to get.
-    # @return [String] The value of att.
-    def read_local(att)
-      @_attributes[att]
-    end
-
-    # Write the value of an attribute locally, without persisting it.
-    #
-    # @param  [Symbol] att The attribute you want to set.
-    # @param  [#to_s]  value The value of the attribute you want to set.
-    def write_local(att, value)
-      @_attributes[att] = value
-    end
-
-    # Used internally be the @_attributes hash to lazily load attributes
-    # when you need them. You may also use this in your code if you know what
-    # you are doing.
-    #
-    # @param  [Symbol] att The attribute you you want to get.
-    # @return [String] The value of att.
-    def read_remote(att)
-      unless new?
-        value = key.hget(att)
-        value.respond_to?(:force_encoding) ?
-          value.force_encoding("UTF-8") :
-          value
-      end
-    end
-
-    # Read attributes en masse locally.
-    def read_locals(attrs)
-      attrs.map do |att|
-        send(att)
-      end
-    end
-
-    # Read attributes en masse remotely.
-    def read_remotes(attrs)
-      attrs.map do |att|
-        read_remote(att)
-      end
     end
 
     # Get the index name for a specific index and value pair. The return value
@@ -1991,9 +1885,171 @@ module Ohm
       key[name][encode(value)]
     end
 
-    # Thin wrapper around {Ohm::Model.index_key_for}.
-    def index_key_for(att, value)
-      self.class.index_key_for(att, value)
+    def self.exists?(id)
+      key[:all].sismember(id)
+    end
+
+    def self.new_id
+      key[:id].incr.to_s
+    end
+
+    def model
+      self.class
+    end
+
+    def db
+      model.db
+    end
+
+    # The meat of the ID generation code for Ohm. For cases where you want to
+    # customize ID generation (i.e. use GUIDs or Base62 ids) then you simply
+    # override this method in your model.
+    #
+    # @example
+    #
+    #   module UUID
+    #     def self.new
+    #       `uuidgen`.strip
+    #     end
+    #   end
+    #
+    #   class Post < Ohm::Model
+    #
+    #   private
+    #     def _initialize_id
+    #       @id ||= UUID.new
+    #     end
+    #   end
+    #
+    def _initialize_id
+      @id ||= model.new_id
+    end
+
+    # Write all the attributes and counters of this object. The operation
+    # is actually a 2-step process:
+    #
+    # 1. Delete the current key, e.g. Post:2.
+    # 2. Set all of the new attributes (using HMSET).
+    #
+    # The DEL and HMSET operations are wrapped in a MULTI EXEC block to ensure
+    # the atomicity of the write operation.
+    #
+    # @see Ohm::Model#create
+    # @see Ohm::Model#save
+    # @see http://redis.io/commands/del DEL in Redis Command Reference.
+    # @see http://redis.io/commands/hmset HMSET in Redis Command Reference.
+    # @see http://redis.io/topics/transactions Transactions in Redis
+    #      documentation.
+    def _save(atts)
+      key.del
+      key.hmset(*atts)
+    end
+
+    def _indices_key
+      @_indices_key ||= key[:_indices]
+    end
+
+    def _read_indices
+      @_indices = _indices_key.smembers
+    end
+
+    def _delete_indices
+      @_indices.each do |index|
+        db.srem(index, id)
+      end
+
+      _indices_key.del
+    end
+
+    def _save_indices
+      indices.each do |att|
+        value = send(att)
+
+        if _collection?(value)
+          value.each { |v| _add_to_index(att, v) }
+        else
+          _add_to_index(att, value)
+        end
+      end
+    end
+
+    def _delete_instance
+      model.all.delete(self)
+      key.del
+    end
+
+    def _delete_collections
+      unless collections.empty?
+        db.del(*collections.map { |att| key[att] })
+      end
+    end
+
+    # Locally update all attributes without persisting the changes.
+    # Internally used by {Ohm::Model#initialize} and {Ohm::Model#update}
+    # to set attribute value pairs.
+    #
+    # @param [Hash] attrs Attribute value pairs.
+    def _update_attributes(attrs)
+      attrs.each do |key, value|
+        send(:"#{key}=", value)
+      end
+    end
+
+    def _collection?(value)
+      value.kind_of?(Enumerable) &&
+      value.kind_of?(String) == false
+    end
+
+    def _index_key_for(att, value)
+      model.index_key_for(att, value)
+    end
+
+    def _add_to_index(att, value)
+      index = _index_key_for(att, value)
+      index.sadd(id)
+      _indices_key.sadd(index)
+    end
+
+    # Get the value of a specific attribute. An important fact about
+    # attributes in Ohm is that they are all loaded lazily.
+    #
+    # @param  [Symbol] att The attribute you want to get.
+    # @return [String] The value of att.
+    def _read_local(att)
+      @_attributes[att]
+    end
+
+    # Write the value of an attribute locally, without persisting it.
+    #
+    # @param  [Symbol] att The attribute you want to set.
+    # @param  [#to_s]  value The value of the attribute you want to set.
+    def _write_local(att, value)
+      @_attributes[att] = value
+    end
+
+    # Used internally be the @_attributes hash to lazily load attributes
+    # when you need them. You may also use this in your code if you know what
+    # you are doing.
+    #
+    # @param  [Symbol] att The attribute you you want to get.
+    # @return [String] The value of att.
+    def _read_remote(att)
+      unless new?
+        value = key.hget(att)
+        value.respond_to?(:force_encoding) ?
+          value.force_encoding("UTF-8") :
+          value
+      end
+    end
+
+    def _flattened_attributes
+      [].tap do |ret|
+        attributes.each do |att|
+          val = send(att).to_s
+
+          ret.push(att, val) unless val.empty?
+        end
+      end
     end
   end
 end

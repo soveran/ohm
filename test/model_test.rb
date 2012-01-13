@@ -34,9 +34,8 @@ class Event < Ohm::Model
 
   attribute :slug
 
-  def write
+  def before_save
     self.slug = name.to_s.downcase
-    super
   end
 end
 
@@ -916,9 +915,8 @@ end
 class ::Baz < Ohm::Model
   attribute :name
 
-  def write
+  def before_save
     self.name = "Foobar"
-    super
   end
 end
 
@@ -989,28 +987,6 @@ test "persist attributes to a hash" do
 
   assert "Redis Meetup" == Event[1].name
   assert 1 == Event[1].votes
-end
-
-# a Model with individual attribute writing needs
-class Order < Ohm::Model
-  attribute :state
-
-  def authorize!
-    write_remote :state, 'authorized'
-  end
-end
-
-test "writes locally" do
-  order = Order.create(:state => "pending")
-  order.authorize!
-  assert 'authorized' == order.state
-end
-
-test "writes remotely" do
-  order = Order.create(:state => "pending")
-  order.authorize!
-  order = Order[order.id]
-  assert 'authorized' == order.state
 end
 
 # namespaced models
