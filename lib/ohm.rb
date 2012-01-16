@@ -1627,7 +1627,7 @@ module Ohm
     #
     # @return [true, false] Whether or not the passed object is equal.
     def ==(other)
-      other.kind_of?(self.class) && other.key == key
+      (other.kind_of?(self.class) && other.key == key) || super
     rescue MissingID
       false
     end
