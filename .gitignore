@@ -1,3 +1,4 @@
 /pkg
 /.yardoc
 /doc
+.rbenv-gemsets
