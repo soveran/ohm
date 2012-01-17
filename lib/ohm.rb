@@ -1153,16 +1153,16 @@ module Ohm
     def self.attribute(name, cast = nil)
       if cast
         define_method(name) do
-          cast[_read_local(name)]
+          cast[@_attributes[name]]
         end
       else
         define_method(name) do
-          _read_local(name)
+          @_attributes[name]
         end
       end
 
       define_method(:"#{name}=") do |value|
-        _write_local(name, value)
+        @_attributes[name] = value
       end
 
       attributes << name unless attributes.include?(name)
@@ -1301,12 +1301,12 @@ module Ohm
       end
 
       define_method(reader) do
-        _read_local(reader)
+        @_attributes[reader]
       end
 
       define_method(writer) do |value|
         @_memo.delete(name)
-        _write_local(reader, value)
+        @_attributes[reader] = value
       end
     end
 
@@ -1533,7 +1533,7 @@ module Ohm
     def initialize(attrs = {})
       @id = nil
       @_memo = {}
-      @_attributes = Hash.new { |hash, key| hash[key] = _read_remote(key) }
+      @_attributes = Hash.new { |hash, key| hash[key] = get(key) }
       _update_attributes(attrs)
     end
 
@@ -1673,7 +1673,7 @@ module Ohm
         raise ArgumentError, "#{att.inspect} is not an attribute."
       end
 
-      _write_local(att, key.hincrby(att, count))
+      @_attributes[att] = key.hincrby(att, count)
     end
 
     # Decrement the counter denoted by :att.
@@ -2022,36 +2022,27 @@ module Ohm
       _indices_key.sadd(index)
     end
 
-    # Get the value of a specific attribute. An important fact about
-    # attributes in Ohm is that they are all loaded lazily.
-    #
-    # @param  [Symbol] att The attribute you want to get.
-    # @return [String] The value of att.
-    def _read_local(att)
-      @_attributes[att]
-    end
-
-    # Write the value of an attribute locally, without persisting it.
-    #
-    # @param  [Symbol] att The attribute you want to set.
-    # @param  [#to_s]  value The value of the attribute you want to set.
-    def _write_local(att, value)
-      @_attributes[att] = value
-    end
-
-    # Used internally be the @_attributes hash to lazily load attributes
-    # when you need them. You may also use this in your code if you know what
-    # you are doing.
+    # Allows you to atomically load an attribute manually when you need them.
     #
     # @param  [Symbol] att The attribute you you want to get.
     # @return [String] The value of att.
-    def _read_remote(att)
+    def get(att)
       unless new?
-        value = key.hget(att)
-        value.respond_to?(:force_encoding) ?
-          value.force_encoding("UTF-8") :
-          value
+        val = key.hget(att)
+        val = val.force_encoding("UTF-8") if val.respond_to?(:force_encoding)
+
+        @_attributes[att] = val
       end
+    end
+
+    # Allows you to atomically set an attribute with a value manually.
+    #
+    # @param  [Symbol] att The attribute you you want to get.
+    # @param  [#to_s]  val The value you want to set to the attribute.
+    # @return [String] The value of att.
+    def set(att, val)
+      key.hset(att, val.to_s)
+      @_attributes[att] = val.to_s
     end
 
     def _flattened_attributes
