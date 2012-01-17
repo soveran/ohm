@@ -1552,20 +1552,14 @@ module Ohm
       !@id
     end
 
-    # Callback that is executed inside the transaction when the object is
-    # first saved.
-    def before_create
-    end
-
-    # Callback that is executed inside the transaction each time the object is
-    # saved.
-    def before_save
-    end
-
-    # Callback that is executed inside the transaction each time the object is
-    # updated.
-    def before_update
-    end
+    def before_create  ; end
+    def before_save    ; end
+    def before_update  ; end
+    def after_create   ; end
+    def after_save     ; end
+    def after_update   ; end
+    def before_delete  ; end
+    def after_delete   ; end
 
     # Create this model if it passes all validations.
     #
@@ -1574,13 +1568,14 @@ module Ohm
     def create
       return unless valid?
 
+      _initialize_id
+      before_create
+      before_save
+
       transaction do |t|
         atts = nil
 
         t.read do
-          _initialize_id
-          before_create
-          before_save
           atts = _flattened_attributes
         end
 
@@ -1591,6 +1586,9 @@ module Ohm
           model.key[:all].sadd(id)
         end
       end
+
+      after_create
+      after_save
 
       self
     end
@@ -1603,6 +1601,9 @@ module Ohm
       return create if new?
       return unless valid?
 
+      before_update
+      before_save
+
       transaction do |t|
         atts = nil
 
@@ -1610,8 +1611,6 @@ module Ohm
 
         t.read do
           _read_indices
-          before_update
-          before_save
           atts = _flattened_attributes
         end
 
@@ -1622,6 +1621,9 @@ module Ohm
           _save_indices
         end
       end
+
+      after_update
+      after_save
 
       self
     end
@@ -1643,6 +1645,8 @@ module Ohm
     #
     # @return [Ohm::Model] Returns a reference of itself.
     def delete
+      before_delete
+
       transaction do |t|
         t.read do
           _read_indices
@@ -1654,6 +1658,8 @@ module Ohm
           _delete_instance
         end
       end
+
+      after_delete
 
       self
     end
