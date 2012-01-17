@@ -1562,6 +1562,11 @@ module Ohm
     def before_save
     end
 
+    # Callback that is executed inside the transaction each time the object is
+    # updated.
+    def before_update
+    end
+
     # Create this model if it passes all validations.
     #
     # @return [Ohm::Model, nil] The newly created object or nil if it fails
@@ -1605,6 +1610,7 @@ module Ohm
 
         t.read do
           _read_indices
+          before_update
           before_save
           atts = _flattened_attributes
         end
