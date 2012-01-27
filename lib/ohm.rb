@@ -1556,14 +1556,12 @@ module Ohm
         end
 
         atts = nil
-        uniques = nil
 
         t.watch(*_unique_keys) if model.uniques.any?
 
         t.read do
           _verify_unique_values or raise(UniqueIndexViolation)
           atts = _flattened_attributes
-          uniques = _read_uniques
         end
 
         t.write do
