@@ -1517,12 +1517,6 @@ module Ohm
       @id or raise MissingID
     end
 
-    def transaction(&block)
-      t = Transaction.new
-      yield t
-      t.commit(db)
-    end
-
     # @return [true, false] Whether or not this object has an id.
     def new?
       !@id
@@ -1537,18 +1531,14 @@ module Ohm
     def before_delete  ; end
     def after_delete   ; end
 
-    # Create this model if it passes all validations.
-    #
-    # @return [Ohm::Model, nil] The newly created object or nil if it fails
-    #                           validation.
-    def create
-      return unless valid?
+    def create_transaction
+      Transaction.define do |t|
+        t.before do
+           _initialize_id
+          before_create
+          before_save
+        end
 
-      _initialize_id
-      before_create
-      before_save
-
-      transaction do |t|
         atts = nil
 
         t.read do
@@ -1561,26 +1551,31 @@ module Ohm
 
           model.key[:all].sadd(id)
         end
+
+        t.after do
+          after_create
+          after_save
+        end
       end
+    end
 
-      after_create
-      after_save
-
+    # Create this model if it passes all validations.
+    #
+    # @return [Ohm::Model, nil] The newly created object or nil if it fails
+    #                           validation.
+    def create
+      return unless valid?
+      create_transaction.commit(db)
       self
     end
 
-    # Create or update this object based on the state of #new?.
-    #
-    # @return [Ohm::Model, nil] The saved object or nil if it fails
-    #                           validation.
-    def save
-      return create if new?
-      return unless valid?
+    def save_transaction
+      Transaction.define do |t|
+        t.before do
+          before_update
+          before_save
+        end
 
-      before_update
-      before_save
-
-      transaction do |t|
         atts = nil
 
         t.watch(_indices_key)
@@ -1591,16 +1586,26 @@ module Ohm
         end
 
         t.write do
-
           _delete_indices
           _save(atts)
           _save_indices
         end
+
+        t.after do
+          after_update
+          after_save
+        end
       end
+    end
 
-      after_update
-      after_save
-
+    # Create or update this object based on the state of #new?.
+    #
+    # @return [Ohm::Model, nil] The saved object or nil if it fails
+    #                           validation.
+    def save
+      return create if new?
+      return unless valid?
+      save_transaction.commit(db)
       self
     end
 
@@ -1616,14 +1621,12 @@ module Ohm
       save
     end
 
-    # Delete this object from the _Redis_ datastore, ensuring that all
-    # indices, attributes, collections, etc., are also deleted with it.
-    #
-    # @return [Ohm::Model] Returns a reference of itself.
-    def delete
-      before_delete
+    def delete_transaction
+      Transaction.define do |t|
+        t.before do
+          before_delete
+        end
 
-      transaction do |t|
         t.read do
           _read_indices
         end
@@ -1633,10 +1636,19 @@ module Ohm
           _delete_indices
           _delete_instance
         end
+
+        t.after do
+          after_delete
+        end
       end
+    end
 
-      after_delete
-
+    # Delete this object from the _Redis_ datastore, ensuring that all
+    # indices, attributes, collections, etc., are also deleted with it.
+    #
+    # @return [Ohm::Model] Returns a reference of itself.
+    def delete
+      delete_transaction.commit(db)
       self
     end
 
