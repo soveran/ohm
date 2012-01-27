@@ -17,8 +17,8 @@ module Ohm
     end
 
     def append(t)
-      t.blocks.each do |key, block|
-        blocks[key] += block
+      t.blocks.each do |key, values|
+        blocks[key].merge(values)
       end
     end
 
