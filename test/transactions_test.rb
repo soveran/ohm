@@ -8,7 +8,7 @@ prepare do
   db.del("foo")
 end
 
-test do
+test "basic functionality" do
   t = Ohm::Transaction.new
   x = nil
 
@@ -27,7 +27,7 @@ test do
   assert_equal "2", db.get("foo")
 end
 
-test do
+test "composed transaction" do
   t1 = Ohm::Transaction.new
   t2 = Ohm::Transaction.new
 
@@ -73,7 +73,7 @@ test do
   assert_equal 2, t5.phase[:write].size
 end
 
-test do
+test "define" do
   t1 = Ohm::Transaction.define do |t|
     v = nil
     t.watch("foo")
@@ -91,4 +91,28 @@ test do
 
   assert_equal "none", db.get("foo")
   assert_equal "string", db.type("foo")
+end
+
+test "append" do
+  t1 = Ohm::Transaction.define do |t|
+    t.write do
+      db.set("foo", "bar")
+    end
+  end
+
+  t2 = Ohm::Transaction.define do |t|
+    t.write do
+      db.set("foo", "baz")
+    end
+  end
+
+  t1.append(t2)
+  t1.commit(db)
+
+  assert_equal "baz", db.get("foo")
+
+  t2.append(t1)
+  t2.commit(db)
+
+  assert_equal "bar", db.get("foo")
 end

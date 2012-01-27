@@ -1,6 +1,46 @@
 require "set"
 
 module Ohm
+
+  # Transactions in Ohm are designed to be composable and atomic. They use
+  # Redis WATCH/MULTI/EXEC to perform the comands sequentially but in a single
+  # step.
+  #
+  # @example
+  #
+  #   redis = Ohm.redis
+  #
+  #   t1 = Ohm::Transaction.define do |t|
+  #     s = nil
+  #
+  #     t.watch("foo")
+  #
+  #     t.read do
+  #       s = redis.type("foo")
+  #     end
+  #
+  #     t.write do
+  #       redis.set("foo", s)
+  #     end
+  #   end
+  #
+  #   t2 = Ohm::Transaction.define do |t|
+  #     t.watch("foo")
+  #
+  #     t.write do
+  #       redis.set("foo", "bar")
+  #     end
+  #   end
+  #
+  #   # Compose transactions by passing them to Ohm::Transaction.new.
+  #   t3 = Ohm::Transaction.new(t1, t2)
+  #   t3.commit(redis)
+  #
+  #   # Compose transactions by appending them.
+  #   t1.append(t2)
+  #   t1.commit(redis)
+  #
+  # @see http://redis.io/topic/transactions Transactions in Redis.
   class Transaction
     attr :phase
 
