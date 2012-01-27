@@ -5,6 +5,7 @@ require "redis"
 require "nest"
 
 require File.join(File.dirname(__FILE__), "ohm", "pattern")
+require File.join(File.dirname(__FILE__), "ohm", "transaction")
 require File.join(File.dirname(__FILE__), "ohm", "validations")
 require File.join(File.dirname(__FILE__), "ohm", "compat-1.8.6")
 require File.join(File.dirname(__FILE__), "ohm", "key")
@@ -1052,31 +1053,6 @@ module Ohm
 
       def message
         "Index #{@att.inspect} not found."
-      end
-    end
-
-    class Transaction
-      def watch(*keys)
-        @keys = keys if keys.any?
-      end
-
-      def read(&block)
-        @read = block
-      end
-
-      def write(&block)
-        @write = block
-      end
-
-      def commit(db)
-        loop do
-          db.watch(*@keys) if defined?(@keys)
-          vars = @read.call if defined?(@read)
-
-          break if db.multi do
-            @write.call(vars)
-          end
-        end
       end
     end
 
