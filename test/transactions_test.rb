@@ -68,9 +68,9 @@ test do
 
   assert_equal "7", db.get("foo")
 
-  assert_equal Set.new(["foo"]), t5.blocks[:watch]
-  assert_equal 2, t5.blocks[:read].size
-  assert_equal 2, t5.blocks[:write].size
+  assert_equal Set.new(["foo"]), t5.phase[:watch]
+  assert_equal 2, t5.phase[:read].size
+  assert_equal 2, t5.phase[:write].size
 end
 
 test do

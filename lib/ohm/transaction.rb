@@ -2,14 +2,14 @@ require "set"
 
 module Ohm
   class Transaction
-    attr_accessor :blocks
+    attr :phase
 
     def self.define(&block)
       new.tap(&block)
     end
 
     def initialize(*transactions)
-      @blocks = Hash.new { |h, k| h[k] = ::Set.new }
+      @phase = Hash.new { |h, k| h[k] = ::Set.new }
 
       transactions.each do |t|
         append(t)
@@ -17,47 +17,47 @@ module Ohm
     end
 
     def append(t)
-      t.blocks.each do |key, values|
-        blocks[key].merge(values)
+      t.phase.each do |key, values|
+        phase[key].merge(values)
       end
     end
 
     def watch(*keys)
-      @blocks[:watch] += keys
+      phase[:watch] += keys
     end
 
     def read(&block)
-      @blocks[:read] << block
+      phase[:read] << block
     end
 
     def write(&block)
-      @blocks[:write] << block
+      phase[:write] << block
     end
 
     def before(&block)
-      @blocks[:before] << block
+      phase[:before] << block
     end
 
     def after(&block)
-      @blocks[:after] << block
+      phase[:after] << block
     end
 
     def commit(db)
-      run(blocks[:before])
+      run(phase[:before])
 
       loop do
-        if blocks[:watch].any?
-          db.watch(*blocks[:watch])
+        if phase[:watch].any?
+          db.watch(*phase[:watch])
         end
 
-        run(blocks[:read])
+        run(phase[:read])
 
         break if db.multi do
-          run(blocks[:write])
+          run(phase[:write])
         end
       end
 
-      run(blocks[:after])
+      run(phase[:after])
     end
 
     def run(procs)
