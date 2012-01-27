@@ -1059,6 +1059,7 @@ module Ohm
     @@attributes  = Hash.new { |hash, key| hash[key] = [] }
     @@collections = Hash.new { |hash, key| hash[key] = [] }
     @@indices     = Hash.new { |hash, key| hash[key] = [] }
+    @@uniques     = Hash.new { |hash, key| hash[key] = [] }
 
     # Makes the model connect to a different Redis instance. This is useful
     # for scaling a large application, where one model can be stored in a
@@ -1224,6 +1225,10 @@ module Ohm
       indices << att unless indices.include?(att)
     end
 
+    def self.unique(att)
+      uniques << att unless uniques.include?(att)
+    end
+
     # Define a reference to another object.
     #
     # @example
@@ -1364,6 +1369,11 @@ module Ohm
       new(:id => id) if id && exists?(id)
     end
 
+    def self.with(att, value)
+      return unless id = key[:unique][att].hget(value)
+      return self[id]
+    end
+
     # @private Used for conveniently doing [1, 2].map(&Post) for example.
     def self.to_proc
       lambda { |id| new(:id => id) }
@@ -1419,6 +1429,10 @@ module Ohm
     # @see Ohm::Model.index
     def self.indices
       @@indices[self]
+    end
+
+    def self.uniques
+      @@uniques[self]
     end
 
     # Convenience method to create and return the newly created object.
@@ -1531,6 +1545,8 @@ module Ohm
     def before_delete  ; end
     def after_delete   ; end
 
+    class UniqueIndexViolation < StandardError; end
+
     def create_transaction
       Transaction.define do |t|
         t.before do
@@ -1540,14 +1556,20 @@ module Ohm
         end
 
         atts = nil
+        uniques = nil
+
+        t.watch(*_unique_keys) if model.uniques.any?
 
         t.read do
+          _verify_unique_values or raise(UniqueIndexViolation)
           atts = _flattened_attributes
+          uniques = _read_uniques
         end
 
         t.write do
           _save(atts)
           _save_indices
+          _save_uniques
 
           model.key[:all].sadd(id)
         end
@@ -1569,6 +1591,42 @@ module Ohm
       self
     end
 
+    def _unique(att)
+      model.key[:unique][att]
+    end
+
+    def _unique_keys
+      model.uniques.map { |att| _unique(att) }
+    end
+
+    def _read_uniques
+      {}.tap do |ret|
+        model.uniques.each do |att|
+          ret[att] = key.hget(att)
+        end
+      end
+    end
+
+    def _verify_unique_values
+      model.uniques.each do |att|
+        id = _unique(att).hget(send(att))
+
+        return false if id && id != self.id
+      end
+    end
+
+    def _delete_uniques(pairs)
+      pairs.each do |att, val|
+        _unique(att).hdel(val)
+      end
+    end
+
+    def _save_uniques
+      model.uniques.each do |att|
+        _unique(att).hset(send(att), id)
+      end
+    end
+
     def save_transaction
       Transaction.define do |t|
         t.before do
@@ -1577,18 +1635,23 @@ module Ohm
         end
 
         atts = nil
+        uniques = nil
 
-        t.watch(_indices_key)
+        t.watch(_indices_key, *_unique_keys)
 
         t.read do
+          _verify_unique_values or raise(UniqueIndexViolation)
           _read_indices
           atts = _flattened_attributes
+          uniques = _read_uniques
         end
 
         t.write do
           _delete_indices
+          _delete_uniques(uniques)
           _save(atts)
           _save_indices
+          _save_uniques
         end
 
         t.after do
