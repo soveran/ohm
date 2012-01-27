@@ -22,9 +22,8 @@ class User < Ohm::Model
     @working_days ||= []
   end
 
-  def write
+  def before_save
     self.activation_code ||= "user:#{id}"
-    super
   end
 end
 
@@ -110,7 +109,7 @@ test "allow indexing by an arbitrary attribute" do
 end
 
 test "allow indexing by an attribute that is lazily set" do
-  assert [@user1] == User.find(:activation_code => "user:1").to_a
+  assert_equal [@user1], User.find(:activation_code => "user:1").to_a
 end
 
 # Indexing enumerables
@@ -160,9 +159,9 @@ setup do
 end
 
 test "intersect multiple sets of results" do
-  assert [@event1] == Event.find(:days => [1, 2]).all
-  assert [@event1] == Event.find(:timeline => 1, :days => [1, 2]).all
-  assert [@event1] == Event.find(:timeline => 1).find(:days => [1, 2]).all
+  assert_equal [@event1], Event.find(:days => [1, 2]).all
+  assert_equal [@event1], Event.find(:timeline => 1, :days => [1, 2]).all
+  assert_equal [@event1], Event.find(:timeline => 1).find(:days => [1, 2]).all
 end
 
 test "compute the difference between sets" do

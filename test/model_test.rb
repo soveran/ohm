@@ -34,9 +34,8 @@ class Event < Ohm::Model
 
   attribute :slug
 
-  def write
+  def before_save
     self.slug = name.to_s.downcase
-    super
   end
 end
 
@@ -266,7 +265,7 @@ test "save counters" do
   event.incr(:votes)
   event.save
 
-  assert 1 == Event[event.id].votes
+  assert_equal 1, Event[event.id].votes
 end
 
 # Delete
@@ -505,6 +504,17 @@ end
 
 test "return an array" do
   assert @post.related.all.kind_of?(Array)
+end
+
+test "return first/last element with #first/#last" do
+  p1 = Post.create
+  p2 = Post.create
+
+  @post.related.push(p1)
+  @post.related.push(p2)
+
+  assert_equal p1, @post.related.first
+  assert_equal p2, @post.related.last
 end
 
 test "append elements with push" do
@@ -800,8 +810,8 @@ setup do
   @event = Event.create(:name => "Ruby Tuesday")
 end
 
-test "raise ArgumentError if the attribute is not a counter" do
-  assert_raise ArgumentError do
+test "raise RuntimeError if the attribute can't be incremented" do
+  assert_raise RuntimeError do
     @event.incr(:name)
   end
 end
@@ -873,14 +883,14 @@ end
 test "provide a meaningful inspect" do
   bar = Bar.new
 
-  assert "#<Bar:? name=nil friends=nil comments=nil visits=0>" == bar.inspect
+  assert_equal "#<Bar:? name=nil visits=0 friends=nil comments=nil>", bar.inspect
 
   bar.update(:name => "Albert")
   bar.friends << Bar.create
   bar.comments << Bar.create
   bar.incr(:visits)
 
-  assert %Q{#<Bar:#{bar.id} name="Albert" friends=#<Set (Bar): ["2"]> comments=#<List (Bar): ["3"]> visits=1>} == Bar[bar.id].inspect
+  assert_equal %Q{#<Bar:#{bar.id} name="Albert" visits=1 friends=#<Set (Bar): ["2"]> comments=#<List (Bar): ["3"]>>}, Bar[bar.id].inspect
 end
 
 def assert_wrapper_exception(&block)
@@ -905,9 +915,8 @@ end
 class ::Baz < Ohm::Model
   attribute :name
 
-  def write
+  def before_save
     self.name = "Foobar"
-    super
   end
 end
 
@@ -980,28 +989,6 @@ test "persist attributes to a hash" do
   assert 1 == Event[1].votes
 end
 
-# a Model with individual attribute writing needs
-class Order < Ohm::Model
-  attribute :state
-
-  def authorize!
-    write_remote :state, 'authorized'
-  end
-end
-
-test "writes locally" do
-  order = Order.create(:state => "pending")
-  order.authorize!
-  assert 'authorized' == order.state
-end
-
-test "writes remotely" do
-  order = Order.create(:state => "pending")
-  order.authorize!
-  order = Order[order.id]
-  assert 'authorized' == order.state
-end
-
 # namespaced models
 test "be persisted" do
   SomeNamespace::Foo.create(:name => "foo")
@@ -1009,4 +996,15 @@ test "be persisted" do
   assert "hash" == Ohm.redis.type("SomeNamespace::Foo:1")
 
   assert "foo" == SomeNamespace::Foo[1].name
+end
+
+test "typecast attributes" do
+  class Option < Ohm::Model
+    attribute :votes, lambda { |x| x.to_i }
+  end
+
+  option = Option.create :votes => 20
+  option.incr(:votes)
+
+  assert_equal 21, option.votes
 end
