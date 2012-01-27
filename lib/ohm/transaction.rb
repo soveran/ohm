@@ -2,22 +2,14 @@ require "set"
 
 module Ohm
   class Transaction
-    attr_accessor :observed_keys
-    attr_accessor :reading_procs
-    attr_accessor :writing_procs
-    attr_accessor :before_procs
-    attr_accessor :after_procs
+    attr_accessor :blocks
 
     def self.define(&block)
       new.tap(&block)
     end
 
     def initialize(*transactions)
-      @observed_keys = ::Set.new
-      @reading_procs = ::Set.new
-      @writing_procs = ::Set.new
-      @before_procs  = ::Set.new
-      @after_procs   = ::Set.new
+      @blocks = Hash.new { |h, k| h[k] = ::Set.new }
 
       transactions.each do |t|
         append(t)
@@ -25,49 +17,47 @@ module Ohm
     end
 
     def append(t)
-      @observed_keys += t.observed_keys
-      @reading_procs += t.reading_procs
-      @writing_procs += t.writing_procs
-      @before_procs  += t.before_procs
-      @after_procs   += t.after_procs
+      t.blocks.each do |key, block|
+        blocks[key] += block
+      end
     end
 
     def watch(*keys)
-      @observed_keys += keys
+      @blocks[:watch] += keys
     end
 
     def read(&block)
-      @reading_procs << block
+      @blocks[:read] << block
     end
 
     def write(&block)
-      @writing_procs << block
+      @blocks[:write] << block
     end
 
     def before(&block)
-      @before_procs << block
+      @blocks[:before] << block
     end
 
     def after(&block)
-      @after_procs << block
+      @blocks[:after] << block
     end
 
     def commit(db)
-      run(before_procs)
+      run(blocks[:before])
 
       loop do
-        if observed_keys.any?
-          db.watch(*observed_keys)
+        if blocks[:watch].any?
+          db.watch(*blocks[:watch])
         end
 
-        run(reading_procs)
+        run(blocks[:read])
 
         break if db.multi do
-          run(writing_procs)
+          run(blocks[:write])
         end
       end
 
-      run(after_procs)
+      run(blocks[:after])
     end
 
     def run(procs)
