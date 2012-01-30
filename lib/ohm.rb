@@ -1609,7 +1609,7 @@ module Ohm
       model.uniques.each do |att|
         id = _unique(att).hget(send(att))
 
-        return false if id && id != self.id
+        break false if id && id != self.id
       end
     end
 
