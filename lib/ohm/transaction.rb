@@ -42,6 +42,30 @@ module Ohm
   #
   # @see http://redis.io/topic/transactions Transactions in Redis.
   class Transaction
+    class Store < BasicObject
+      class EntryAlreadyExistsError < ::RuntimeError
+      end
+
+      def method_missing(writer, value)
+        super unless writer[-1] == "="
+
+        reader = writer[0..-2].to_sym
+
+        __metaclass__.send(:define_method, reader) do
+          value
+        end
+
+        __metaclass__.send(:define_method, writer) do |*_|
+          ::Kernel.raise EntryAlreadyExistsError
+        end
+      end
+
+    private
+      def __metaclass__
+        class << self; self end
+      end
+    end
+
     attr :phase
 
     def self.define(&block)
@@ -50,6 +74,7 @@ module Ohm
 
     def initialize(*transactions)
       @phase = Hash.new { |h, k| h[k] = ::Set.new }
+      @store = Store.new
 
       transactions.each do |t|
         append(t)
@@ -103,7 +128,7 @@ module Ohm
     end
 
     def run(procs)
-      procs.each { |p| p.call }
+      procs.each { |p| p.call(@store) }
     end
   end
 end
