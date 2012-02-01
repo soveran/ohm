@@ -60,6 +60,8 @@ module Ohm
       t.phase.each do |key, values|
         phase[key].merge(values)
       end
+
+      self
     end
 
     def watch(*keys)
