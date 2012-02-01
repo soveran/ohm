@@ -1589,42 +1589,6 @@ module Ohm
       self
     end
 
-    def _unique(att)
-      model.key[:unique][att]
-    end
-
-    def _unique_keys
-      model.uniques.map { |att| _unique(att) }
-    end
-
-    def _read_uniques
-      {}.tap do |ret|
-        model.uniques.each do |att|
-          ret[att] = key.hget(att)
-        end
-      end
-    end
-
-    def _verify_unique_values
-      model.uniques.each do |att|
-        id = _unique(att).hget(send(att))
-
-        break false if id && id != self.id
-      end
-    end
-
-    def _delete_uniques(pairs)
-      pairs.each do |att, val|
-        _unique(att).hdel(val)
-      end
-    end
-
-    def _save_uniques
-      model.uniques.each do |att|
-        _unique(att).hset(send(att), id)
-      end
-    end
-
     def save_transaction
       Transaction.define do |t|
         t.before do
@@ -1712,6 +1676,30 @@ module Ohm
       delete_transaction.commit(db)
       self
     end
+
+    # Allows you to atomically load an attribute manually when you need them.
+    #
+    # @param  [Symbol] att The attribute you you want to get.
+    # @return [String] The value of att.
+    def get(att)
+      unless new?
+        val = key.hget(att)
+        val = val.force_encoding("UTF-8") if val.respond_to?(:force_encoding)
+
+        @_attributes[att] = val
+      end
+    end
+
+    # Allows you to atomically set an attribute with a value manually.
+    #
+    # @param  [Symbol] att The attribute you you want to get.
+    # @param  [#to_s]  val The value you want to set to the attribute.
+    # @return [String] The value of att.
+    def set(att, val)
+      key.hset(att, val.to_s)
+      @_attributes[att] = val.to_s
+    end
+
 
     # Increment the attribute denoted by :att.
     #
@@ -1827,6 +1815,7 @@ module Ohm
     rescue MissingID
       false
     end
+
     alias :eql? :==
 
     # Allows you to safely use an instance of {Ohm::Model} as a key in a
@@ -2071,27 +2060,40 @@ module Ohm
       _indices_key.sadd(index)
     end
 
-    # Allows you to atomically load an attribute manually when you need them.
-    #
-    # @param  [Symbol] att The attribute you you want to get.
-    # @return [String] The value of att.
-    def get(att)
-      unless new?
-        val = key.hget(att)
-        val = val.force_encoding("UTF-8") if val.respond_to?(:force_encoding)
+    def _unique(att)
+      model.key[:unique][att]
+    end
 
-        @_attributes[att] = val
+    def _unique_keys
+      model.uniques.map { |att| _unique(att) }
+    end
+
+    def _read_uniques
+      {}.tap do |ret|
+        model.uniques.each do |att|
+          ret[att] = key.hget(att)
+        end
       end
     end
 
-    # Allows you to atomically set an attribute with a value manually.
-    #
-    # @param  [Symbol] att The attribute you you want to get.
-    # @param  [#to_s]  val The value you want to set to the attribute.
-    # @return [String] The value of att.
-    def set(att, val)
-      key.hset(att, val.to_s)
-      @_attributes[att] = val.to_s
+    def _verify_unique_values
+      model.uniques.each do |att|
+        id = _unique(att).hget(send(att))
+
+        break false if id && id != self.id
+      end
+    end
+
+    def _delete_uniques(pairs)
+      pairs.each do |att, val|
+        _unique(att).hdel(val)
+      end
+    end
+
+    def _save_uniques
+      model.uniques.each do |att|
+        _unique(att).hset(send(att), id)
+      end
     end
 
     def _flattened_attributes
