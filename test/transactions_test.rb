@@ -117,6 +117,38 @@ test "composing transactions with append" do |db|
   assert_equal "bar", db.get("foo")
 end
 
+test "appending or prepending is determined by when append is called" do |db|
+  t1 = Ohm::Transaction.define do |t|
+    t.write do
+      db.set("foo", "bar")
+    end
+  end
+
+  t2 = Ohm::Transaction.define do |t|
+    t.append(t1)
+
+    t.write do
+      db.set("foo", "baz")
+    end
+  end
+
+  t3 = Ohm::Transaction.define do |t|
+    t.write do
+      db.set("foo", "baz")
+    end
+
+    t.append(t1)
+  end
+
+  t2.commit(db)
+
+  assert_equal "baz", db.get("foo")
+
+  t3.commit(db)
+
+  assert_equal "bar", db.get("foo")
+end
+
 test "storage in composed transactions" do |db|
   t1 = Ohm::Transaction.define do |t|
     t.read do |s|
