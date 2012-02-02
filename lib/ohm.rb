@@ -1547,7 +1547,7 @@ module Ohm
 
     class UniqueIndexViolation < StandardError; end
 
-    def create_transaction
+    def transaction_for_create
       Transaction.define do |t|
         t.before do
            _initialize_id
@@ -1585,11 +1585,11 @@ module Ohm
     #                           validation.
     def create
       return unless valid?
-      create_transaction.commit(db)
+      transaction_for_create.commit(db)
       self
     end
 
-    def save_transaction
+    def transaction_for_save
       Transaction.define do |t|
         t.before do
           before_update
@@ -1630,7 +1630,7 @@ module Ohm
     def save
       return create if new?
       return unless valid?
-      save_transaction.commit(db)
+      transaction_for_save.commit(db)
       self
     end
 
@@ -1646,7 +1646,7 @@ module Ohm
       save
     end
 
-    def delete_transaction
+    def transaction_for_delete
       Transaction.define do |t|
         t.before do
           before_delete
@@ -1673,7 +1673,7 @@ module Ohm
     #
     # @return [Ohm::Model] Returns a reference of itself.
     def delete
-      delete_transaction.commit(db)
+      transaction_for_delete.commit(db)
       self
     end
 

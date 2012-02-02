@@ -184,7 +184,7 @@ test "transactions in models" do |db|
     end
   end
 
-  main = Ohm::Transaction.new(p.create_transaction, t1)
+  main = Ohm::Transaction.new(p.transaction_for_create, t1)
   main.commit(db)
 
   # Verify the Post transaction proceeded without a hitch
