@@ -1008,3 +1008,18 @@ test "typecast attributes" do
 
   assert_equal 21, option.votes
 end
+
+test "poster-example for overriding writers" do
+  silence_warnings do
+    class Advertiser < Ohm::Model
+      attribute :email
+
+      def email=(e)
+        attributes[:email] = e.to_s.downcase.strip
+      end
+    end
+  end
+
+  a = Advertiser.new(email: " FOO@BAR.COM ")
+  assert_equal "foo@bar.com", a.email
+end

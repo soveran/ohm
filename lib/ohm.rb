@@ -1788,19 +1788,9 @@ module Ohm
       to_hash.to_json(*args)
     end
 
-    # Convenience wrapper for {Ohm::Model.attributes}.
+    # Convenience wrapper for {@_attributes}.
     def attributes
-      model.attributes
-    end
-
-    # Convenience wrapper for {Ohm::Model.collections}.
-    def collections
-      model.collections
-    end
-
-    # Convenience wrapper for {Ohm::Model.indices}.
-    def indices
-      model.indices
+      @_attributes
     end
 
     # Implementation of equality checking. Equality is defined by two simple
@@ -1847,7 +1837,7 @@ module Ohm
     #
     # Useful for debugging and for doing irb work.
     def inspect
-      everything = (attributes + collections).map do |att|
+      everything = (model.attributes + model.collections).map do |att|
         value = begin
                   send(att)
                 rescue MissingID
@@ -2012,7 +2002,7 @@ module Ohm
     end
 
     def _save_indices
-      indices.each do |att|
+      model.indices.each do |att|
         value = send(att)
 
         if _collection?(value)
@@ -2029,8 +2019,8 @@ module Ohm
     end
 
     def _delete_collections
-      unless collections.empty?
-        db.del(*collections.map { |att| key[att] })
+      unless model.collections.empty?
+        db.del(*model.collections.map { |att| key[att] })
       end
     end
 
@@ -2098,7 +2088,7 @@ module Ohm
 
     def _flattened_attributes
       [].tap do |ret|
-        attributes.each do |att|
+        model.attributes.each do |att|
           val = send(att).to_s
 
           ret.push(att, val) unless val.empty?
