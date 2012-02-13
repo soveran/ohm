@@ -1652,14 +1652,18 @@ module Ohm
           before_delete
         end
 
+        uniques = nil
+
         t.read do
           _read_indices
+          uniques = _read_uniques
         end
 
         t.write do
           _delete_collections
           _delete_indices
           _delete_instance
+          _delete_uniques(uniques)
         end
 
         t.after do
@@ -2070,7 +2074,7 @@ module Ohm
       model.uniques.each do |att|
         id = _unique(att).hget(send(att))
 
-        break false if id && id != self.id
+        break false if id && id != self.id.to_s
       end
     end
 
