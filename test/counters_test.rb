@@ -6,7 +6,7 @@ class Ad < Ohm::Model
   counter :hits
 end
 
-test do
+test "counters aren't overwritten by competing saves" do
   instance1 = Ad.create
   instance1.incr :hits
 
@@ -19,4 +19,19 @@ test do
 
   instance1 = Ad[instance1.id]
   assert_equal 3, instance1.hits
+end
+
+test "you can increment counters even when attributes is empty" do
+  ad = Ad.create
+  ad = Ad[ad.id]
+
+  ex = nil
+
+  begin
+    ad.incr :hits
+  rescue ArgumentError => e
+    ex = e
+  end
+
+  assert_equal nil, ex
 end

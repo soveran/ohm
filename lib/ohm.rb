@@ -1710,7 +1710,7 @@ module Ohm
     # @param [Symbol] att Attribute to increment.
     # @param [Fixnum] count An optional increment step to use.
     def incr(att, count = 1)
-      unless attributes.include?(att)
+      unless model.attributes.include?(att)
         raise ArgumentError, "#{att.inspect} is not an attribute."
       end
 
