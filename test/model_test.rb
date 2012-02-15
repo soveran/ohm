@@ -336,6 +336,7 @@ test "sort all" do
   Person.create :name => "B"
   Person.create :name => "A"
 
+  assert %w[D C B A] == Person.all.sort_by(:id).map { |person| person.name }
   assert %w[A B C D] == Person.all.sort_by(:name, :order => "ALPHA").map { |person| person.name }
 end
 

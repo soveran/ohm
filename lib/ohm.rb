@@ -357,7 +357,7 @@ module Ohm
         return [] unless key.exists
 
         opts = options.dup
-        opts.merge!(:by => model.key["*->#{att}"])
+        opts.merge!(:by => model.key["*->#{att}"]) unless att.to_s == "id"
 
         if opts[:get]
           key.sort(opts.merge(:get => model.key["*->#{opts[:get]}"]))
