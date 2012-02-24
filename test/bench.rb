@@ -13,7 +13,7 @@ class User < Ohm::Model
   attribute :zip
 end
 
-1000.times do |i|
+100.times do |i|
   user = User.new(fname: "John#{i}",
                   lname: "Doe#{i}",
                   bday: Time.now.to_s,
