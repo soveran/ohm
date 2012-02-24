@@ -81,10 +81,6 @@ module Ohm
       key[:id].incr
     end
 
-    def self.attributes
-      @attributes ||= []
-    end
-
     def self.attribute(name, cast = nil)
       if cast
         define_method(name) do
@@ -99,8 +95,6 @@ module Ohm
       define_method(:"#{name}=") do |value|
         @_attributes[name] = value
       end
-
-      attributes << name unless attributes.include?(name)
     end
 
     class Collection < Struct.new(:set, :key, :model)
