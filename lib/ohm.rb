@@ -1,6 +1,7 @@
 # encoding: UTF-8
 
 require "base64"
+require "digest/sha1"
 require "redis"
 require "nest"
 
@@ -211,6 +212,45 @@ module Ohm
 
     def _flattened_attributes
       @_attributes.flatten
+    end
+  end
+
+  class Lua
+    attr :dir
+    attr :redis
+    attr :cache
+
+    def initialize(dir, redis)
+      @dir = dir
+      @redis = redis
+      @cache = Hash.new { |h, cmd| h[cmd] = read(cmd) }
+    end
+
+    def run(command, options)
+      keys = options[:keys]
+      argv = options[:argv]
+
+      begin
+        redis.evalsha(sha(command), keys.size, *keys, *argv)
+      rescue RuntimeError
+        redis.eval(cache[command], keys.size, *keys, *argv)
+      end
+    end
+
+  private
+    def read(name)
+      minify(File.read("%s/%s.lua" % [dir, name]))
+    end
+
+    def minify(code)
+      code.
+        gsub(/^\s*--.*$/, ""). # Remove comments
+        gsub(/^\s+$/, "").     # Remove empty lines
+        gsub(/^\s+/, "")       # Remove leading spaces
+    end
+
+    def sha(command)
+      Digest::SHA1.hexdigest(cache[command])
     end
   end
 end
