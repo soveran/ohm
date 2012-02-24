@@ -43,3 +43,22 @@ test "supports connecting by URL" do
     assert Errno::ECONNREFUSED == e.class
   end
 end
+
+setup do
+  Ohm.connect(:url => "redis://localhost:6379/0")
+end
+
+test "connection class" do
+  conn = Ohm::Connection.new(:foo, :url => "redis://localhost:6379/0")
+
+  assert conn.redis.kind_of?(Redis)
+end
+
+test "model can define its own connection" do
+  class B < Ohm::Model
+    connect(:url => "redis://localhost:6379/1")
+  end
+
+  assert_equal B.conn.options,   {:url=>"redis://localhost:6379/1"}
+  assert_equal Ohm.conn.options, {:url=>"redis://localhost:6379/0"}
+end

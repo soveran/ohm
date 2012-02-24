@@ -1,6 +1,6 @@
 require File.expand_path("../lib/ohm", File.dirname(__FILE__))
 
-Ohm.redis.flushdb
+Ohm.flush
 
 class User < Ohm::Model
   attribute :fname

@@ -8,35 +8,61 @@ module Ohm
   class Error < StandardError; end
   class MissingID < Error; end
 
-  module ConnectionHandling
-    def connect(options = {})
-      self.redis = nil
+  class Connection
+    attr_accessor :context
+    attr_accessor :options
+
+    def initialize(context = :main, options = {})
+      @context = context
       @options = options
     end
 
-    def redis
-      threaded[self] ||= Redis.connect(options)
+    def reset!
+      threaded[context] = nil
     end
 
-    def redis=(redis)
-      threaded[self] = redis
+    def start(options = {})
+      self.options = options
+      self.reset!
+    end
+
+    def redis
+      threaded[context] ||= Redis.connect(options)
     end
 
     def threaded
-      Thread.current[:Ohm] ||= {}
-    end
-
-    def options
-      @options || {}
+      Thread.current[:ohm] ||= {}
     end
   end
-  extend ConnectionHandling
+
+  def self.conn
+    @conn ||= Connection.new
+  end
+
+  def self.connect(options = {})
+    conn.start(options)
+  end
+
+  def self.redis
+    conn.redis
+  end
+
+  def self.flush
+    redis.flushdb
+  end
+
 
   class Model
-    extend ConnectionHandling
+    def self.conn
+      @conn ||= Connection.new(name)
+    end
+
+    def self.connect(options)
+      conn.start(options)
+    end
 
     def self.db
-      options.any? ? redis : Ohm.redis
+      conn.redis
     end
 
     def self.key
@@ -100,16 +126,14 @@ module Ohm
       end
 
       def to_a
-        @elements ||= begin
-          ids = members
+        ids = members
 
-          arr = model.db.pipelined do
-            ids.each { |id| key[id].hgetall }
-          end
+        arr = model.db.pipelined do
+          ids.each { |id| key[id].hgetall }
+        end
 
-          arr.map.with_index do |atts, idx|
-            model.new(Hash[*atts].update(id: ids[idx]))
-          end
+        arr.map.with_index do |atts, idx|
+          model.new(Hash[*atts].update(id: ids[idx]))
         end
       end
 
@@ -124,6 +148,10 @@ module Ohm
 
     def self.all
       Collection.new(key[:all], key, self)
+    end
+
+    def self.create(atts)
+      new(atts).save
     end
 
     def model
@@ -156,18 +184,22 @@ module Ohm
     end
 
     def new?
-      !@id
+      !defined?(@id)
     end
 
     def save
       if new?
         _initialize_id
-        key.hmset(*_flattened_attributes)
 
-        model.key[:all].sadd(id)
+        db.multi do
+          key.hmset(*_flattened_attributes)
+          model.key[:all].sadd(id)
+        end
       else
-        key.del
-        key.hmset(*_flattened_attributes)
+        db.multi do
+          key.del
+          key.hmset(*_flattened_attributes)
+        end
       end
 
       return self
