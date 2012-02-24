@@ -1,5 +1,4 @@
 require File.expand_path("../lib/ohm", File.dirname(__FILE__))
-require "redis/connection/hiredis"
 
 Ohm.redis.flushdb
 
