@@ -22,3 +22,19 @@ test do |lua|
   assert_equal({ "fname" => "John", "lname" => "Doe" },
     lua.redis.hgetall("User:1"))
 end
+
+test do |lua|
+  lua.redis.sadd("User:indices", "fname")
+  lua.redis.sadd("User:indices", "lname")
+
+  res = lua.run("save-with-indices",
+    keys: ["User:1", "User:all", "User:indices"],
+    argv: ["fname", "John", "lname", "Doe"])
+
+  assert lua.redis.sismember("User:all", 1)
+
+  assert lua.redis.sismember("User:fname:John", 1)
+  assert lua.redis.sismember("User:lname:Doe", 1)
+  assert lua.redis.sismember("User:1:_indices", "User:fname:John")
+  assert lua.redis.sismember("User:1:_indices", "User:lname:Doe")
+end
