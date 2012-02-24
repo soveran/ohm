@@ -178,13 +178,7 @@ module Ohm
     end
 
     def _flattened_attributes
-      ret = []
-
-      @_attributes.each do |att, val|
-        ret.push(att, val)
-      end
-
-      return ret
+      @_attributes.flatten
     end
   end
 end
