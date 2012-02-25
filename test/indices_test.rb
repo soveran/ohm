@@ -3,6 +3,8 @@
 require File.expand_path("./helper", File.dirname(__FILE__))
 
 class User < Ohm::Model
+  include Ohm::Index
+
   attribute :email
   attribute :update
   attribute :activation_code
@@ -28,9 +30,9 @@ class User < Ohm::Model
 end
 
 setup do
-  @user1 = User.create(:email => "foo", :activation_code => "bar", :update => "baz")
-  @user2 = User.create(:email => "bar")
-  @user3 = User.create(:email => "baz qux")
+  @user1 = User.create(email: "foo", activation_code: "bar", update: "baz")
+  @user2 = User.create(email: "bar")
+  @user3 = User.create(email: "baz qux")
 end
 
 test "be able to find by the given attribute" do
@@ -47,9 +49,19 @@ test "raise an error if the parameter supplied is not a hash" do
   end
 end
 
-test "avoid intersections with the all collection" do
-  assert "User:email:#{Ohm::Model.encode "foo"}" == User.find(:email => "foo").key.to_s
+test "raise if trying to pass a non-index" do
+  assert_raise Ohm::IndexNotFound do
+    User.find(foobar: "baz")
+  end
+end
 
+test "avoid intersections with the all collection" do
+  assert "User:email:#{Ohm::Model.encode "foo"}" ==
+    User.find(:email => "foo").key.to_s
+end
+
+__END__
+test "combining sets when intersecting" do
   assert "~:User:email:Zm9v+User:activation_code:" ==
     User.find(:email => "foo").find(:activation_code => "").key.to_s
 

@@ -5,9 +5,12 @@ require "digest/sha1"
 require "redis"
 require "nest"
 
+require File.expand_path("ohm/transaction", File.dirname(__FILE__))
+
 module Ohm
   class Error < StandardError; end
   class MissingID < Error; end
+  class IndexNotFound < Error; end
 
   class Connection
     attr_accessor :context
@@ -98,45 +101,49 @@ module Ohm
       end
     end
 
-    class Collection < Struct.new(:set, :key, :model)
+    class Collection < Struct.new(:key, :namespace, :model)
       include Enumerable
 
       def each
-        to_a.each do |e|
+        fetch(key.smembers).each do |e|
           yield e
         end
       end
 
+      def first(options = {})
+        opts = options.dup
+        opts.merge!(limit: [0, 1])
+
+        if opts[:by]
+          sort_by(opts.delete(:by), opts).first
+        else
+          sort(opts).first
+        end
+      end
+
+      def include?(record)
+        key.sismember(record.id)
+      end
+
       def size
-        set.scard
+        key.scard
       end
 
       def sort(options = {})
-        @sort = options
-        return self
+        fetch(key.sort(options))
       end
 
       def sort_by(att, options = {})
-        sort(options.merge(by: key["*->%s" % att]))
+        sort(options.merge(by: namespace["*->%s" % att]))
       end
 
-      def to_a
-        ids = members
-
+      def fetch(ids)
         arr = model.db.pipelined do
           ids.each { |id| key[id].hgetall }
         end
 
         arr.map.with_index do |atts, idx|
           model.new(Hash[*atts].update(id: ids[idx]))
-        end
-      end
-
-      def members
-        if defined?(@sort)
-          set.sort(@sort)
-        else
-          set.smembers
         end
       end
     end
@@ -147,6 +154,10 @@ module Ohm
 
     def self.create(atts)
       new(atts).save
+    end
+
+    def self.encode(val)
+      Base64.encode64(String(val)).gsub("\n", "")
     end
 
     def model
@@ -161,11 +172,21 @@ module Ohm
       model.key[id]
     end
 
-    attr_accessor :id
+    attr_writer :id
 
     def initialize(atts = {})
       @_attributes = {}
       update_attributes(atts)
+    end
+
+    def id
+      @id or raise MissingID
+    end
+
+    def ==(other)
+      other.kind_of?(model) && other.key == key
+    rescue MissingID
+      false
     end
 
     def update_attributes(atts)
@@ -182,19 +203,38 @@ module Ohm
       !defined?(@id)
     end
 
-    def save
-      if new?
-        _initialize_id
+    def transaction(&block)
+      txn = Transaction.define(&block)
+      txn.commit(db)
+    end
 
-        db.multi do
-          key.hmset(*_flattened_attributes)
-          model.key[:all].sadd(id)
-        end
-      else
-        db.multi do
+    def save(&block)
+      return create(&block) if new?
+
+      transaction do |t|
+        t.write do
           key.del
           key.hmset(*_flattened_attributes)
         end
+
+        yield t if block_given?
+      end
+
+      return self
+    end
+
+    def create(&block)
+      transaction do |t|
+        t.before do
+          _initialize_id
+        end
+
+        t.write do
+          key.hmset(*_flattened_attributes)
+          model.key[:all].sadd(id)
+        end
+
+        yield t if block_given?
       end
 
       return self
@@ -206,6 +246,96 @@ module Ohm
 
     def _flattened_attributes
       @_attributes.flatten
+    end
+  end
+
+  module Index
+    def self.included(base)
+      base.extend(ClassMethods)
+    end
+
+    module ClassMethods
+      def index_key_for(att, val)
+        raise IndexNotFound, att unless indices.include?(att)
+
+        key[att][encode(val)]
+      end
+
+      def find(hash)
+        unless hash.kind_of?(Hash)
+          raise ArgumentError,
+            "You need to supply a hash with filters. " +
+            "If you want to find by ID, use #{self}[id] instead."
+        end
+
+        keys = hash.map { |k, v| index_key_for(k, v) }
+
+        # FIXME: this should do the old way of SINTERing stuff.
+        Ohm::Model::Collection.new(keys.first, key, self)
+      end
+
+      def indices
+        @indices ||= []
+      end
+
+      def index(attribute)
+        indices << attribute unless indices.include?(attribute)
+      end
+    end
+
+    def _index_key_for(att, val)
+      model.index_key_for(att, val)
+    end
+
+    def _indices_key
+      @_indices_key ||= key[:_indices]
+    end
+
+    def _indices
+      {}.tap do |ret|
+        model.indices.each do |att|
+          ret[att] = send(att)
+        end
+      end
+    end
+
+    def _add_to_index(att, val)
+      index = _index_key_for(att, val)
+      index.sadd(id)
+      _indices_key.sadd(index)
+    end
+
+    def _collection?(value)
+      value.kind_of?(Enumerable) && value.kind_of?(String) == false
+    end
+
+    def _save_indices(hash)
+      hash.each do |att, val|
+        if _collection?(val)
+          val.each { |v| _add_to_index(att, v) }
+        else
+          _add_to_index(att, val)
+        end
+      end
+    end
+
+    def save
+      super do |t|
+        yield t if block_given?
+
+        t.watch(_indices_key) unless new?
+
+        t.read do |store|
+          store.old_indices = _indices_key.smembers
+          store.new_indices = _indices
+        end
+
+        t.write do |store|
+          store.old_indices.each { |index| db.srem(index, id) }
+          _indices_key.del
+          _save_indices(store.new_indices)
+        end
+      end
     end
   end
 
