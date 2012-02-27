@@ -69,6 +69,17 @@ local function list(table)
   return atts
 end
 
+-- This is mainly used with the generation of an index key,
+-- e.g. given nil, for the key User:indices:fname, then the key should be
+-- `User:indices:fname:` instead of `User:indices:fname:nil`.
+local function str(val)
+  if val == nil then
+    return ""
+  else
+    return tostring(val)
+  end
+end
+
 -- Even before we attempt to save this record, we need to verify
 -- that no unique constraints have been violated. If so, we return
 -- an error code like so:
@@ -77,9 +88,16 @@ end
 local function detect_duplicate(table, id)
   for _, att in ipairs(meta.uniques) do
     local key = model.uniques .. ":" .. att
-    local existing = redis.call("HGET", key, table[att])
+    local exists = redis.call("HEXISTS", key, table[att])
 
-    if existing and existing ~= tostring(id) then return att end
+    -- FIXME: I'm not 100%, but I think this is a bug in the
+    -- way the redis lua is implemented. HEXISTS should auto-coerce to
+    -- true/false.
+    if tonumber(exists) == 1 then
+      local val = redis.call("HGET", key, table[att])
+
+      if val ~= tostring(id) then return att end
+    end
   end
 end
 
@@ -114,7 +132,7 @@ end
 --
 local function save_indices(table, id)
   for _, att in ipairs(meta.indices) do
-    local key = model.indices .. ":" .. att .. ":" .. table[att]
+    local key = model.indices .. ":" .. att .. ":" .. str(table[att])
 
     redis.call("SADD", key, id)
   end
@@ -168,7 +186,7 @@ end
 -- 3. Reflect that change into the local variable `key`, e.g. it now
 --    becomes `User:1`.
 if not id then
-  id = redis.call("INCR", model.id)
+  id = tostring(redis.call("INCR", model.id))
   redis.call("SADD", model.all, id)
   key = model.key:format(id)
 end

@@ -5,12 +5,33 @@ def redis
 end
 
 setup do
+  Ohm.redis.script("flush")
+
   redis.sadd("User:uniques", "email")
   redis.sadd("User:indices", "fname")
   redis.sadd("User:indices", "lname")
   redis.hset("User:uniques:email", "foo@bar.com", 1)
 
   Ohm::Lua.new("./test/lua", redis)
+end
+
+test "empty email doesn't choke" do |lua|
+  res = lua.run("save",
+    keys: ["User"],
+    argv: ["email", nil])
+
+  assert_equal [200, ["id", "1"]], res
+  assert_equal "1", redis.hget("User:uniques:email", nil)
+end
+
+test "empty fname / lname doesn't choke" do |lua|
+  res = lua.run("save",
+    keys: ["User"],
+    argv: ["email", nil, "fname", nil, "lname", nil])
+
+  assert_equal [200, ["id", "1"]], res
+  assert redis.sismember("User:indices:fname:", 1)
+  assert redis.sismember("User:indices:lname:", 1)
 end
 
 test "returns the unique constraint error" do |lua|
