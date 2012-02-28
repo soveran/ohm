@@ -777,7 +777,7 @@ module Ohm
       # @see Ohm::Model::Set#find find in Ohm::Model::Set.
       # @see Ohm::Model.find find in Ohm::Model.
       def find(options)
-        if options.keys.size == 1 && model.indices(model).include?(options.keys.first) &&
+        if key.name == 'all' && options.keys.size == 1 && model.indices(model).include?(options.keys.first) &&
             ( String === options.values.first || !( Enumerable === options.values.first ))
           Set.new(keys(options).first, Wrapper.wrap(model))
         else
