@@ -16,8 +16,8 @@ test "assign an ID and save the object" do
   event1 = Event.create(:name => "Ruby Tuesday")
   event2 = Event.create(:name => "Ruby Meetup")
 
-  assert_equal 1, event1.id
-  assert_equal 2, event2.id
+  assert_equal "1", event1.id
+  assert_equal "2", event2.id
 end
 
 test "save the attributes in UTF8" do

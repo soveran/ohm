@@ -4,7 +4,6 @@ require File.expand_path("./helper", File.dirname(__FILE__))
 
 class User < Ohm::Model
   attribute :email
-  unique :email
 
   def self.[](id)
     super(id.to_i)
@@ -12,6 +11,9 @@ class User < Ohm::Model
 end
 
 setup do
+  # Due to the change in how unique and indices work, we need
+  # to specify this after we cleanup the DB.
+  User.unique :email
   User.create(email: "a@a.com")
 end
 
@@ -20,7 +22,7 @@ test "findability" do |u|
 end
 
 test "raises when it already exists during create" do
-  assert_raise Ohm::Model::UniqueIndexViolation do
+  assert_raise Ohm::UniqueIndexViolation do
     User.create(email: "a@a.com")
   end
 end
@@ -29,7 +31,7 @@ test "raises when it already exists during save" do
   u = User.create(email: "b@b.com")
   u.email = "a@a.com"
 
-  assert_raise Ohm::Model::UniqueIndexViolation do
+  assert_raise Ohm::UniqueIndexViolation do
     u.save
   end
 end

@@ -10,12 +10,6 @@ class User < Ohm::Model
   attribute :activation_code
   attribute :sandunga
 
-  index :email
-  index :email_provider
-  index :working_days
-  index :update
-  index :activation_code
-
   def email_provider
     email.split("@").last
   end
@@ -30,12 +24,21 @@ class User < Ohm::Model
 end
 
 setup do
+  User.index :email
+  User.index :email_provider
+  User.index :working_days
+  User.index :update
+  User.index :activation_code
+
   @user1 = User.create(email: "foo", activation_code: "bar", update: "baz")
   @user2 = User.create(email: "bar")
   @user3 = User.create(email: "baz qux")
 end
 
 test "be able to find by the given attribute" do
+  puts User.find(email: "foo").inspect
+  puts User.db.smembers(User.index_key_for(:email, "foo")).inspect
+
   assert @user1 == User.find(:email => "foo").first
 end
 
@@ -56,8 +59,7 @@ test "raise if trying to pass a non-index" do
 end
 
 test "avoid intersections with the all collection" do
-  assert "User:email:#{Ohm::Model.encode "foo"}" ==
-    User.find(:email => "foo").key.to_s
+  assert_equal "User:indices:email:foo", User.find(email: "foo").key
 end
 
 __END__

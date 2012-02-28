@@ -5,12 +5,13 @@ require "digest/sha1"
 require "redis"
 require "nest"
 
-require File.expand_path("ohm/transaction", File.dirname(__FILE__))
-
 module Ohm
   class Error < StandardError; end
   class MissingID < Error; end
   class IndexNotFound < Error; end
+  class UniqueIndexViolation < Error; end
+
+  ROOT = File.expand_path("../", File.dirname(__FILE__))
 
   class Connection
     attr_accessor :context
@@ -55,7 +56,6 @@ module Ohm
     redis.flushdb
   end
 
-
   class Model
     def self.conn
       @conn ||= Connection.new(name)
@@ -63,6 +63,10 @@ module Ohm
 
     def self.connect(options)
       conn.start(options)
+    end
+
+    def self.lua
+      @lua ||= Lua.new(File.join(Ohm::ROOT, "lua"), db)
     end
 
     def self.db
@@ -85,19 +89,33 @@ module Ohm
       key[:id].incr
     end
 
+    def self.with(att, val)
+      id = key[:uniques][att].hget(val)
+      id && self[id]
+    end
+
+    def self.uniques
+      @uniques ||= []
+    end
+
+    def self.unique(attribute)
+      uniques << attribute unless uniques.include?(attribute)
+      db.sadd(key[:uniques], attribute)
+    end
+
     def self.attribute(name, cast = nil)
       if cast
         define_method(name) do
-          cast[@_attributes[name]]
+          cast[@attributes[name]]
         end
       else
         define_method(name) do
-          @_attributes[name]
+          @attributes[name]
         end
       end
 
       define_method(:"#{name}=") do |value|
-        @_attributes[name] = value
+        @attributes[name] = value
       end
     end
 
@@ -156,10 +174,6 @@ module Ohm
       new(atts).save
     end
 
-    def self.encode(val)
-      Base64.encode64(String(val)).gsub("\n", "")
-    end
-
     def model
       self.class
     end
@@ -172,10 +186,8 @@ module Ohm
       model.key[id]
     end
 
-    attr_writer :id
-
     def initialize(atts = {})
-      @_attributes = {}
+      @attributes = {}
       update_attributes(atts)
     end
 
@@ -189,10 +201,6 @@ module Ohm
       false
     end
 
-    def update_attributes(atts)
-      atts.each { |att, val| send(:"#{att}=", val) }
-    end
-
     def load!
       update_attributes(key.hgetall) unless new?
 
@@ -203,50 +211,40 @@ module Ohm
       !defined?(@id)
     end
 
-    def transaction(&block)
-      txn = Transaction.define(&block)
-      txn.commit(db)
-    end
-
     def save(&block)
-      return create(&block) if new?
+      response = model.lua.run("save",
+        keys: [model, (key unless new?)],
+        argv: @attributes.flatten)
 
-      transaction do |t|
-        t.write do
-          key.del
-          key.hmset(*_flattened_attributes)
-        end
-
-        yield t if block_given?
+      case response[0]
+      when 200
+        @id = response[1][1]
+      when 500
+        raise UniqueIndexViolation, "#{response[1][0]} is not unique"
       end
 
       return self
     end
 
-    def create(&block)
-      transaction do |t|
-        t.before do
-          _initialize_id
-        end
-
-        t.write do
-          key.hmset(*_flattened_attributes)
-          model.key[:all].sadd(id)
-        end
-
-        yield t if block_given?
-      end
-
-      return self
+    def attributes
+      @attributes
     end
 
-    def _initialize_id
-      @id ||= model.new_id
+    def update(attributes)
+      update_attributes(attributes)
+      save
     end
 
-    def _flattened_attributes
-      @_attributes.flatten
+    def update_attributes(atts)
+      atts.each { |att, val| send(:"#{att}=", val) }
     end
+
+    def delete
+      model.lua.run("delete", keys: [model, key])
+    end
+
+  protected
+    attr_writer :id
   end
 
   module Index
@@ -258,7 +256,7 @@ module Ohm
       def index_key_for(att, val)
         raise IndexNotFound, att unless indices.include?(att)
 
-        key[att][encode(val)]
+        key[:indices][att][val]
       end
 
       def find(hash)
@@ -280,6 +278,7 @@ module Ohm
 
       def index(attribute)
         indices << attribute unless indices.include?(attribute)
+        db.sadd(key[:indices], attribute)
       end
     end
 
