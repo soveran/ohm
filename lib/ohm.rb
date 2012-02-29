@@ -328,22 +328,19 @@ module Ohm
       !defined?(@id)
     end
 
-    def save(&block)
+    def save
       response = model.lua.run("save",
         keys: [model, (key unless new?)],
         argv: @attributes.flatten)
 
-      handle_save_response(response)
-      return self
-    end
-
-    def handle_save_response(response)
       case response[0]
       when 200
         @id = response[1][1]
       when 500
         raise UniqueIndexViolation, "#{response[1][0]} is not unique"
       end
+
+      return self
     end
 
     def incr(att, count = 1)
