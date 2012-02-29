@@ -1,9 +1,9 @@
 # encoding: UTF-8
 
-require "base64"
 require "digest/sha1"
-require "redis"
 require "nest"
+require "redis"
+require "securerandom"
 
 module Ohm
   class Error < StandardError; end
@@ -65,12 +65,13 @@ module Ohm
     redis.flushdb
   end
 
-  class Collection < Struct.new(:key, :namespace, :model)
+  module CollectionConcerns
     include Enumerable
 
     def all
       fetch(ids)
     end
+    alias :to_a :all
 
     def each
       all.each { |e| yield e }
@@ -78,15 +79,6 @@ module Ohm
 
     def empty?
       size == 0
-    end
-
-    def sort(options = {})
-      if options.has_key?(:get)
-        options[:get] = namespace["*->%s" % options[:get]]
-        return key.sort(options)
-      end
-
-      fetch(key.sort(options))
     end
 
     def sort_by(att, options = {})
@@ -104,6 +96,19 @@ module Ohm
       arr.map.with_index do |atts, idx|
         model.new(Hash[*atts].update(id: ids[idx]))
       end
+    end
+  end
+
+  class Collection < Struct.new(:key, :namespace, :model)
+    include CollectionConcerns
+
+    def sort(options = {})
+      if options.has_key?(:get)
+        options[:get] = namespace["*->%s" % options[:get]]
+        return key.sort(options)
+      end
+
+      fetch(key.sort(options))
     end
   end
 
@@ -134,6 +139,65 @@ module Ohm
       model.db.multi do
         key.del
         ids.each { |id| key.rpush(id) }
+      end
+    end
+  end
+
+  class MultiSet < Struct.new(:keys, :namespace, :model)
+    include CollectionConcerns
+
+    def include?(model)
+      execute { |key| key.sismember(model.id) }
+    end
+
+    def size
+      execute { |key| key.scard }
+    end
+
+    def first(options = {})
+      opts = options.dup
+      opts.merge!(limit: [0, 1])
+
+      if opts[:by]
+        sort_by(opts.delete(:by), opts).first
+      else
+        sort(opts).first
+      end
+    end
+
+    def ids
+      execute { |key| key.smembers }
+    end
+
+    def [](id)
+      model[id] if execute { |key| key.sismember(id) }
+    end
+
+    def sort(options = {})
+      if options.has_key?(:get)
+        options[:get] = namespace["*->%s" % options[:get]]
+        return execute { |key| key.sort(options) }
+      end
+
+      fetch(execute { |key| key.sort(options) })
+    end
+
+    def find(conditions)
+      keys = conditions.map { |k, v| namespace[:indices][k][v] }
+      keys.push(*self.keys)
+
+      MultiSet.new(keys, namespace, model)
+    end
+
+  private
+    def execute
+      key = namespace[:temp][SecureRandom.uuid]
+      key.sinterstore(*keys)
+
+      begin
+        yield key
+      ensure
+        key.del
       end
     end
   end
@@ -173,6 +237,13 @@ module Ohm
         key.del
         ids.each { |id| key.sadd(id) }
       end
+    end
+
+    def find(conditions)
+      keys = conditions.map { |k, v| namespace[:indices][k][v] }
+      keys.push(key)
+
+      MultiSet.new(keys, namespace, model)
     end
   end
 
@@ -229,8 +300,11 @@ module Ohm
 
       keys = hash.map { |k, v| key[:indices][k][v] }
 
-      # FIXME: this should do the old way of SINTERing stuff.
-      Ohm::Set.new(keys.first, key, self)
+      if keys.size == 1
+        Ohm::Set.new(keys.first, key, self)
+      else
+        Ohm::MultiSet.new(keys, key, self)
+      end
     end
 
     def self.index(attribute)

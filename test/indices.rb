@@ -7,13 +7,15 @@ class User < Ohm::Model
   attribute :update
   attribute :activation_code
   attribute :sandunga
-
-  def email_provider
-    email.split("@").last
-  end
+  attribute :email_provider
 
   def working_days
     @working_days ||= []
+  end
+
+  def save
+    self.email_provider = email.split("@").last
+    super
   end
 
   def before_save
@@ -51,29 +53,14 @@ test "avoid intersections with the all collection" do
   assert_equal "User:indices:email:foo", User.find(email: "foo").key
 end
 
-__END__
-test "combining sets when intersecting" do
-  assert "~:User:email:Zm9v+User:activation_code:" ==
-    User.find(:email => "foo").find(:activation_code => "").key.to_s
+test "cleanup the temporary key after use" do
+  assert User.find(:email => "foo", :activation_code => "bar").all
 
-  assert "~:User:email:Zm9v+User:activation_code:YmFy+User:update:YmF6" ==
-    result = User.find(:email => "foo").find(:activation_code => "bar").find(:update => "baz").key.to_s
-end
-
-test "use a special namespace for set operations" do
-  assert User.find(:email => "foo", :activation_code => "bar").key.to_s.match(/^~:/)
-
-  assert Ohm.redis.keys("~:*").size > 0
+  assert Ohm.redis.keys("User:temp:*").empty?
 end
 
 test "allow multiple chained finds" do
   assert 1 == User.find(:email => "foo").find(:activation_code => "bar").find(:update => "baz").size
-end
-
-test "raise if the field is not indexed" do
-  assert_raise(Ohm::Model::IndexNotFound) do
-    User.find(:sandunga => "foo")
-  end
 end
 
 test "return nil if no results are found" do
@@ -101,115 +88,19 @@ end
 
 # Indexing arbitrary attributes
 setup do
+  User.index :email
+  User.index :email_provider
+  User.index :working_days
+  User.index :update
+  User.index :activation_code
+
   @user1 = User.create(:email => "foo@gmail.com")
   @user2 = User.create(:email => "bar@gmail.com")
   @user3 = User.create(:email => "bazqux@yahoo.com")
 end
 
 test "allow indexing by an arbitrary attribute" do
-  assert [@user1, @user2] == User.find(:email_provider => "gmail.com").to_a.sort_by { |u| u.id }
+  gmail = User.find(:email_provider => "gmail.com").to_a
+  assert [@user1, @user2] == gmail.sort_by { |u| u.id }
   assert [@user3] == User.find(:email_provider => "yahoo.com").all
-end
-
-test "allow indexing by an attribute that is lazily set" do
-  assert_equal [@user1], User.find(:activation_code => "user:1").to_a
-end
-
-# Indexing enumerables
-setup do
-  @user1 = User.create(:email => "foo@gmail.com")
-  @user2 = User.create(:email => "bar@gmail.com")
-
-  @user1.working_days << "Mon"
-  @user1.working_days << "Tue"
-  @user2.working_days << "Mon"
-  @user2.working_days << "Wed"
-
-  @user1.save
-  @user2.save
-end
-
-test "index each item" do
-  assert [@user1, @user2] == User.find(:working_days => "Mon").to_a.sort_by { |u| u.id }
-end
-
-# TODO If we deal with Ohm collections, the updates are atomic but the reindexing never happens.
-# One solution may be to reindex after inserts or deletes in collection.
-test "remove the indices when the object changes" do
-  @user2.working_days.delete "Mon"
-  @user2.save
-  assert [@user1] == User.find(:working_days => "Mon").all
-end
-
-# Intersection and difference
-class Event < Ohm::Model
-  attr_writer :days
-
-  attribute :timeline
-  index :timeline
-  index :days
-
-  def days
-    @days ||= []
-  end
-end
-
-setup do
-  @event1 = Event.create(:timeline => 1).update(:days => [1, 2])
-  @event2 = Event.create(:timeline => 1).update(:days => [2, 3])
-  @event3 = Event.create(:timeline => 2).update(:days => [3, 4])
-  @event4 = Event.create(:timeline => 2).update(:days => [1, 3])
-end
-
-test "intersect multiple sets of results" do
-  assert_equal [@event1], Event.find(:days => [1, 2]).all
-  assert_equal [@event1], Event.find(:timeline => 1, :days => [1, 2]).all
-  assert_equal [@event1], Event.find(:timeline => 1).find(:days => [1, 2]).all
-end
-
-test "compute the difference between sets" do
-  assert [@event2] == Event.find(:timeline => 1).except(:days => 1).all
-end
-
-test "raise if the argument is not an index" do
-  assert_raise(Ohm::Model::IndexNotFound) do
-    Event.find(:timeline => 1).except(:not_an_index => 1)
-  end
-end
-
-test "work with strings that generate a new line when encoded" do
-  user = User.create(:email => "foo@bar", :update => "CORRECTED - UPDATE 2-Suspected US missile strike kills 5 in Pakistan")
-  assert [user] == User.find(:update => "CORRECTED - UPDATE 2-Suspected US missile strike kills 5 in Pakistan").all
-end
-
-# New indices
-test "populate a new index when the model is saved" do
-  class Event < Ohm::Model
-    attribute :name
-  end
-
-  foo = Event.create(:name => "Foo")
-
-  assert_raise(Ohm::Model::IndexNotFound) { Event.find(:name => "Foo") }
-
-  class Event < Ohm::Model
-    index :name
-  end
-
-  # Find works correctly once the index is added.
-  Event.find(:name => "Foo")
-
-  # The index was added after foo was created.
-  assert Event.find(:name => "Foo").empty?
-
-  bar = Event.create(:name => "Bar")
-
-  # Bar was indexed properly.
-  assert bar == Event.find(:name => "Bar").first
-
-  # Saving all the objects populates the indices.
-  Event.all.each { |e| e.save }
-
-  # Now foo is indexed.
-  assert foo == Event.find(:name => "Foo").first
 end
