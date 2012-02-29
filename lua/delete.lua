@@ -12,12 +12,16 @@ local model = {
   all     = namespace .. ":all",
   uniques = namespace .. ":uniques",
   indices = namespace .. ":indices",
+  sets    = namespace .. ":sets",
+  lists   = namespace .. ":lists",
   key     = namespace .. ":%s"
 }
 
 local meta = {
   uniques = redis.call("SMEMBERS", model.uniques),
-  indices = redis.call("SMEMBERS", model.indices)
+  indices = redis.call("SMEMBERS", model.indices),
+  sets    = redis.call("SMEMBERS", model.sets),
+  lists   = redis.call("SMEMBERS", model.lists)
 }
 
 -- This is mainly used with the generation of an index key,
@@ -54,6 +58,13 @@ local function delete_indices(hash, id)
   end
 end
 
+local function delete_collection(key, list)
+  for _, att in ipairs(list) do
+    redis.call("DEL", key .. ":" .. att)
+  end
+end
+
+
 -- Now comes the easy part: We first cleanup both indices and uniques.
 -- It's important that we do this before saving, otherwise the old
 -- values of the uniques and indices will be lost.
@@ -62,6 +73,10 @@ delete_indices(key, id)
 
 -- Now that we've cleaned up, we can now persist the new attributes.
 redis.call("DEL", key)
+redis.call("SREM", model.all, id)
+
+delete_collection(key, meta.sets)
+delete_collection(key, meta.lists)
 
 -- Permanently deleted, now we can safely return.
 return { 200, { "id", id }}

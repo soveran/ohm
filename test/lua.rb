@@ -13,9 +13,11 @@ test do |lua|
   assert_equal ["baz", "bar"], res
 end
 
-test do |lua|
+test do
+  lua = Ohm::Lua.new(Ohm::ROOT + "/lua", Ohm.redis)
+
   res = lua.run("save",
-    keys: ["User:1", "User:all"],
+    keys: ["User"],
     argv: ["fname", "John", "lname", "Doe"])
 
   assert lua.redis.sismember("User:all", 1)

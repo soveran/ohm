@@ -29,26 +29,9 @@ test "export an empty hash via to_hash" do
   assert Hash.new == person.to_hash
 end
 
-test "export a hash with the errors" do
-  person = Venue.new
-  person.valid?
-
-  assert Hash[:errors => [[:name, :not_present]]] == person.to_hash
-end
-
 test "export a hash with the its id" do
   person = Venue.create(:name => "John Doe")
   assert Hash[:id => '1'] == person.to_hash
-end
-
-test "export a hash with its id and the errors" do
-  person = Venue.create(:name => "John Doe")
-  person.name = nil
-  person.valid?
-
-  expected_hash = { :id => '1', :errors => [[:name, :not_present]] }
-
-  assert expected_hash == person.to_hash
 end
 
 test "return the merged attributes" do
@@ -64,4 +47,22 @@ test "just be the to_hash of a model" do
   assert ["id", "language"] == json.keys.sort
   assert "1" == json["id"]
   assert "Ruby" == json["language"]
+end
+
+__END__
+test "export a hash with the errors" do
+  person = Venue.new
+  person.valid?
+
+  assert Hash[:errors => [[:name, :not_present]]] == person.to_hash
+end
+
+test "export a hash with its id and the errors" do
+  person = Venue.create(:name => "John Doe")
+  person.name = nil
+  person.valid?
+
+  expected_hash = { :id => '1', :errors => [[:name, :not_present]] }
+
+  assert expected_hash == person.to_hash
 end

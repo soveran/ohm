@@ -25,7 +25,7 @@ local key        = KEYS[2]
 local attributes = ARGV
 local id
 
-if key then
+if key and key ~= "" then
   -- since there was a key passed, we can extract the ID from the
   -- key, e.g. `User:1` means an ID of 1.
   id = string.match(key, "(%w+)$")
@@ -35,13 +35,12 @@ local model = {
   id      = namespace .. ":id",
   all     = namespace .. ":all",
   uniques = namespace .. ":uniques",
-  indices = namespace .. ":indices",
-  key     = namespace .. ":%s"
+  indices = namespace .. ":indices"
 }
 
 local meta = {
-  uniques = redis.call("SMEMBERS", model.uniques),
-  indices = redis.call("SMEMBERS", model.indices)
+  uniques  = redis.call("SMEMBERS", model.uniques),
+  indices  = redis.call("SMEMBERS", model.indices),
 }
 
 -- Converts a flattened list to a key-value dictionary.
@@ -67,6 +66,20 @@ local function list(table)
   end
 
   return atts
+end
+
+-- When saving the attributes of the model, we skip the empty strings
+-- and nil values so we can also save a bit on space.
+function skip_empty(table)
+  local ret = {}
+
+  for k, v in pairs(table) do
+    if v and v ~= "" then
+      ret[k] = v
+    end
+  end
+
+  return ret
 end
 
 -- This is mainly used with the generation of an index key,
@@ -155,14 +168,18 @@ end
 -- these statements persist all the attributes, indices, and uniques
 -- passed into ARGV.
 local function save(hash, key)
-  redis.call("DEL", key)
-  redis.call("HMSET", key, unpack(list(hash)))
+  local atts = list(hash)
+
+  if #atts > 0 then
+    redis.call("DEL", key)
+    redis.call("HMSET", key, unpack(atts))
+  end
 end
 
 -- In the future, we probably plan to allow users to hook into scripts
 -- on a per model basis. They can tap into `this` and possibly do
 -- some manipulations before persisting it finally.
-local this = dict(attributes)
+local this = skip_empty(dict(attributes))
 
 -- We try to find any existing duplicates for all of the declared
 -- uniques of the model. Ideally you've validated that the entry
@@ -182,14 +199,18 @@ end
 -- Given that this is a new record, we have to do a couple of stuff namely:
 --
 -- 1. Generate a new ID.
--- 2. Add that generated id to `model.all` (e.g. User:all)
--- 3. Reflect that change into the local variable `key`, e.g. it now
+-- 2. Reflect that change into the local variable `key`, e.g. it now
 --    becomes `User:1`.
 if not id then
   id = tostring(redis.call("INCR", model.id))
-  redis.call("SADD", model.all, id)
-  key = model.key:format(id)
+  key = namespace .. ":" .. id
 end
+
+-- In order to be more bullet-proof, we add this always, as opposed
+-- to doing a SISMEMBER and then doing an SADD for the add case.
+--
+-- This is so we can cover custom IDs values for models.
+redis.call("SADD", model.all, id)
 
 -- Now comes the easy part: We first cleanup both indices and uniques.
 -- It's important that we do this before saving, otherwise the old

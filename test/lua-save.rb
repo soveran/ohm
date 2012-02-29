@@ -122,17 +122,27 @@ test "cleanup of existing uniques during update" do |lua|
 end
 
 __END__
+$VERBOSE = false
+
 test "stress test for lua scripting" do |lua|
   require "benchmark"
+
+  class User < Ohm::Model
+    attribute :email
+    attribute :fname
+    attribute :lname
+
+    index :email
+    index :fname
+    index :lname
+  end
 
   t = Benchmark.measure do
     threads = 100.times.map do |i|
       Thread.new do
-        lua.run("save",
-          keys: ["User"],
-          argv: ["email", "foo#{i}@bar.com",
-                 "fname", "Jane#{i}",
-                 "lname", "Smith#{i}"])
+        User.create(email: "foo#{i}@bar.com",
+                    fname: "Jane#{i}",
+                    lname: "Smith#{i}")
       end
     end
 
@@ -163,12 +173,12 @@ test "stress test for postgres + sequel (as a comparison)" do
 end
 
 ## Result for 100 threads:
-#  0.040000   0.020000   0.060000 (  0.066827) - lua script
+#  0.040000   0.010000   0.050000 (  0.061512) - lua script
 #  0.150000   0.180000   0.330000 (  0.259676) - postgres
 #
 ## Result for 100 linear executions:
 #
-#  0.010000   0.010000   0.020000 (  0.026081) - lua script
+#  0.010000   0.010000   0.020000 (  0.032064) - lua script
 #  0.010000   0.010000   0.020000 (  0.059540) - postgres
 #
 ## It's also important to note that with 1K concurrent threads,

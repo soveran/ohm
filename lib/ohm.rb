@@ -13,6 +13,15 @@ module Ohm
 
   ROOT = File.expand_path("../", File.dirname(__FILE__))
 
+  module Utils
+    def self.const(context, name)
+      case name
+      when Symbol then context.const_get(name)
+      else name
+      end
+    end
+  end
+
   class Connection
     attr_accessor :context
     attr_accessor :options
@@ -56,21 +65,134 @@ module Ohm
     redis.flushdb
   end
 
+  class Collection < Struct.new(:key, :namespace, :model)
+    include Enumerable
+
+    def all
+      fetch(ids)
+    end
+
+    def each
+      all.each { |e| yield e }
+    end
+
+    def empty?
+      size == 0
+    end
+
+    def sort(options = {})
+      if options.has_key?(:get)
+        options[:get] = namespace["*->%s" % options[:get]]
+        return key.sort(options)
+      end
+
+      fetch(key.sort(options))
+    end
+
+    def sort_by(att, options = {})
+      sort(options.merge(by: namespace["*->%s" % att]))
+    end
+
+  private
+    def fetch(ids)
+      arr = model.db.pipelined do
+        ids.each { |id| namespace[id].hgetall }
+      end
+
+      return [] if arr.nil?
+
+      arr.map.with_index do |atts, idx|
+        model.new(Hash[*atts].update(id: ids[idx]))
+      end
+    end
+  end
+
+  class List < Collection
+    def ids
+      key.lrange(0, -1)
+    end
+
+    def size
+      key.llen
+    end
+
+    def first
+      model[key.lindex(0)]
+    end
+
+    def last
+      model[key.lindex(-1)]
+    end
+
+    def include?(model)
+      ids.include?(model.id.to_s)
+    end
+
+    def replace(models)
+      ids = models.map { |model| model.id }
+
+      model.db.multi do
+        key.del
+        ids.each { |id| key.rpush(id) }
+      end
+    end
+  end
+
+  class Set < Collection
+    def first(options = {})
+      opts = options.dup
+      opts.merge!(limit: [0, 1])
+
+      if opts[:by]
+        sort_by(opts.delete(:by), opts).first
+      else
+        sort(opts).first
+      end
+    end
+
+    def ids
+      key.smembers
+    end
+
+    def include?(record)
+      key.sismember(record.id)
+    end
+
+    def size
+      key.scard
+    end
+
+    def [](id)
+      model[id] if key.sismember(id)
+    end
+
+    def replace(models)
+      ids = models.map { |model| model.id }
+
+      key.redis.multi do
+        key.del
+        ids.each { |id| key.sadd(id) }
+      end
+    end
+  end
+
   class Model
     def self.conn
       @conn ||= Connection.new(name)
     end
 
     def self.connect(options)
+      @key = nil
+      @lua = nil
       conn.start(options)
-    end
-
-    def self.lua
-      @lua ||= Lua.new(File.join(Ohm::ROOT, "lua"), db)
     end
 
     def self.db
       conn.redis
+    end
+
+    def self.lua
+      @lua ||= Lua.new(File.join(Ohm::ROOT, "lua"), db)
     end
 
     def self.key
@@ -79,6 +201,10 @@ module Ohm
 
     def self.[](id)
       new(id: id).load! if id && exists?(id)
+    end
+
+    def self.to_proc
+      lambda { |id| self[id] }
     end
 
     def self.exists?(id)
@@ -94,13 +220,41 @@ module Ohm
       id && self[id]
     end
 
-    def self.uniques
-      @uniques ||= []
+    def self.find(hash)
+      unless hash.kind_of?(Hash)
+        raise ArgumentError,
+          "You need to supply a hash with filters. " +
+          "If you want to find by ID, use #{self}[id] instead."
+      end
+
+      keys = hash.map { |k, v| key[:indices][k][v] }
+
+      # FIXME: this should do the old way of SINTERing stuff.
+      Ohm::Set.new(keys.first, key, self)
+    end
+
+    def self.index(attribute)
+      key[:indices].sadd(attribute)
     end
 
     def self.unique(attribute)
-      uniques << attribute unless uniques.include?(attribute)
-      db.sadd(key[:uniques], attribute)
+      key[:uniques].sadd(attribute)
+    end
+
+    def self.list(name, model)
+      key[:lists].sadd(name)
+
+      define_method name do
+        Ohm::List.new(key[name], model.key, Utils.const(self.class, model))
+      end
+    end
+
+    def self.set(name, model)
+      key[:sets].sadd(name)
+
+      define_method name do
+        Ohm::Set.new(key[name], model.key, Utils.const(self.class, model))
+      end
     end
 
     def self.attribute(name, cast = nil)
@@ -119,58 +273,21 @@ module Ohm
       end
     end
 
-    class Collection < Struct.new(:key, :namespace, :model)
-      include Enumerable
+    def self.counter(name)
+      define_method(name) do
+        return 0 if new?
 
-      def each
-        fetch(key.smembers).each do |e|
-          yield e
-        end
+        key[:counters].hget(name).to_i
       end
 
-      def first(options = {})
-        opts = options.dup
-        opts.merge!(limit: [0, 1])
-
-        if opts[:by]
-          sort_by(opts.delete(:by), opts).first
-        else
-          sort(opts).first
-        end
-      end
-
-      def include?(record)
-        key.sismember(record.id)
-      end
-
-      def size
-        key.scard
-      end
-
-      def sort(options = {})
-        fetch(key.sort(options))
-      end
-
-      def sort_by(att, options = {})
-        sort(options.merge(by: namespace["*->%s" % att]))
-      end
-
-      def fetch(ids)
-        arr = model.db.pipelined do
-          ids.each { |id| key[id].hgetall }
-        end
-
-        arr.map.with_index do |atts, idx|
-          model.new(Hash[*atts].update(id: ids[idx]))
-        end
-      end
+      key[:counters].sadd(name)
     end
 
     def self.all
-      Collection.new(key[:all], key, self)
+      Set.new(key[:all], key, self)
     end
 
-    def self.create(atts)
+    def self.create(atts = {})
       new(atts).save
     end
 
@@ -192,7 +309,8 @@ module Ohm
     end
 
     def id
-      @id or raise MissingID
+      raise MissingID if not defined?(@id)
+      @id
     end
 
     def ==(other)
@@ -203,7 +321,6 @@ module Ohm
 
     def load!
       update_attributes(key.hgetall) unless new?
-
       return self
     end
 
@@ -216,18 +333,45 @@ module Ohm
         keys: [model, (key unless new?)],
         argv: @attributes.flatten)
 
+      handle_save_response(response)
+      return self
+    end
+
+    def handle_save_response(response)
       case response[0]
       when 200
         @id = response[1][1]
       when 500
         raise UniqueIndexViolation, "#{response[1][0]} is not unique"
       end
-
-      return self
     end
+
+    def incr(att, count = 1)
+      key[:counters].hincrby(att, count)
+    end
+
+    def decr(att, count = 1)
+      incr(att, -count)
+    end
+
+    def hash
+      new? ? super : key.hash
+    end
+    alias :eql? :==
 
     def attributes
       @attributes
+    end
+
+    def to_hash
+      attrs = {}
+      attrs[:id] = id unless new?
+
+      return attrs
+    end
+
+    def to_json
+      to_hash.to_json
     end
 
     def update(attributes)
@@ -245,97 +389,6 @@ module Ohm
 
   protected
     attr_writer :id
-  end
-
-  module Index
-    def self.included(base)
-      base.extend(ClassMethods)
-    end
-
-    module ClassMethods
-      def index_key_for(att, val)
-        raise IndexNotFound, att unless indices.include?(att)
-
-        key[:indices][att][val]
-      end
-
-      def find(hash)
-        unless hash.kind_of?(Hash)
-          raise ArgumentError,
-            "You need to supply a hash with filters. " +
-            "If you want to find by ID, use #{self}[id] instead."
-        end
-
-        keys = hash.map { |k, v| index_key_for(k, v) }
-
-        # FIXME: this should do the old way of SINTERing stuff.
-        Ohm::Model::Collection.new(keys.first, key, self)
-      end
-
-      def indices
-        @indices ||= []
-      end
-
-      def index(attribute)
-        indices << attribute unless indices.include?(attribute)
-        db.sadd(key[:indices], attribute)
-      end
-    end
-
-    def _index_key_for(att, val)
-      model.index_key_for(att, val)
-    end
-
-    def _indices_key
-      @_indices_key ||= key[:_indices]
-    end
-
-    def _indices
-      {}.tap do |ret|
-        model.indices.each do |att|
-          ret[att] = send(att)
-        end
-      end
-    end
-
-    def _add_to_index(att, val)
-      index = _index_key_for(att, val)
-      index.sadd(id)
-      _indices_key.sadd(index)
-    end
-
-    def _collection?(value)
-      value.kind_of?(Enumerable) && value.kind_of?(String) == false
-    end
-
-    def _save_indices(hash)
-      hash.each do |att, val|
-        if _collection?(val)
-          val.each { |v| _add_to_index(att, v) }
-        else
-          _add_to_index(att, val)
-        end
-      end
-    end
-
-    def save
-      super do |t|
-        yield t if block_given?
-
-        t.watch(_indices_key) unless new?
-
-        t.read do |store|
-          store.old_indices = _indices_key.smembers
-          store.new_indices = _indices
-        end
-
-        t.write do |store|
-          store.old_indices.each { |index| db.srem(index, id) }
-          _indices_key.del
-          _save_indices(store.new_indices)
-        end
-      end
-    end
   end
 
   class Lua

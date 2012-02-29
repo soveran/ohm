@@ -27,7 +27,7 @@ end
 task :test do
   require File.expand_path("./test/helper", File.dirname(__FILE__))
 
-  Cutest.run(Dir["test/*_test.rb"])
+  Cutest.run(Dir["test/*.rb"])
 end
 
 desc "Generate documentation"
@@ -89,4 +89,3 @@ namespace :examples do
     Cutest.run(Dir["examples/*.rb"])
   end
 end
-

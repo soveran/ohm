@@ -1,6 +1,7 @@
 # encoding: UTF-8
 
 require File.expand_path("./helper", File.dirname(__FILE__))
+require "ohm/transaction"
 
 prepare do
   Ohm.redis.del("foo")
@@ -184,6 +185,10 @@ test "storage entries can't be overriden" do |db|
     t1.append(t2).commit(db)
   end
 end
+
+__END__
+# We leave this here to indicate what the past behavior was with
+# model transactions.
 
 class Post < Ohm::Model
   attribute :body

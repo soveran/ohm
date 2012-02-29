@@ -3,8 +3,6 @@
 require File.expand_path("./helper", File.dirname(__FILE__))
 
 class User < Ohm::Model
-  include Ohm::Index
-
   attribute :email
   attribute :update
   attribute :activation_code
@@ -36,10 +34,7 @@ setup do
 end
 
 test "be able to find by the given attribute" do
-  puts User.find(email: "foo").inspect
-  puts User.db.smembers(User.index_key_for(:email, "foo")).inspect
-
-  assert @user1 == User.find(:email => "foo").first
+  assert @user1 == User.find(email: "foo").first
 end
 
 test "raise an error if the parameter supplied is not a hash" do
@@ -49,12 +44,6 @@ test "raise an error if the parameter supplied is not a hash" do
   ensure
     assert ex.kind_of?(ArgumentError)
     assert ex.message == "You need to supply a hash with filters. If you want to find by ID, use User[id] instead."
-  end
-end
-
-test "raise if trying to pass a non-index" do
-  assert_raise Ohm::IndexNotFound do
-    User.find(foobar: "baz")
   end
 end
 
