@@ -1231,11 +1231,12 @@ module Ohm
     #
     # @see file:README.html#references References Explained.
     # @see Ohm::Model.collection
-    def self.reference(name, model)
+    def self.reference(name, model, options={})
       model = Wrapper.wrap(model)
-
+      
       reader = :"#{name}_id"
       writer = :"#{name}_id="
+      fkey = options.via || :id
 
       attributes(self) << reader unless attributes.include?(reader)
 
@@ -1247,7 +1248,7 @@ module Ohm
 
       define_method(:"#{name}=") do |value|
         @_memo.delete(name)
-        send(writer, value ? value.id : nil)
+        send(writer, value ? value.send(fkey) : nil)
       end
 
       define_method(reader) do
