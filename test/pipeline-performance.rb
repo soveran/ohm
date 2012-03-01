@@ -41,8 +41,8 @@ t2 = Benchmark.realtime do
   end
 end
 
-test "pipelined approach should be 1.8 at least times faster for 10 records" do
-  assert(t2 / t1 >= 1.8)
+test "pipelined approach should be 1.5 at least times faster for 10 records" do
+  assert(t2 / t1 >= 1.5)
 end
 
 90.times(&create)
