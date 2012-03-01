@@ -16,7 +16,7 @@ setup do
 end
 
 test "empty email doesn't choke" do |lua|
-  res = lua.run("save",
+  res = lua.run_file("save",
     keys: ["User"],
     argv: ["email", nil])
 
@@ -25,7 +25,7 @@ test "empty email doesn't choke" do |lua|
 end
 
 test "empty fname / lname doesn't choke" do |lua|
-  res = lua.run("save",
+  res = lua.run_file("save",
     keys: ["User"],
     argv: ["email", nil, "fname", nil, "lname", nil])
 
@@ -35,7 +35,7 @@ test "empty fname / lname doesn't choke" do |lua|
 end
 
 test "returns the unique constraint error" do |lua|
-  res = lua.run("save",
+  res = lua.run_file("save",
     keys: ["User"],
     argv: ["email", "foo@bar.com"])
 
@@ -43,7 +43,7 @@ test "returns the unique constraint error" do |lua|
 end
 
 test "persists the unique entry properly" do |lua|
-  lua.run("save",
+  lua.run_file("save",
     keys: ["User"],
     argv: ["email", "bar@baz.com"])
 
@@ -51,7 +51,7 @@ test "persists the unique entry properly" do |lua|
 end
 
 test "adds the entry to User:all" do |lua|
-  lua.run("save",
+  lua.run_file("save",
     keys: ["User"],
     argv: ["email", "bar@baz.com"])
 
@@ -60,7 +60,7 @@ end
 
 
 test "saves the attributes" do |lua|
-  lua.run("save",
+  lua.run_file("save",
     keys: ["User"],
     argv: ["email", "bar@baz.com", "fname", "John", "lname", "Doe"])
 
@@ -70,7 +70,7 @@ test "saves the attributes" do |lua|
 end
 
 test "indexes fname / lname" do |lua|
-  lua.run("save",
+  lua.run_file("save",
     keys: ["User"],
     argv: ["email", "bar@baz.com", "fname", "John", "lname", "Doe"])
 
@@ -79,17 +79,17 @@ test "indexes fname / lname" do |lua|
 end
 
 test "unique constraint during update" do |lua|
-  lua.run("save",
+  lua.run_file("save",
     keys: ["User"],
     argv: ["email", "bar@baz.com", "fname", "John", "lname", "Doe"])
 
-  res = lua.run("save",
+  res = lua.run_file("save",
     keys: ["User", "User:1"],
     argv: ["email", "bar@baz.com", "fname", "John", "lname", "Doe"])
 
   assert_equal [200, ["id", "1"]], res
 
-  res = lua.run("save",
+  res = lua.run_file("save",
     keys: ["User", "User:1"],
     argv: ["email", "foo@bar.com", "fname", "Jane", "lname", "Doe"])
 
@@ -97,11 +97,11 @@ test "unique constraint during update" do |lua|
 end
 
 test "cleanup of existing indices during update" do |lua|
-  lua.run("save",
+  lua.run_file("save",
     keys: ["User"],
     argv: ["email", "bar@baz.com", "fname", "John", "lname", "Doe"])
 
-  res = lua.run("save",
+  res = lua.run_file("save",
     keys: ["User", "User:1"],
     argv: ["email", "foo@bar.com", "fname", "Jane", "lname", "Smith"])
 
@@ -110,11 +110,11 @@ test "cleanup of existing indices during update" do |lua|
 end
 
 test "cleanup of existing uniques during update" do |lua|
-  lua.run("save",
+  lua.run_file("save",
     keys: ["User"],
     argv: ["email", "bar@baz.com", "fname", "John", "lname", "Doe"])
 
-  res = lua.run("save",
+  res = lua.run_file("save",
     keys: ["User", "User:1"],
     argv: ["email", "foo@bar.com", "fname", "Jane", "lname", "Smith"])
 

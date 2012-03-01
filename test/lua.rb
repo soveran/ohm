@@ -9,14 +9,14 @@ end
 test do |lua|
   lua.redis.set("foo", "baz")
 
-  res = lua.run("getset", keys: ["foo"], argv: ["bar"])
+  res = lua.run_file("getset", keys: ["foo"], argv: ["bar"])
   assert_equal ["baz", "bar"], res
 end
 
 test do
   lua = Ohm::Lua.new(Ohm::ROOT + "/lua", Ohm.redis)
 
-  res = lua.run("save",
+  res = lua.run_file("save",
     keys: ["User"],
     argv: ["fname", "John", "lname", "Doe"])
 
@@ -29,7 +29,7 @@ test do |lua|
   lua.redis.sadd("User:indices", "fname")
   lua.redis.sadd("User:indices", "lname")
 
-  res = lua.run("save-with-indices",
+  res = lua.run_file("save-with-indices",
     keys: ["User:1", "User:all", "User:indices"],
     argv: ["fname", "John", "lname", "Doe"])
 

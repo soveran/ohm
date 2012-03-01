@@ -446,7 +446,7 @@ module Ohm
     end
 
     def save
-      response = model.lua.run("save",
+      response = model.lua.run(Ohm::SAVE,
         keys: [model, (key unless new?)],
         argv: @attributes.flatten)
 
@@ -498,7 +498,7 @@ module Ohm
     end
 
     def delete
-      model.lua.run("delete", keys: [model, key])
+      model.lua.run(Ohm::DELETE, keys: [model, key])
     end
 
   protected
@@ -509,27 +509,33 @@ module Ohm
     attr :dir
     attr :redis
     attr :cache
+    attr :scripts
 
     def initialize(dir, redis)
       @dir = dir
       @redis = redis
       @cache = Hash.new { |h, cmd| h[cmd] = read(cmd) }
+      @scripts = {}
     end
 
-    def run(command, options)
+    def run_file(file, options)
+      run(cache[file], options)
+    end
+
+    def run(script, options)
       keys = options[:keys]
       argv = options[:argv]
 
       begin
-        redis.evalsha(sha(command), keys.size, *keys, *argv)
+        redis.evalsha(sha(script), keys.size, *keys, *argv)
       rescue RuntimeError
-        redis.eval(cache[command], keys.size, *keys, *argv)
+        redis.eval(script, keys.size, *keys, *argv)
       end
     end
 
   private
-    def read(name)
-      minify(File.read("%s/%s.lua" % [dir, name]))
+    def read(file)
+      minify(File.read("%s/%s.lua" % [dir, file]))
     end
 
     def minify(code)
@@ -539,8 +545,232 @@ module Ohm
         gsub(/^\s+/, "")       # Remove leading spaces
     end
 
-    def sha(command)
-      Digest::SHA1.hexdigest(cache[command])
+    def sha(script)
+      Digest::SHA1.hexdigest(script)
     end
   end
+
+  SAVE = (<<-EOT).gsub(/^ {4}/, "")
+    local namespace  = KEYS[1]
+    local key        = KEYS[2]
+    local attributes = ARGV
+    local id
+    if key and key ~= "" then
+    id = string.match(key, "(%w+)$")
+    end
+    local model = {
+    id      = namespace .. ":id",
+    all     = namespace .. ":all",
+    uniques = namespace .. ":uniques",
+    indices = namespace .. ":indices"
+    }
+    local meta = {
+    uniques  = redis.call("SMEMBERS", model.uniques),
+    indices  = redis.call("SMEMBERS", model.indices),
+    }
+    local function dict(list)
+    local ret = {}
+    for i = 1, #list, 2 do
+    ret[list[i]] = list[i + 1]
+    end
+    return ret
+    end
+    local function list(table)
+    local atts = {}
+    for k, v in pairs(table) do
+    atts[#atts + 1] = k
+    atts[#atts + 1] = v
+    end
+    return atts
+    end
+    function skip_empty(table)
+    local ret = {}
+    for k, v in pairs(table) do
+    if v and v ~= "" then
+    ret[k] = v
+    end
+    end
+    return ret
+    end
+    local function str(val)
+    if val == nil then
+    return ""
+    else
+    return tostring(val)
+    end
+    end
+    local function detect_duplicate(table, id)
+    for _, att in ipairs(meta.uniques) do
+    local key = model.uniques .. ":" .. att
+    local exists = redis.call("HEXISTS", key, table[att])
+    if tonumber(exists) == 1 then
+    local val = redis.call("HGET", key, table[att])
+    if val ~= tostring(id) then return att end
+    end
+    end
+    end
+    local function save_uniques(table, id)
+    for _, att in ipairs(meta.uniques) do
+    local key = model.uniques .. ":" .. att
+    redis.call("HSET", key, table[att], id)
+    end
+    end
+    local function delete_uniques(hash, id)
+    for _, att in ipairs(meta.uniques) do
+    local key = model.uniques .. ":" .. att
+    local val = redis.call("HGET", hash, att)
+    redis.call("HDEL", key, val, id)
+    end
+    end
+    local function save_indices(table, id)
+    for _, att in ipairs(meta.indices) do
+    local key = model.indices .. ":" .. att .. ":" .. str(table[att])
+    redis.call("SADD", key, id)
+    end
+    end
+    local function delete_indices(hash, id)
+    for _, att in ipairs(meta.indices) do
+    local val = redis.call("HGET", hash, att)
+    if val then
+    local key  = model.indices .. ":" .. att .. ":" .. val
+    redis.call("SREM", key, id)
+    end
+    end
+    end
+    local function save(hash, key)
+    local atts = list(hash)
+    if #atts > 0 then
+    redis.call("DEL", key)
+    redis.call("HMSET", key, unpack(atts))
+    end
+    end
+    local this = skip_empty(dict(attributes))
+    local duplicate = detect_duplicate(this, id)
+    if duplicate then
+    return { 500, { duplicate, "not_unique" }}
+    end
+    if not id then
+    id = tostring(redis.call("INCR", model.id))
+    key = namespace .. ":" .. id
+    end
+    redis.call("SADD", model.all, id)
+    delete_uniques(key, id)
+    delete_indices(key, id)
+    save(this, key)
+    save_uniques(this, id)
+    save_indices(this, id)
+    return { 200, { "id", id }}
+  EOT
+
+  DELETE = (<<-EOT).gsub(/^ {4}/, "")
+    local namespace  = KEYS[1]
+    local key        = KEYS[2]
+    local attributes = ARGV
+    local id
+    if key and key ~= "" then
+    id = string.match(key, "(%w+)$")
+    end
+    local model = {
+    id      = namespace .. ":id",
+    all     = namespace .. ":all",
+    uniques = namespace .. ":uniques",
+    indices = namespace .. ":indices"
+    }
+    local meta = {
+    uniques  = redis.call("SMEMBERS", model.uniques),
+    indices  = redis.call("SMEMBERS", model.indices),
+    }
+    local function dict(list)
+    local ret = {}
+    for i = 1, #list, 2 do
+    ret[list[i]] = list[i + 1]
+    end
+    return ret
+    end
+    local function list(table)
+    local atts = {}
+    for k, v in pairs(table) do
+    atts[#atts + 1] = k
+    atts[#atts + 1] = v
+    end
+    return atts
+    end
+    function skip_empty(table)
+    local ret = {}
+    for k, v in pairs(table) do
+    if v and v ~= "" then
+    ret[k] = v
+    end
+    end
+    return ret
+    end
+    local function str(val)
+    if val == nil then
+    return ""
+    else
+    return tostring(val)
+    end
+    end
+    local function detect_duplicate(table, id)
+    for _, att in ipairs(meta.uniques) do
+    local key = model.uniques .. ":" .. att
+    local exists = redis.call("HEXISTS", key, table[att])
+    if tonumber(exists) == 1 then
+    local val = redis.call("HGET", key, table[att])
+    if val ~= tostring(id) then return att end
+    end
+    end
+    end
+    local function save_uniques(table, id)
+    for _, att in ipairs(meta.uniques) do
+    local key = model.uniques .. ":" .. att
+    redis.call("HSET", key, table[att], id)
+    end
+    end
+    local function delete_uniques(hash, id)
+    for _, att in ipairs(meta.uniques) do
+    local key = model.uniques .. ":" .. att
+    local val = redis.call("HGET", hash, att)
+    redis.call("HDEL", key, val, id)
+    end
+    end
+    local function save_indices(table, id)
+    for _, att in ipairs(meta.indices) do
+    local key = model.indices .. ":" .. att .. ":" .. str(table[att])
+    redis.call("SADD", key, id)
+    end
+    end
+    local function delete_indices(hash, id)
+    for _, att in ipairs(meta.indices) do
+    local val = redis.call("HGET", hash, att)
+    if val then
+    local key  = model.indices .. ":" .. att .. ":" .. val
+    redis.call("SREM", key, id)
+    end
+    end
+    end
+    local function save(hash, key)
+    local atts = list(hash)
+    if #atts > 0 then
+    redis.call("DEL", key)
+    redis.call("HMSET", key, unpack(atts))
+    end
+    end
+    local this = skip_empty(dict(attributes))
+    local duplicate = detect_duplicate(this, id)
+    if duplicate then
+    return { 500, { duplicate, "not_unique" }}
+    end
+    if not id then
+    id = tostring(redis.call("INCR", model.id))
+    key = namespace .. ":" .. id
+    end
+    redis.call("SADD", model.all, id)
+    delete_uniques(key, id)
+    delete_indices(key, id)
+    save(this, key)
+    save_uniques(this, id)
+    save_indices(this, id)
+    return { 200, { "id", id }}
+  EOT
 end
