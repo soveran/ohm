@@ -331,6 +331,48 @@ module Ohm
       end
     end
 
+    def self.to_reference
+      name.to_s.
+        match(/^(?:.*::)*(.*)$/)[1].
+        gsub(/([a-z\d])([A-Z])/, '\1_\2').
+        downcase.to_sym
+    end
+
+    def self.collection(name, model, reference = to_reference)
+      define_method name do
+        model = Utils.const(self.class, model)
+        model.find(:"#{reference}_id" => id)
+      end
+    end
+
+    def self.reference(name, model)
+      reader = :"#{name}_id"
+      writer = :"#{name}_id="
+
+      index reader
+
+      define_method(reader) do
+        @attributes[reader]
+      end
+
+      define_method(writer) do |value|
+        @_memo.delete(name)
+        @attributes[reader] = value
+      end
+
+      define_method(:"#{name}=") do |value|
+        @_memo.delete(name)
+        send(writer, value ? value.id : nil)
+      end
+
+      define_method(name) do
+        @_memo[name] ||= begin
+          model = Utils.const(self.class, model)
+          model[send(reader)]
+        end
+      end
+    end
+
     def self.attribute(name, cast = nil)
       if cast
         define_method(name) do
@@ -379,6 +421,7 @@ module Ohm
 
     def initialize(atts = {})
       @attributes = {}
+      @_memo = {}
       update_attributes(atts)
     end
 
