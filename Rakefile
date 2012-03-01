@@ -89,3 +89,22 @@ namespace :examples do
     Cutest.run(Dir["examples/*.rb"])
   end
 end
+
+task :paste_lua_inline do
+  def wrap(const, data)
+    ret = "#{const} = (<<-EOT).gsub(/^ {4}/, "")\n"
+    ret << data.gsub(/^/, "    ")
+    ret << "  EOT\n"
+  end
+
+  save = File.read("./lua/save.lua")
+  del  = File.read("./lua/delete.lua")
+  # save = "foo"
+  # del  = "bar"
+
+  ohm = File.read("./lib/ohm.rb", encoding: "utf-8")
+  ohm.gsub!(/SAVE =(.*?)$(.*?)EOT/m, wrap("SAVE", save))
+  ohm.gsub!(/DELETE =(.*?)$(.*?)EOT/m, wrap("DELETE", del))
+
+  puts ohm
+end
