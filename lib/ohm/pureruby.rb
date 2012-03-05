@@ -50,6 +50,7 @@ module Ohm
 
         transaction do |t|
           t.watch(*_unique_keys)
+          t.watch(key) if not new?
 
           t.before do
             _initialize_id if new?
