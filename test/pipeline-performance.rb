@@ -1,4 +1,4 @@
-require File.expand_path("../lib/ohm", File.dirname(__FILE__))
+require_relative "helper"
 
 Ohm.flush
 
