@@ -10,7 +10,7 @@ module Ohm
   #
   #   redis = Ohm.redis
   #
-  #   t1 = Ohm::Transaction.define do |t|
+  #   t1 = Ohm::Transaction.new do |t|
   #     s = nil
   #
   #     t.watch("foo")
@@ -24,7 +24,7 @@ module Ohm
   #     end
   #   end
   #
-  #   t2 = Ohm::Transaction.define do |t|
+  #   t2 = Ohm::Transaction.new do |t|
   #     t.watch("foo")
   #
   #     t.write do
@@ -68,17 +68,10 @@ module Ohm
 
     attr :phase
 
-    def self.define(&block)
-      new.tap(&block)
-    end
-
-    def initialize(*transactions)
+    def initialize
       @phase = Hash.new { |h, k| h[k] = ::Set.new }
-      @store = Store.new
 
-      transactions.each do |t|
-        append(t)
-      end
+      yield self if block_given?
     end
 
     def append(t)
@@ -110,25 +103,27 @@ module Ohm
     end
 
     def commit(db)
-      run(phase[:before])
+      phase[:before].each(&:call)
 
       loop do
+        store = Store.new
+
         if phase[:watch].any?
           db.watch(*phase[:watch])
         end
 
-        run(phase[:read])
+        run(phase[:read], store)
 
         break if db.multi do
-          run(phase[:write])
+          run(phase[:write], store)
         end
       end
 
-      run(phase[:after])
+      phase[:after].each(&:call)
     end
 
-    def run(procs)
-      procs.each { |p| p.call(@store) }
+    def run(procs, store)
+      procs.each { |p| p.call(store) }
     end
   end
 end

@@ -30,8 +30,8 @@ test "basic functionality" do |db|
   assert_equal "2", db.get("foo")
 end
 
-test "define returns a transaction" do |db|
-  t1 = Ohm::Transaction.define do |t|
+test "new returns a transaction" do |db|
+  t1 = Ohm::Transaction.new do |t|
     t.write do
       db.set("foo", "bar")
     end
@@ -43,7 +43,7 @@ test "define returns a transaction" do |db|
 end
 
 test "transaction local storage" do |db|
-  t1 = Ohm::Transaction.define do |t|
+  t1 = Ohm::Transaction.new do |t|
     t.read do |s|
       s.foo = db.type("foo")
     end
@@ -59,7 +59,7 @@ test "transaction local storage" do |db|
 end
 
 test "composed transaction" do |db|
-  t1 = Ohm::Transaction.define do |t|
+  t1 = Ohm::Transaction.new do |t|
     t.watch("foo")
 
     t.write do |s|
@@ -67,7 +67,7 @@ test "composed transaction" do |db|
     end
   end
 
-  t2 = Ohm::Transaction.define do |t|
+  t2 = Ohm::Transaction.new do |t|
     t.watch("foo")
 
     t.write do |s|
@@ -75,17 +75,22 @@ test "composed transaction" do |db|
     end
   end
 
-  t3 = Ohm::Transaction.new(t1, t2)
+  t3 = Ohm::Transaction.new
+  t3.append(t1)
+  t3.append(t2)
   t3.commit(db)
 
   assert_equal "baz", db.get("foo")
 
-  t4 = Ohm::Transaction.new(t2, t1)
+  t4 = Ohm::Transaction.new
+  t4.append(t2)
+  t4.append(t1)
   t4.commit(db)
 
   assert_equal "bar", db.get("foo")
 
-  t5 = Ohm::Transaction.new(t4)
+  t5 = Ohm::Transaction.new
+  t5.append(t4)
   t5.commit(db)
 
   assert_equal "bar", db.get("foo")
@@ -95,13 +100,13 @@ test "composed transaction" do |db|
 end
 
 test "composing transactions with append" do |db|
-  t1 = Ohm::Transaction.define do |t|
+  t1 = Ohm::Transaction.new do |t|
     t.write do
       db.set("foo", "bar")
     end
   end
 
-  t2 = Ohm::Transaction.define do |t|
+  t2 = Ohm::Transaction.new do |t|
     t.write do
       db.set("foo", "baz")
     end
@@ -119,13 +124,13 @@ test "composing transactions with append" do |db|
 end
 
 test "appending or prepending is determined by when append is called" do |db|
-  t1 = Ohm::Transaction.define do |t|
+  t1 = Ohm::Transaction.new do |t|
     t.write do
       db.set("foo", "bar")
     end
   end
 
-  t2 = Ohm::Transaction.define do |t|
+  t2 = Ohm::Transaction.new do |t|
     t.append(t1)
 
     t.write do
@@ -133,7 +138,7 @@ test "appending or prepending is determined by when append is called" do |db|
     end
   end
 
-  t3 = Ohm::Transaction.define do |t|
+  t3 = Ohm::Transaction.new do |t|
     t.write do
       db.set("foo", "baz")
     end
@@ -151,13 +156,13 @@ test "appending or prepending is determined by when append is called" do |db|
 end
 
 test "storage in composed transactions" do |db|
-  t1 = Ohm::Transaction.define do |t|
+  t1 = Ohm::Transaction.new do |t|
     t.read do |s|
       s.foo = db.type("foo")
     end
   end
 
-  t2 = Ohm::Transaction.define do |t|
+  t2 = Ohm::Transaction.new do |t|
     t.write do |s|
       db.set("foo", s.foo.reverse)
     end
@@ -169,13 +174,13 @@ test "storage in composed transactions" do |db|
 end
 
 test "storage entries can't be overriden" do |db|
-  t1 = Ohm::Transaction.define do |t|
+  t1 = Ohm::Transaction.new do |t|
     t.read do |s|
       s.foo = db.type("foo")
     end
   end
 
-  t2 = Ohm::Transaction.define do |t|
+  t2 = Ohm::Transaction.new do |t|
     t.read do |s|
       s.foo = db.exists("foo")
     end
