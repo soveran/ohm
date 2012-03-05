@@ -541,8 +541,6 @@ module Ohm
           key.sdiffstore(key, member.key)
         else
           key.srem(member.id)
-        else
-          key.sdiffstore(key, member.key)
         end
         self
       end
