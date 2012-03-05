@@ -62,7 +62,7 @@ module Ohm
     redis.flushdb
   end
 
-  module CollectionConcerns
+  module AbstractCollection
     include Enumerable
 
     def all
@@ -97,7 +97,7 @@ module Ohm
   end
 
   class Collection < Struct.new(:key, :namespace, :model)
-    include CollectionConcerns
+    include AbstractCollection
 
     def sort(options = {})
       if options.has_key?(:get)
@@ -141,7 +141,7 @@ module Ohm
   end
 
   class MultiSet < Struct.new(:keys, :namespace, :model)
-    include CollectionConcerns
+    include AbstractCollection
 
     def include?(model)
       execute { |key| key.sismember(model.id) }
