@@ -505,14 +505,19 @@ module Ohm
         model[id] if key.sismember(id)
       end
 
-      # Adds a model to this set.
+      # Adds a model or a set of models to this set.
       #
-      # @param [#id] model Typically an instance of an {Ohm::Model} subclass.
+      # @param [#id] model Typically an instance of an {Ohm::Model} subclass of this set,
+      #        or a set of models
       #
       # @see http://code.google.com/p/redis/wiki/SaddCommand SADD in Redis
       #      Command Reference.
       def <<(model)
-        key.sadd(model.id)
+        if model.class <= self.model
+          key.sadd(model.id)
+        else
+          key.sunionstore(key, model.key)
+        end
         self
       end
       alias add <<
@@ -528,11 +533,16 @@ module Ohm
 
       # Thin Ruby interface wrapper for *SREM*.
       #
-      # @param [#id] member a member of this set.
+      # @param [#id] member a member of this set, or a set of members to be deleted from this set.
       # @see http://code.google.com/p/redis/wiki/SremCommand SREM in Redis
       #      Command Reference.
       def delete(member)
-        key.srem(member.id)
+        if member.class <= self.model
+          key.srem(member.id)
+        else
+          key.sdiffstore(key, member.key)
+        end
+        self
       end
 
       # Array representation of this set.
