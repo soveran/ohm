@@ -14,7 +14,7 @@ test do |lua|
 end
 
 test do
-  lua = Ohm::Lua.new(Ohm::ROOT + "/lua", Ohm.redis)
+  lua = Ohm::Lua.new("./lua", Ohm.redis)
 
   res = lua.run_file("save",
     keys: ["User"],

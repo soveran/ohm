@@ -10,8 +10,6 @@ module Ohm
   class MissingID < Error; end
   class UniqueIndexViolation < Error; end
 
-  ROOT = File.expand_path("../", File.dirname(__FILE__))
-
   module Utils
     def self.const(context, name)
       case name
@@ -262,7 +260,7 @@ module Ohm
     end
 
     def self.lua
-      @lua ||= Lua.new(File.join(Ohm::ROOT, "lua"), db)
+      @lua ||= Lua.new(File.join(Dir.pwd, "lua"), db)
     end
 
     def self.key
