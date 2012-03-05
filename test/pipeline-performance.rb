@@ -60,6 +60,6 @@ t2 = Benchmark.realtime do
   end
 end
 
-test "the pipelined approach should be 2.5 times faster for 100 records" do
-  assert(t2 / t1 >= 2.5)
+test "the pipelined approach should be 2 times faster for 100 records" do
+  assert(t2 / t1 >= 2)
 end
