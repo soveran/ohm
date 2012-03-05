@@ -8,7 +8,6 @@ require "securerandom"
 module Ohm
   class Error < StandardError; end
   class MissingID < Error; end
-  class IndexNotFound < Error; end
   class UniqueIndexViolation < Error; end
 
   ROOT = File.expand_path("../", File.dirname(__FILE__))
