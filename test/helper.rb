@@ -18,7 +18,11 @@ end
 
 $VERBOSE = true
 
-require "ohm"
+if ENV["SCRIPTED"]
+  require "ohm/scripted"
+else
+  require "ohm"
+end
 
 prepare do
   Ohm.flush
