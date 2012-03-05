@@ -523,25 +523,16 @@ module Ohm
       keys = options[:keys]
       argv = options[:argv]
 
-      minified = minify(script)
-
       begin
-        redis.evalsha(sha(minified), keys.size, *keys, *argv)
+        redis.evalsha(sha(script), keys.size, *keys, *argv)
       rescue RuntimeError
-        redis.eval(minified, keys.size, *keys, *argv)
+        redis.eval(script, keys.size, *keys, *argv)
       end
     end
 
   private
     def read(file)
       File.read("%s/%s.lua" % [dir, file])
-    end
-
-    def minify(code)
-      code.
-        gsub(/^\s*--.*$/, ""). # Remove comments
-        gsub(/^\s+$/, "").     # Remove empty lines
-        gsub(/^\s+/, "")       # Remove leading spaces
     end
 
     def sha(script)
