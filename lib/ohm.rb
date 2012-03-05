@@ -1320,6 +1320,7 @@ module Ohm
       define_method(name) {
         model.unwrap.find(:"#{reference}_id" => send(:id))
       }
+      collections(self) << name unless collections.include?(name)
     end
 
     # Used by {Ohm::Model.collection} to infer the reference.
