@@ -513,10 +513,10 @@ module Ohm
       # @see http://code.google.com/p/redis/wiki/SaddCommand SADD in Redis
       #      Command Reference.
       def <<(model)
-        if model.class <= self.model
-          key.sadd(model.id)
-        else
+        if model.class <= self.class
           key.sunionstore(key, model.key)
+        else
+          key.sadd(model.id)
         end
         self
       end
@@ -537,7 +537,9 @@ module Ohm
       # @see http://code.google.com/p/redis/wiki/SremCommand SREM in Redis
       #      Command Reference.
       def delete(member)
-        if member.class <= self.model
+        if member.class <= self.class
+          key.sdiffstore(key, member.key)
+        else
           key.srem(member.id)
         else
           key.sdiffstore(key, member.key)
