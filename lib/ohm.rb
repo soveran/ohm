@@ -4,6 +4,7 @@ require "digest/sha1"
 require "nest"
 require "redis"
 require "securerandom"
+require "scrivener"
 
 module Ohm
   class Error < StandardError; end
@@ -245,6 +246,8 @@ module Ohm
   end
 
   class Model
+    include Scrivener::Validations
+
     def self.conn
       @conn ||= Connection.new(name)
     end
@@ -443,6 +446,8 @@ module Ohm
     end
 
     def save
+      return if not valid?
+
       response = model.lua.run(Ohm::SAVE,
         keys: [model, (key unless new?)],
         argv: @attributes.flatten)
