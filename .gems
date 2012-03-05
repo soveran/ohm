@@ -1,2 +1,3 @@
 nest -v 1.1.0
 redis -v 2.2.2
+scrivener -v 0.0.3
