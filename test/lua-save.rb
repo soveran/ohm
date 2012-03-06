@@ -4,121 +4,128 @@ def redis
   Ohm.redis
 end
 
-setup do
+begin
   Ohm.redis.script("flush")
+rescue RuntimeError
+  # We're running on Redis < 2.6, so we
+  # skip all the test.
+else
+  setup do
+    Ohm.redis.script("flush")
 
-  redis.sadd("User:uniques", "email")
-  redis.sadd("User:indices", "fname")
-  redis.sadd("User:indices", "lname")
-  redis.hset("User:uniques:email", "foo@bar.com", 1)
+    redis.sadd("User:uniques", "email")
+    redis.sadd("User:indices", "fname")
+    redis.sadd("User:indices", "lname")
+    redis.hset("User:uniques:email", "foo@bar.com", 1)
 
-  Ohm::Lua.new("./test/lua", redis)
-end
+    Ohm::Lua.new("./test/lua", redis)
+  end
 
-test "empty email doesn't choke" do |lua|
-  res = lua.run_file("save",
-    keys: ["User"],
-    argv: ["email", nil])
+  test "empty email doesn't choke" do |lua|
+    res = lua.run_file("save",
+      keys: ["User"],
+      argv: ["email", nil])
 
-  assert_equal [200, ["id", "1"]], res
-  assert_equal "1", redis.hget("User:uniques:email", nil)
-end
+    assert_equal [200, ["id", "1"]], res
+    assert_equal "1", redis.hget("User:uniques:email", nil)
+  end
 
-test "empty fname / lname doesn't choke" do |lua|
-  res = lua.run_file("save",
-    keys: ["User"],
-    argv: ["email", nil, "fname", nil, "lname", nil])
+  test "empty fname / lname doesn't choke" do |lua|
+    res = lua.run_file("save",
+      keys: ["User"],
+      argv: ["email", nil, "fname", nil, "lname", nil])
 
-  assert_equal [200, ["id", "1"]], res
-  assert redis.sismember("User:indices:fname:", 1)
-  assert redis.sismember("User:indices:lname:", 1)
-end
+    assert_equal [200, ["id", "1"]], res
+    assert redis.sismember("User:indices:fname:", 1)
+    assert redis.sismember("User:indices:lname:", 1)
+  end
 
-test "returns the unique constraint error" do |lua|
-  res = lua.run_file("save",
-    keys: ["User"],
-    argv: ["email", "foo@bar.com"])
+  test "returns the unique constraint error" do |lua|
+    res = lua.run_file("save",
+      keys: ["User"],
+      argv: ["email", "foo@bar.com"])
 
-  assert_equal [500, ["email", "not_unique"]], res
-end
+    assert_equal [500, ["email", "not_unique"]], res
+  end
 
-test "persists the unique entry properly" do |lua|
-  lua.run_file("save",
-    keys: ["User"],
-    argv: ["email", "bar@baz.com"])
+  test "persists the unique entry properly" do |lua|
+    lua.run_file("save",
+      keys: ["User"],
+      argv: ["email", "bar@baz.com"])
 
-  assert_equal "1", redis.hget("User:uniques:email", "bar@baz.com")
-end
+    assert_equal "1", redis.hget("User:uniques:email", "bar@baz.com")
+  end
 
-test "adds the entry to User:all" do |lua|
-  lua.run_file("save",
-    keys: ["User"],
-    argv: ["email", "bar@baz.com"])
+  test "adds the entry to User:all" do |lua|
+    lua.run_file("save",
+      keys: ["User"],
+      argv: ["email", "bar@baz.com"])
 
-  assert_equal 1, redis.scard("User:all")
-end
+    assert_equal 1, redis.scard("User:all")
+  end
 
 
-test "saves the attributes" do |lua|
-  lua.run_file("save",
-    keys: ["User"],
-    argv: ["email", "bar@baz.com", "fname", "John", "lname", "Doe"])
+  test "saves the attributes" do |lua|
+    lua.run_file("save",
+      keys: ["User"],
+      argv: ["email", "bar@baz.com", "fname", "John", "lname", "Doe"])
 
-  assert_equal "bar@baz.com", redis.hget("User:1", "email")
-  assert_equal "John", redis.hget("User:1", "fname")
-  assert_equal "Doe", redis.hget("User:1", "lname")
-end
+    assert_equal "bar@baz.com", redis.hget("User:1", "email")
+    assert_equal "John", redis.hget("User:1", "fname")
+    assert_equal "Doe", redis.hget("User:1", "lname")
+  end
 
-test "indexes fname / lname" do |lua|
-  lua.run_file("save",
-    keys: ["User"],
-    argv: ["email", "bar@baz.com", "fname", "John", "lname", "Doe"])
+  test "indexes fname / lname" do |lua|
+    lua.run_file("save",
+      keys: ["User"],
+      argv: ["email", "bar@baz.com", "fname", "John", "lname", "Doe"])
 
-  assert redis.sismember("User:indices:fname:John", 1)
-  assert redis.sismember("User:indices:lname:Doe", 1)
-end
+    assert redis.sismember("User:indices:fname:John", 1)
+    assert redis.sismember("User:indices:lname:Doe", 1)
+  end
 
-test "unique constraint during update" do |lua|
-  lua.run_file("save",
-    keys: ["User"],
-    argv: ["email", "bar@baz.com", "fname", "John", "lname", "Doe"])
+  test "unique constraint during update" do |lua|
+    lua.run_file("save",
+      keys: ["User"],
+      argv: ["email", "bar@baz.com", "fname", "John", "lname", "Doe"])
 
-  res = lua.run_file("save",
-    keys: ["User", "User:1"],
-    argv: ["email", "bar@baz.com", "fname", "John", "lname", "Doe"])
+    res = lua.run_file("save",
+      keys: ["User", "User:1"],
+      argv: ["email", "bar@baz.com", "fname", "John", "lname", "Doe"])
 
-  assert_equal [200, ["id", "1"]], res
+    assert_equal [200, ["id", "1"]], res
 
-  res = lua.run_file("save",
-    keys: ["User", "User:1"],
-    argv: ["email", "foo@bar.com", "fname", "Jane", "lname", "Doe"])
+    res = lua.run_file("save",
+      keys: ["User", "User:1"],
+      argv: ["email", "foo@bar.com", "fname", "Jane", "lname", "Doe"])
 
-  assert_equal [200, ["id", "1"]], res
-end
+    assert_equal [200, ["id", "1"]], res
+  end
 
-test "cleanup of existing indices during update" do |lua|
-  lua.run_file("save",
-    keys: ["User"],
-    argv: ["email", "bar@baz.com", "fname", "John", "lname", "Doe"])
+  test "cleanup of existing indices during update" do |lua|
+    lua.run_file("save",
+      keys: ["User"],
+      argv: ["email", "bar@baz.com", "fname", "John", "lname", "Doe"])
 
-  res = lua.run_file("save",
-    keys: ["User", "User:1"],
-    argv: ["email", "foo@bar.com", "fname", "Jane", "lname", "Smith"])
+    res = lua.run_file("save",
+      keys: ["User", "User:1"],
+      argv: ["email", "foo@bar.com", "fname", "Jane", "lname", "Smith"])
 
-  assert ! redis.sismember("User:indices:fname:John", 1)
-  assert ! redis.sismember("User:indices:fname:Doe", 1)
-end
+    assert ! redis.sismember("User:indices:fname:John", 1)
+    assert ! redis.sismember("User:indices:fname:Doe", 1)
+  end
 
-test "cleanup of existing uniques during update" do |lua|
-  lua.run_file("save",
-    keys: ["User"],
-    argv: ["email", "bar@baz.com", "fname", "John", "lname", "Doe"])
+  test "cleanup of existing uniques during update" do |lua|
+    lua.run_file("save",
+      keys: ["User"],
+      argv: ["email", "bar@baz.com", "fname", "John", "lname", "Doe"])
 
-  res = lua.run_file("save",
-    keys: ["User", "User:1"],
-    argv: ["email", "foo@bar.com", "fname", "Jane", "lname", "Smith"])
+    res = lua.run_file("save",
+      keys: ["User", "User:1"],
+      argv: ["email", "foo@bar.com", "fname", "Jane", "lname", "Smith"])
 
-  assert_equal nil, redis.hget("User:uniques:email", "bar@baz.com")
+    assert_equal nil, redis.hget("User:uniques:email", "bar@baz.com")
+  end
 end
 
 __END__
@@ -183,3 +190,4 @@ end
 #
 ## It's also important to note that with 1K concurrent threads,
 #  postgres throws a Sequel::PoolTimeout
+end
