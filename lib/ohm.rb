@@ -20,7 +20,7 @@ module Ohm
     end
 
     def self.symbols(list)
-      list.map { |e| e.to_sym }
+      list.map(&:to_sym)
     end
   end
 
