@@ -63,7 +63,7 @@ module Ohm
     redis.flushdb
   end
 
-  module AbstractCollection
+  module Collection
     include Enumerable
 
     def all
@@ -83,66 +83,14 @@ module Ohm
       sort(options.merge(by: namespace["*->%s" % att]))
     end
 
-  private
-    def fetch(ids)
-      arr = model.db.pipelined do
-        ids.each { |id| namespace[id].hgetall }
-      end
-
-      return [] if arr.nil?
-
-      arr.map.with_index do |atts, idx|
-        model.new(Hash[*atts].update(id: ids[idx]))
-      end
-    end
-  end
-
-  class Collection < Struct.new(:key, :namespace, :model)
-    include AbstractCollection
-
     def sort(options = {})
       if options.has_key?(:get)
         options[:get] = namespace["*->%s" % options[:get]]
-        return key.sort(options)
+        return execute { |key| key.sort(options) }
       end
 
-      fetch(key.sort(options))
+      fetch(execute { |key| key.sort(options) })
     end
-  end
-
-  class List < Collection
-    def ids
-      key.lrange(0, -1)
-    end
-
-    def size
-      key.llen
-    end
-
-    def first
-      model[key.lindex(0)]
-    end
-
-    def last
-      model[key.lindex(-1)]
-    end
-
-    def include?(model)
-      ids.include?(model.id.to_s)
-    end
-
-    def replace(models)
-      ids = models.map { |model| model.id }
-
-      model.db.multi do
-        key.del
-        ids.each { |id| key.rpush(id) }
-      end
-    end
-  end
-
-  module AbstractSet
-    include AbstractCollection
 
     def include?(model)
       execute { |key| key.sismember(model.id) }
@@ -171,22 +119,26 @@ module Ohm
       model[id] if execute { |key| key.sismember(id) }
     end
 
-    def sort(options = {})
-      if options.has_key?(:get)
-        options[:get] = namespace["*->%s" % options[:get]]
-        return execute { |key| key.sort(options) }
-      end
-
-      fetch(execute { |key| key.sort(options) })
-    end
-
     def filters_to_keys(filters)
       filters.map { |k, v| namespace[:indices][k][v] }
     end
+
+  private
+    def fetch(ids)
+      arr = model.db.pipelined do
+        ids.each { |id| namespace[id].hgetall }
+      end
+
+      return [] if arr.nil?
+
+      arr.map.with_index do |atts, idx|
+        model.new(Hash[*atts].update(id: ids[idx]))
+      end
+    end
   end
 
-  class Set < Collection
-    include AbstractSet
+  class Set < Struct.new(:key, :namespace, :model)
+    include Collection
 
     def find(filters)
       keys = filters_to_keys(filters)
@@ -211,7 +163,7 @@ module Ohm
   end
 
   class MultiSet < Struct.new(:keys, :namespace, :model)
-    include AbstractSet
+    include Collection
 
     def find(filters)
       keys = filters_to_keys(filters)
