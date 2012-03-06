@@ -247,6 +247,7 @@ module Ohm
 
   class Model
     include Scrivener::Validations
+
     def self.conn
       @conn ||= Connection.new(name)
     end
@@ -399,7 +400,7 @@ module Ohm
         key[:counters].sadd(name)
       end
     end
-    extend  Macros
+    extend Macros
     include PureRuby if not defined?(Ohm::Model::Scripted)
 
     def self.all
