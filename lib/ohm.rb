@@ -183,6 +183,7 @@ module Ohm
 
   class Model
     include Scrivener::Validations
+    include PureRuby if not defined?(Ohm::Model::Scripted)
 
     def self.conn
       @conn ||= Connection.new(name)
@@ -247,93 +248,104 @@ module Ohm
       end
     end
 
-    module Macros
-      def index(attribute)
-        key[:indices].sadd(attribute)
-      end
+    def self.indices
+      @indices ||= []
+    end
 
-      def unique(attribute)
-        key[:uniques].sadd(attribute)
-      end
+    def self.uniques
+      @uniques ||= []
+    end
 
-      def set(name, model)
-        key[:sets].sadd(name)
+    def self.collections
+      @collections ||= []
+    end
 
-        define_method name do
-          Ohm::Set.new(key[name], model.key, Utils.const(self.class, model))
-        end
-      end
+    def self.index(attribute)
+      indices << attribute unless indices.include?(attribute)
+      key[:indices].sadd(attribute)
+    end
 
-      def to_reference
-        name.to_s.
-          match(/^(?:.*::)*(.*)$/)[1].
-          gsub(/([a-z\d])([A-Z])/, '\1_\2').
-          downcase.to_sym
-      end
+    def self.unique(attribute)
+      uniques << attribute unless uniques.include?(attribute)
+      key[:uniques].sadd(attribute)
+    end
 
-      def collection(name, model, reference = to_reference)
-        define_method name do
-          model = Utils.const(self.class, model)
-          model.find(:"#{reference}_id" => id)
-        end
-      end
+    def self.set(name, model)
+      collections << name unless collections.include?(name)
+      key[:sets].sadd(name)
 
-      def reference(name, model)
-        reader = :"#{name}_id"
-        writer = :"#{name}_id="
-
-        index reader
-
-        define_method(reader) do
-          @attributes[reader]
-        end
-
-        define_method(writer) do |value|
-          @_memo.delete(name)
-          @attributes[reader] = value
-        end
-
-        define_method(:"#{name}=") do |value|
-          @_memo.delete(name)
-          send(writer, value ? value.id : nil)
-        end
-
-        define_method(name) do
-          @_memo[name] ||= begin
-            model = Utils.const(self.class, model)
-            model[send(reader)]
-          end
-        end
-      end
-
-      def attribute(name, cast = nil)
-        if cast
-          define_method(name) do
-            cast[@attributes[name]]
-          end
-        else
-          define_method(name) do
-            @attributes[name]
-          end
-        end
-
-        define_method(:"#{name}=") do |value|
-          @attributes[name] = value
-        end
-      end
-
-      def counter(name)
-        define_method(name) do
-          return 0 if new?
-
-          key[:counters].hget(name).to_i
-        end
-
-        key[:counters].sadd(name)
+      define_method name do
+        Ohm::Set.new(key[name], model.key, Utils.const(self.class, model))
       end
     end
-    extend Macros
-    include PureRuby if not defined?(Ohm::Model::Scripted)
+
+    def self.to_reference
+      name.to_s.
+        match(/^(?:.*::)*(.*)$/)[1].
+        gsub(/([a-z\d])([A-Z])/, '\1_\2').
+        downcase.to_sym
+    end
+
+    def self.collection(name, model, reference = to_reference)
+      define_method name do
+        model = Utils.const(self.class, model)
+        model.find(:"#{reference}_id" => id)
+      end
+    end
+
+    def self.reference(name, model)
+      reader = :"#{name}_id"
+      writer = :"#{name}_id="
+
+      index reader
+
+      define_method(reader) do
+        @attributes[reader]
+      end
+
+      define_method(writer) do |value|
+        @_memo.delete(name)
+        @attributes[reader] = value
+      end
+
+      define_method(:"#{name}=") do |value|
+        @_memo.delete(name)
+        send(writer, value ? value.id : nil)
+      end
+
+      define_method(name) do
+        @_memo[name] ||= begin
+          model = Utils.const(self.class, model)
+          model[send(reader)]
+        end
+      end
+    end
+
+    def self.attribute(name, cast = nil)
+      if cast
+        define_method(name) do
+          cast[@attributes[name]]
+        end
+      else
+        define_method(name) do
+          @attributes[name]
+        end
+      end
+
+      define_method(:"#{name}=") do |value|
+        @attributes[name] = value
+      end
+    end
+
+    def self.counter(name)
+      define_method(name) do
+        return 0 if new?
+
+        key[:counters].hget(name).to_i
+      end
+
+      key[:counters].sadd(name)
+    end
 
     def self.all
       Set.new(key[:all], key, self)

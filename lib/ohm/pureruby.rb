@@ -3,39 +3,6 @@ require "ohm/transaction"
 module Ohm
   class Model
     module PureRuby
-      def self.included(model)
-        model.extend ClassMethods
-      end
-
-      module ClassMethods
-        def uniques
-          @uniques ||= []
-        end
-
-        def unique(att)
-          super
-          uniques << att unless uniques.include?(att)
-        end
-
-        def indices
-          @indices ||= []
-        end
-
-        def index(att)
-          super
-          indices << att unless indices.include?(att)
-        end
-
-        def collections
-          @collections ||= []
-        end
-
-        def set(name, model)
-          super
-          collections << name unless collections.include?(name)
-        end
-      end
-
       def _initialize_id
         @id = model.new_id.to_s
       end
