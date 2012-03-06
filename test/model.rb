@@ -6,7 +6,7 @@ require "ostruct"
 
 class Post < Ohm::Model
   attribute :body
-  list :related, Post
+  set :related, Post
 end
 
 class User < Ohm::Model
@@ -105,16 +105,6 @@ test "not raise if a counter is redefined" do
   end
 end
 
-test "not raise if a list is redefined" do
-  class RedefinedModel < Ohm::Model
-    list :todo, lambda { }
-
-    silence_warnings do
-      list :todo, lambda { }
-    end
-  end
-end
-
 test "not raise if a set is redefined" do
   class RedefinedModel < Ohm::Model
     set :friends, lambda { }
@@ -127,7 +117,7 @@ end
 
 test "not raise if a collection is redefined" do
   class RedefinedModel < Ohm::Model
-    list :toys, lambda { }
+    set :toys, lambda { }
 
     silence_warnings do
       set :toys, lambda { }
@@ -257,7 +247,7 @@ test "delete an existing model" do
   class ModelToBeDeleted < Ohm::Model
     attribute :name
     set :foos, Post
-    list :bars, Post
+    set :bars, Post
   end
 
   @model = ModelToBeDeleted.create(:name => "Lorem")
@@ -441,164 +431,6 @@ test "replace the values in the set" do
   assert [@person2, @person3] == @event.attendees.all.sort_by(&:id)
 end
 
-# Attributes of type List
-setup do
-  @post = Post.new
-  @post.body = "Hello world!"
-  @post.save
-end
-
-test "return an array" do
-  assert @post.related.all.kind_of?(Array)
-end
-
-test "return first/last element with #first/#last" do
-  p1 = Post.create
-  p2 = Post.create
-
-  @post.related.key.rpush(p1.id)
-  @post.related.key.rpush(p2.id)
-
-  assert_equal p1, @post.related.first
-  assert_equal p2, @post.related.last
-end
-
-test "append elements with push" do
-  @post.related.key.rpush(Post.create.id)
-  @post.related.key.rpush(Post.create.id)
-
-  assert ["2", "3"] == @post.related.all.map { |model| model.id }
-end
-
-test "keep the inserting order" do
-  @post.related.key.rpush(Post.create.id)
-  @post.related.key.rpush(Post.create.id)
-  @post.related.key.rpush(Post.create.id)
-
-  assert ["2", "3", "4"] == @post.related.all.map { |model| model.id }
-end
-
-test "keep the inserting order after saving" do
-  @post.related.key.rpush(Post.create.id)
-  @post.related.key.rpush(Post.create.id)
-  @post.related.key.rpush(Post.create.id)
-  @post.save
-
-  assert ["2", "3", "4"] == Post[@post.id].related.map { |model| model.id }
-end
-
-test "respond to each" do
-  @post.related.key.rpush(Post.create.id)
-  @post.related.key.rpush(Post.create.id)
-  @post.related.key.rpush(Post.create.id)
-
-  i = 2
-
-  @post.related.each do |c|
-    assert i == c.id.to_i
-    i += 1
-  end
-end
-
-test "return the size of the list" do
-  @post.related.key.rpush(Post.create.id)
-  @post.related.key.rpush(Post.create.id)
-  @post.related.key.rpush(Post.create.id)
-
-  assert 3 == @post.related.size
-end
-
-test "return the last element with pop" do
-  @post.related.key.rpush(Post.create.id)
-  @post.related.key.rpush(Post.create.id)
-
-  assert "3" == @post.related.key.rpop
-  assert "2" == @post.related.key.rpop
-
-  assert @post.related.empty?
-end
-
-test "return the first element with shift" do
-  @post.related.key.rpush(Post.create.id)
-  @post.related.key.rpush(Post.create.id)
-
-  assert "2" == @post.related.key.lpop
-  assert "3" == @post.related.key.lpop
-
-  assert @post.related.empty?
-end
-
-test "push to the head of the list with unshift" do
-  @post.related.key.lpush(Post.create.id)
-  @post.related.key.lpush(Post.create.id)
-
-  assert "2" == @post.related.key.rpop
-  assert "3" == @post.related.key.rpop
-
-  assert @post.related.empty?
-end
-
-test "remove an object from the list" do
-  post = Post.create
-
-  @post.related.key.lpush(post.id)
-  @post.related.key.lpush(Post.create.id)
-
-  @post.related.key.lrem(0, post.id)
-
-  assert !@post.related.include?(post)
-end
-
-test "empty the list" do
-  @post.related.key.lpush(Post.create.id)
-  @post.related.key.del
-
-  assert @post.related.empty?
-end
-
-test "replace the values in the list" do
-  @post.related.replace([Post.create, Post.create])
-
-  assert ["2", "3"] == @post.related.map { |model| model.id }
-end
-
-test "add models" do
-  @post.related.key.rpush(Post.create(:body => "Hello").id)
-  assert ["2"] == @post.related.map { |model| model.id }
-end
-
-test "find elements in the list" do
-  another_post = Post.create
-
-  @post.related.key.rpush(another_post.id)
-
-  assert  @post.related.include?(another_post)
-  assert !@post.related.include?(Post.create)
-end
-
-test "unshift models" do
-  @post.related.key.lpush(Post.create(:body => "Hello").id)
-  @post.related.key.lpush(Post.create(:body => "Goodbye").id)
-
-  assert ["3", "2"] == @post.related.map { |model| model.id }
-
-  assert "3" == @post.related.key.lpop
-  assert "2" == @post.related.key.rpop
-  assert @post.related.key.rpop.nil?
-end
-
-# Sorting lists and sets
-setup do
-  @post = Post.create(:body => "Lorem")
-  @post.related.key.rpush(Post.create.id)
-  @post.related.key.rpush(Post.create.id)
-  @post.related.key.rpush(Post.create.id)
-end
-
-test "sort values" do
-  assert %w{2 3 4} == @post.related.sort.map { |model| model.id }
-end
-
 # Sorting lists and sets by model attributes
 setup do
   @event = Event.create(:name => "Ruby Tuesday")
@@ -706,7 +538,7 @@ class ::Bar < Ohm::Model
   attribute :name
   counter :visits
   set :friends, self
-  list :comments, self
+  set :comments, self
 
   def foo
     bar.foo

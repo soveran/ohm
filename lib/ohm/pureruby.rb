@@ -34,11 +34,6 @@ module Ohm
           super
           collections << name unless collections.include?(name)
         end
-
-        def list(name, model)
-          super
-          collections << name unless collections.include?(name)
-        end
       end
 
       def _initialize_id

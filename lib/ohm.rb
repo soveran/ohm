@@ -256,14 +256,6 @@ module Ohm
         key[:uniques].sadd(attribute)
       end
 
-      def list(name, model)
-        key[:lists].sadd(name)
-
-        define_method name do
-          Ohm::List.new(key[name], model.key, Utils.const(self.class, model))
-        end
-      end
-
       def set(name, model)
         key[:sets].sadd(name)
 
