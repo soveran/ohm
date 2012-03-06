@@ -119,10 +119,6 @@ module Ohm
       model[id] if execute { |key| key.sismember(id) }
     end
 
-    def filters_to_keys(filters)
-      filters.map { |k, v| namespace[:indices][k][v] }
-    end
-
   private
     def fetch(ids)
       arr = model.db.pipelined do
@@ -140,8 +136,8 @@ module Ohm
   class Set < Struct.new(:key, :namespace, :model)
     include Collection
 
-    def find(filters)
-      keys = filters_to_keys(filters)
+    def find(dict)
+      keys = model.filters(dict)
       keys.push(key)
 
       MultiSet.new(keys, namespace, model)
@@ -165,8 +161,8 @@ module Ohm
   class MultiSet < Struct.new(:keys, :namespace, :model)
     include Collection
 
-    def find(filters)
-      keys = filters_to_keys(filters)
+    def find(dict)
+      keys = model.filters(dict)
       keys.push(*self.keys)
 
       MultiSet.new(keys, namespace, model)
@@ -231,14 +227,18 @@ module Ohm
       id && self[id]
     end
 
-    def self.find(hash)
-      unless hash.kind_of?(Hash)
+    def self.filters(dict)
+      unless dict.kind_of?(Hash)
         raise ArgumentError,
           "You need to supply a hash with filters. " +
           "If you want to find by ID, use #{self}[id] instead."
       end
 
-      keys = hash.map { |k, v| key[:indices][k][v] }
+      dict.map { |k, v| key[:indices][k][v] }
+    end
+
+    def self.find(dict)
+      keys = filters(dict)
 
       if keys.size == 1
         Ohm::Set.new(keys.first, key, self)
