@@ -109,6 +109,8 @@ module Ohm
       end
 
       def transaction
+        model.uniques; model.indices; model.collections # memoized
+
         txn = Transaction.new { |t| yield t }
         txn.commit(db)
       end

@@ -9,7 +9,7 @@ class Post < Ohm::Model
 end
 
 setup do
-  Post.key[:indices].sadd("user_id")
+  Post.index :user_id
 
   u = User.create
   p = Post.create(user: u)

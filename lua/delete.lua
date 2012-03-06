@@ -8,20 +8,18 @@ local key        = KEYS[2]
 local id         = string.match(key, "(%w+)$")
 
 local model = {
-  id      = namespace .. ":id",
-  all     = namespace .. ":all",
-  uniques = namespace .. ":uniques",
-  indices = namespace .. ":indices",
-  sets    = namespace .. ":sets",
-  lists   = namespace .. ":lists",
-  key     = namespace .. ":%s"
+  id          = namespace .. ":id",
+  all         = namespace .. ":all",
+  uniques     = namespace .. ":uniques",
+  indices     = namespace .. ":indices",
+  collections = namespace .. ":collections",
+  key         = namespace .. ":%s"
 }
 
 local meta = {
-  uniques = redis.call("SMEMBERS", model.uniques),
-  indices = redis.call("SMEMBERS", model.indices),
-  sets    = redis.call("SMEMBERS", model.sets),
-  lists   = redis.call("SMEMBERS", model.lists)
+  uniques     = redis.call("SMEMBERS", model.uniques),
+  indices     = redis.call("SMEMBERS", model.indices),
+  collections = redis.call("SMEMBERS", model.collections)
 }
 
 -- This is mainly used with the generation of an index key,
@@ -75,8 +73,7 @@ delete_indices(key, id)
 redis.call("DEL", key)
 redis.call("SREM", model.all, id)
 
-delete_collection(key, meta.sets)
-delete_collection(key, meta.lists)
+delete_collection(key, meta.collections)
 
 -- Permanently deleted, now we can safely return.
 return { 200, { "id", id }}

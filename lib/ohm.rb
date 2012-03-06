@@ -18,6 +18,10 @@ module Ohm
       else name
       end
     end
+
+    def self.symbols(list)
+      list.map { |e| e.to_sym }
+    end
   end
 
   class Connection
@@ -249,30 +253,30 @@ module Ohm
     end
 
     def self.indices
-      @indices ||= []
+      @indices ||= Utils.symbols(key[:indices].smembers)
     end
 
     def self.uniques
-      @uniques ||= []
+      @uniques ||= Utils.symbols(key[:uniques].smembers)
     end
 
     def self.collections
-      @collections ||= []
+      @collections ||= Utils.symbols(key[:collections].smembers)
     end
 
     def self.index(attribute)
-      indices << attribute unless indices.include?(attribute)
+      @indices = nil
       key[:indices].sadd(attribute)
     end
 
     def self.unique(attribute)
-      uniques << attribute unless uniques.include?(attribute)
+      @uniques = nil
       key[:uniques].sadd(attribute)
     end
 
     def self.set(name, model)
-      collections << name unless collections.include?(name)
-      key[:sets].sadd(name)
+      @collections = nil
+      key[:collections].sadd(name)
 
       define_method name do
         Ohm::Set.new(key[name], model.key, Utils.const(self.class, model))
