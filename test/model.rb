@@ -47,305 +47,305 @@ class Meetup < Ohm::Model
   attribute :location
 end
 
-# test "assign attributes from the hash" do
-#   event = Event.new(:name => "Ruby Tuesday")
-#   assert event.name == "Ruby Tuesday"
-# end
-#
-# test "assign an ID and save the object" do
-#   event1 = Event.create(:name => "Ruby Tuesday")
-#   event2 = Event.create(:name => "Ruby Meetup")
-#
-#   assert "1" == event1.id
-#   assert "2" == event2.id
-# end
-#
-# test "updates attributes" do
-#   event = Meetup.create(:name => "Ruby Tuesday")
-#   event.update(:name => "Ruby Meetup")
-#   assert "Ruby Meetup" == event.name
-# end
-#
-# test "save the attributes in UTF8" do
-#  event = Meetup.create(:name => "32° Kisei-sen")
-#  assert "32° Kisei-sen" == Meetup[event.id].name
-# end
-#
-# test "delete the attribute if set to nil" do
-#   event = Meetup.create(:name => "Ruby Tuesday", :location => "Los Angeles")
-#   assert "Los Angeles" == Meetup[event.id].location
-#   assert event.update(:location => nil)
-#   assert_equal nil, Meetup[event.id].location
-# end
-#
-# test "delete the attribute if set to an empty string" do
-#   event = Meetup.create(:name => "Ruby Tuesday", :location => "Los Angeles")
-#   assert "Los Angeles" == Meetup[event.id].location
-#   assert event.update(:location => "")
-#   assert nil == Meetup[event.id].location
-# end
-#
-# test "not raise if an attribute is redefined" do
-#   class RedefinedModel < Ohm::Model
-#     attribute :name
-#
-#     silence_warnings do
-#       attribute :name
-#     end
-#   end
-# end
-#
-# test "not raise if a counter is redefined" do
-#   class RedefinedModel < Ohm::Model
-#     counter :age
-#
-#     silence_warnings do
-#       counter :age
-#     end
-#   end
-# end
-#
-# test "not raise if a list is redefined" do
-#   class RedefinedModel < Ohm::Model
-#     list :todo, lambda { }
-#
-#     silence_warnings do
-#       list :todo, lambda { }
-#     end
-#   end
-# end
-#
-# test "not raise if a set is redefined" do
-#   class RedefinedModel < Ohm::Model
-#     set :friends, lambda { }
-#
-#     silence_warnings do
-#       set :friends, lambda { }
-#     end
-#   end
-# end
-#
-# test "not raise if a collection is redefined" do
-#   class RedefinedModel < Ohm::Model
-#     list :toys, lambda { }
-#
-#     silence_warnings do
-#       set :toys, lambda { }
-#     end
-#   end
-# end
-#
-# test "not raise if a index is redefined" do
-#   class RedefinedModel < Ohm::Model
-#     attribute :color
-#     index :color
-#     index :color
-#   end
-# end
-#
-# test "allow arbitrary IDs" do
-#   Event.create(:id => "abc123", :name => "Concert")
-#
-#   assert Event.all.size == 1
-#   assert Event["abc123"].name == "Concert"
-# end
-#
-# test "forbid assignment of IDs on a new object" do
-#   event = Event.new(:name => "Concert")
-#
-#   assert_raise(NoMethodError) do
-#     event.id = "abc123"
-#   end
-# end
-#
-# setup do
-#   Ohm.redis.sadd("Event:all", 1)
-#   Ohm.redis.hset("Event:1", "name", "Concert")
-# end
-#
-# test "return an instance of Event" do
-#   assert Event[1].kind_of?(Event)
-#   assert 1 == Event[1].id
-#   assert "Concert" == Event[1].name
-# end
-#
-# setup do
-#   Ohm.redis.sadd("User:all", 1)
-#   Ohm.redis.hset("User:1", "email", "albert@example.com")
-# end
-#
-# test "return an instance of User" do
-#   assert User[1].kind_of?(User)
-#   assert 1 == User[1].id
-#   assert "albert@example.com" == User[1].email
-# end
-#
-# test "allow to map key to models" do
-#   assert [User[1]] == [1].map(&User)
-# end
-#
-# setup do
-#   Ohm.redis.sadd("User:all", 1)
-#   Ohm.redis.set("User:1:email", "albert@example.com")
-#
-#   @user = User[1]
-# end
-#
-# test "change its attributes" do
-#   @user.email = "maria@example.com"
-#   assert "maria@example.com" == @user.email
-# end
-#
-# test "save the new values" do
-#   @user.email = "maria@example.com"
-#   @user.save
-#
-#   @user.email = "maria@example.com"
-#   @user.save
-#
-#   assert "maria@example.com" == User[1].email
-# end
-#
-# test "assign a new id to the event" do
-#   event1 = Event.new
-#   event1.save
-#
-#   event2 = Event.new
-#   event2.save
-#
-#   assert !event1.new?
-#   assert !event2.new?
-#
-#   assert "1" == event1.id
-#   assert "2" == event2.id
-# end
-#
-# # Saving a model
-# test "create the model if it is new" do
-#   event = Event.new(:name => "Foo").save
-#   assert "Foo" == Event[event.id].name
-# end
-#
-# test "save it only if it was previously created" do
-#   event = Event.new
-#   event.name = "Lorem ipsum"
-#   event.save
-#
-#   event.name = "Lorem"
-#   event.save
-#
-#   assert "Lorem" == Event[event.id].name
-# end
-#
-# test "allow to hook into save" do
-#   event = Event.create(:name => "Foo")
-#
-#   assert "foo" == event.slug
-# end
-#
-# test "save counters" do
-#   event = Event.create(:name => "Foo")
-#
-#   event.incr(:votes)
-#   event.save
-#
-#   assert_equal 1, Event[event.id].votes
-# end
-#
-# # Delete
-# test "delete an existing model" do
-#   class ModelToBeDeleted < Ohm::Model
-#     attribute :name
-#     set :foos, Post
-#     list :bars, Post
-#   end
-#
-#   @model = ModelToBeDeleted.create(:name => "Lorem")
-#
-#   @model.foos.key.sadd(Post.create.id)
-#   @model.bars.key.sadd(Post.create.id)
-#
-#   id = @model.id
-#
-#   @model.delete
-#
-#   assert Ohm.redis.get(ModelToBeDeleted.key[id]).nil?
-#   assert Ohm.redis.get(ModelToBeDeleted.key[id][:name]).nil?
-#   assert Array.new == Ohm.redis.smembers(ModelToBeDeleted.key[id][:foos])
-#   assert Array.new == Ohm.redis.lrange(ModelToBeDeleted.key[id][:bars], 0, -1)
-#
-#   assert ModelToBeDeleted.all.empty?
-# end
-#
-# setup do
-# end
-#
-# test "be no leftover keys" do
-#   class ::Foo < Ohm::Model
-#     attribute :name
-#     index :name
-#   end
-#
-#   assert ["Foo:indices"] == Ohm.redis.keys("*")
-#
-#   Foo.create(:name => "Bar")
-#   expected = %w[Foo:indices Foo:1 Foo:all Foo:id Foo:indices:name:Bar]
-#   assert expected.sort == Ohm.redis.keys("*").sort
-#
-#   Foo[1].delete
-#   assert ["Foo:id", "Foo:indices"] == Ohm.redis.keys("*")
-# end
-#
-# # Listing
-# test "find all" do
-#   event1 = Event.new
-#   event1.name = "Ruby Meetup"
-#   event1.save
-#
-#   event2 = Event.new
-#   event2.name = "Ruby Tuesday"
-#   event2.save
-#
-#   all = Event.all
-#   assert all.detect {|e| e.name == "Ruby Meetup" }
-#   assert all.detect {|e| e.name == "Ruby Tuesday" }
-# end
-#
-# # Sorting
-# test "sort all" do
-#   Person.create :name => "D"
-#   Person.create :name => "C"
-#   Person.create :name => "B"
-#   Person.create :name => "A"
-#
-#   names = Person.all.sort_by(:name, :order => "ALPHA").map { |p| p.name }
-#   assert %w[A B C D] == names
-# end
-#
-# test "return an empty array if there are no elements to sort" do
-#   assert [] == Person.all.sort_by(:name)
-# end
-#
-# test "return the first element sorted by id when using first" do
-#   Person.create :name => "A"
-#   Person.create :name => "B"
-#   assert "A" == Person.all.first.name
-# end
-#
-# test "return the first element sorted by name if first receives a sorting option" do
-#   Person.create :name => "B"
-#   Person.create :name => "A"
-#   assert "A" == Person.all.first(:by => :name, :order => "ALPHA").name
-# end
-#
-# test "return attribute values when the get parameter is specified" do
-#   Person.create :name => "B"
-#   Person.create :name => "A"
-#
-#   res = Person.all.sort_by(:name, :get => :name, :order => "ALPHA")
-#
-#   assert_equal ["A", "B"], res
-# end
+test "assign attributes from the hash" do
+  event = Event.new(:name => "Ruby Tuesday")
+  assert event.name == "Ruby Tuesday"
+end
+
+test "assign an ID and save the object" do
+  event1 = Event.create(:name => "Ruby Tuesday")
+  event2 = Event.create(:name => "Ruby Meetup")
+
+  assert "1" == event1.id
+  assert "2" == event2.id
+end
+
+test "updates attributes" do
+  event = Meetup.create(:name => "Ruby Tuesday")
+  event.update(:name => "Ruby Meetup")
+  assert "Ruby Meetup" == event.name
+end
+
+test "save the attributes in UTF8" do
+ event = Meetup.create(:name => "32° Kisei-sen")
+ assert "32° Kisei-sen" == Meetup[event.id].name
+end
+
+test "delete the attribute if set to nil" do
+  event = Meetup.create(:name => "Ruby Tuesday", :location => "Los Angeles")
+  assert "Los Angeles" == Meetup[event.id].location
+  assert event.update(:location => nil)
+  assert_equal nil, Meetup[event.id].location
+end
+
+test "delete the attribute if set to an empty string" do
+  event = Meetup.create(:name => "Ruby Tuesday", :location => "Los Angeles")
+  assert "Los Angeles" == Meetup[event.id].location
+  assert event.update(:location => "")
+  assert nil == Meetup[event.id].location
+end
+
+test "not raise if an attribute is redefined" do
+  class RedefinedModel < Ohm::Model
+    attribute :name
+
+    silence_warnings do
+      attribute :name
+    end
+  end
+end
+
+test "not raise if a counter is redefined" do
+  class RedefinedModel < Ohm::Model
+    counter :age
+
+    silence_warnings do
+      counter :age
+    end
+  end
+end
+
+test "not raise if a list is redefined" do
+  class RedefinedModel < Ohm::Model
+    list :todo, lambda { }
+
+    silence_warnings do
+      list :todo, lambda { }
+    end
+  end
+end
+
+test "not raise if a set is redefined" do
+  class RedefinedModel < Ohm::Model
+    set :friends, lambda { }
+
+    silence_warnings do
+      set :friends, lambda { }
+    end
+  end
+end
+
+test "not raise if a collection is redefined" do
+  class RedefinedModel < Ohm::Model
+    list :toys, lambda { }
+
+    silence_warnings do
+      set :toys, lambda { }
+    end
+  end
+end
+
+test "not raise if a index is redefined" do
+  class RedefinedModel < Ohm::Model
+    attribute :color
+    index :color
+    index :color
+  end
+end
+
+test "allow arbitrary IDs" do
+  Event.create(:id => "abc123", :name => "Concert")
+
+  assert Event.all.size == 1
+  assert Event["abc123"].name == "Concert"
+end
+
+test "forbid assignment of IDs on a new object" do
+  event = Event.new(:name => "Concert")
+
+  assert_raise(NoMethodError) do
+    event.id = "abc123"
+  end
+end
+
+setup do
+  Ohm.redis.sadd("Event:all", 1)
+  Ohm.redis.hset("Event:1", "name", "Concert")
+end
+
+test "return an instance of Event" do
+  assert Event[1].kind_of?(Event)
+  assert 1 == Event[1].id
+  assert "Concert" == Event[1].name
+end
+
+setup do
+  Ohm.redis.sadd("User:all", 1)
+  Ohm.redis.hset("User:1", "email", "albert@example.com")
+end
+
+test "return an instance of User" do
+  assert User[1].kind_of?(User)
+  assert 1 == User[1].id
+  assert "albert@example.com" == User[1].email
+end
+
+test "allow to map key to models" do
+  assert [User[1]] == [1].map(&User)
+end
+
+setup do
+  Ohm.redis.sadd("User:all", 1)
+  Ohm.redis.set("User:1:email", "albert@example.com")
+
+  @user = User[1]
+end
+
+test "change its attributes" do
+  @user.email = "maria@example.com"
+  assert "maria@example.com" == @user.email
+end
+
+test "save the new values" do
+  @user.email = "maria@example.com"
+  @user.save
+
+  @user.email = "maria@example.com"
+  @user.save
+
+  assert "maria@example.com" == User[1].email
+end
+
+test "assign a new id to the event" do
+  event1 = Event.new
+  event1.save
+
+  event2 = Event.new
+  event2.save
+
+  assert !event1.new?
+  assert !event2.new?
+
+  assert "1" == event1.id
+  assert "2" == event2.id
+end
+
+# Saving a model
+test "create the model if it is new" do
+  event = Event.new(:name => "Foo").save
+  assert "Foo" == Event[event.id].name
+end
+
+test "save it only if it was previously created" do
+  event = Event.new
+  event.name = "Lorem ipsum"
+  event.save
+
+  event.name = "Lorem"
+  event.save
+
+  assert "Lorem" == Event[event.id].name
+end
+
+test "allow to hook into save" do
+  event = Event.create(:name => "Foo")
+
+  assert "foo" == event.slug
+end
+
+test "save counters" do
+  event = Event.create(:name => "Foo")
+
+  event.incr(:votes)
+  event.save
+
+  assert_equal 1, Event[event.id].votes
+end
+
+# Delete
+test "delete an existing model" do
+  class ModelToBeDeleted < Ohm::Model
+    attribute :name
+    set :foos, Post
+    list :bars, Post
+  end
+
+  @model = ModelToBeDeleted.create(:name => "Lorem")
+
+  @model.foos.key.sadd(Post.create.id)
+  @model.bars.key.sadd(Post.create.id)
+
+  id = @model.id
+
+  @model.delete
+
+  assert Ohm.redis.get(ModelToBeDeleted.key[id]).nil?
+  assert Ohm.redis.get(ModelToBeDeleted.key[id][:name]).nil?
+  assert Array.new == Ohm.redis.smembers(ModelToBeDeleted.key[id][:foos])
+  assert Array.new == Ohm.redis.lrange(ModelToBeDeleted.key[id][:bars], 0, -1)
+
+  assert ModelToBeDeleted.all.empty?
+end
+
+setup do
+end
+
+test "be no leftover keys" do
+  class ::Foo < Ohm::Model
+    attribute :name
+    index :name
+  end
+
+  assert ["Foo:indices"] == Ohm.redis.keys("*")
+
+  Foo.create(:name => "Bar")
+  expected = %w[Foo:indices Foo:1 Foo:all Foo:id Foo:indices:name:Bar]
+  assert expected.sort == Ohm.redis.keys("*").sort
+
+  Foo[1].delete
+  assert ["Foo:id", "Foo:indices"] == Ohm.redis.keys("*")
+end
+
+# Listing
+test "find all" do
+  event1 = Event.new
+  event1.name = "Ruby Meetup"
+  event1.save
+
+  event2 = Event.new
+  event2.name = "Ruby Tuesday"
+  event2.save
+
+  all = Event.all
+  assert all.detect {|e| e.name == "Ruby Meetup" }
+  assert all.detect {|e| e.name == "Ruby Tuesday" }
+end
+
+# Sorting
+test "sort all" do
+  Person.create :name => "D"
+  Person.create :name => "C"
+  Person.create :name => "B"
+  Person.create :name => "A"
+
+  names = Person.all.sort_by(:name, :order => "ALPHA").map { |p| p.name }
+  assert %w[A B C D] == names
+end
+
+test "return an empty array if there are no elements to sort" do
+  assert [] == Person.all.sort_by(:name)
+end
+
+test "return the first element sorted by id when using first" do
+  Person.create :name => "A"
+  Person.create :name => "B"
+  assert "A" == Person.all.first.name
+end
+
+test "return the first element sorted by name if first receives a sorting option" do
+  Person.create :name => "B"
+  Person.create :name => "A"
+  assert "A" == Person.all.first(:by => :name, :order => "ALPHA").name
+end
+
+test "return attribute values when the get parameter is specified" do
+  Person.create :name => "B"
+  Person.create :name => "A"
+
+  res = Person.all.sort_by(:name, :get => :name, :order => "ALPHA")
+
+  assert_equal ["A", "B"], res
+end
 
 test "work on lists" do
   post = Post.create :body => "Hello world!"

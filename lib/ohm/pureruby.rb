@@ -80,7 +80,13 @@ module Ohm
 
       def _save
         key.del
-        key.hmset(*attributes.flatten)
+        key.hmset(*_skip_empty(attributes).flatten)
+      end
+
+      def _skip_empty(atts)
+        {}.tap do |ret|
+          atts.each { |k, v| ret[k] = v unless v.to_s.empty? }
+        end
       end
 
       def _verify_uniques
