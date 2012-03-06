@@ -141,7 +141,7 @@ module Ohm
     end
   end
 
-  class MultiSet < Struct.new(:keys, :namespace, :model)
+  module AbstractSet
     include AbstractCollection
 
     def include?(model)
@@ -180,8 +180,41 @@ module Ohm
       fetch(execute { |key| key.sort(options) })
     end
 
-    def find(conditions)
-      keys = conditions.map { |k, v| namespace[:indices][k][v] }
+    def filters_to_keys(filters)
+      filters.map { |k, v| namespace[:indices][k][v] }
+    end
+  end
+
+  class Set < Collection
+    include AbstractSet
+
+    def find(filters)
+      keys = filters_to_keys(filters)
+      keys.push(key)
+
+      MultiSet.new(keys, namespace, model)
+    end
+
+    def replace(models)
+      ids = models.map { |model| model.id }
+
+      key.redis.multi do
+        key.del
+        ids.each { |id| key.sadd(id) }
+      end
+    end
+
+  private
+    def execute
+      yield key
+    end
+  end
+
+  class MultiSet < Struct.new(:keys, :namespace, :model)
+    include AbstractSet
+
+    def find(filters)
+      keys = filters_to_keys(filters)
       keys.push(*self.keys)
 
       MultiSet.new(keys, namespace, model)
@@ -197,51 +230,6 @@ module Ohm
       ensure
         key.del
       end
-    end
-  end
-
-  class Set < Collection
-    def first(options = {})
-      opts = options.dup
-      opts.merge!(limit: [0, 1])
-
-      if opts[:by]
-        sort_by(opts.delete(:by), opts).first
-      else
-        sort(opts).first
-      end
-    end
-
-    def ids
-      key.smembers
-    end
-
-    def include?(record)
-      key.sismember(record.id)
-    end
-
-    def size
-      key.scard
-    end
-
-    def [](id)
-      model[id] if key.sismember(id)
-    end
-
-    def replace(models)
-      ids = models.map { |model| model.id }
-
-      key.redis.multi do
-        key.del
-        ids.each { |id| key.sadd(id) }
-      end
-    end
-
-    def find(conditions)
-      keys = conditions.map { |k, v| namespace[:indices][k][v] }
-      keys.push(key)
-
-      MultiSet.new(keys, namespace, model)
     end
   end
 
