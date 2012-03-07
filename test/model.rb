@@ -45,6 +45,19 @@ end
 class Meetup < Ohm::Model
   attribute :name
   attribute :location
+
+  def validate
+    assert_present :name
+  end
+end
+
+test "return the unsaved object if validation fails" do
+  assert Person.create(:name => nil).kind_of?(Person)
+end
+
+test "return false if the validation fails" do
+  event = Meetup.create(:name => "Ruby Tuesday")
+  assert !event.update(:name => nil)
 end
 
 test "get" do
@@ -275,8 +288,8 @@ test "delete an existing model" do
 
   @model = ModelToBeDeleted.create(:name => "Lorem")
 
-  @model.foos.key.sadd(Post.create.id)
-  @model.bars.key.sadd(Post.create.id)
+  @model.foos.add(Post.create)
+  @model.bars.add(Post.create)
 
   id = @model.id
 
@@ -299,14 +312,14 @@ test "be no leftover keys" do
     index :name
   end
 
-  assert ["Foo:indices"] == Ohm.redis.keys("*")
+  assert_equal [], Ohm.redis.keys("*")
 
   Foo.create(:name => "Bar")
-  expected = %w[Foo:indices Foo:1 Foo:all Foo:id Foo:indices:name:Bar]
+  expected = %w[Foo:1 Foo:all Foo:id Foo:indices:name:Bar]
   assert expected.sort == Ohm.redis.keys("*").sort
 
   Foo[1].delete
-  assert ["Foo:id", "Foo:indices"] == Ohm.redis.keys("*")
+  assert ["Foo:id"] == Ohm.redis.keys("*")
 end
 
 # Listing
@@ -401,9 +414,9 @@ end
 
 test "remove an element if sent delete" do
   @event.save
-  @event.attendees.key.sadd(@person1.id)
-  @event.attendees.key.sadd(@person2.id)
-  @event.attendees.key.sadd(@person3.id)
+  @event.attendees.add(@person1)
+  @event.attendees.add(@person2)
+  @event.attendees.add(@person3)
 
   assert_equal ["1", "2", "3"], @event.attendees.key.sort
 
@@ -413,15 +426,15 @@ end
 
 test "return true if the set includes some member" do
   @event.save
-  @event.attendees.key.sadd(@person1.id)
-  @event.attendees.key.sadd(@person2.id)
+  @event.attendees.add(@person1)
+  @event.attendees.add(@person2)
   assert @event.attendees.include?(@person2)
   assert !@event.attendees.include?(@person3)
 end
 
 test "return instances of the passed model" do
   @event.save
-  @event.attendees.key.sadd(@person1.id)
+  @event.attendees.add(@person1)
 
   assert [@person1] == @event.attendees.all
   assert @person1 == @event.attendees[@person1.id]
@@ -429,15 +442,15 @@ end
 
 test "return the size of the set" do
   @event.save
-  @event.attendees.key.sadd(@person1.id)
-  @event.attendees.key.sadd(@person2.id)
-  @event.attendees.key.sadd(@person3.id)
+  @event.attendees.add(@person1)
+  @event.attendees.add(@person2)
+  @event.attendees.add(@person3)
   assert 3 == @event.attendees.size
 end
 
 test "empty the set" do
   @event.save
-  @event.attendees.key.sadd(@person1.id)
+  @event.attendees.add(@person1)
   @event.attendees.key.del
 
   assert @event.attendees.empty?
@@ -445,7 +458,7 @@ end
 
 test "replace the values in the set" do
   @event.save
-  @event.attendees.key.sadd(@person1.id)
+  @event.attendees.add(@person1)
 
   assert [@person1] == @event.attendees.all
 
@@ -457,10 +470,10 @@ end
 # Sorting lists and sets by model attributes
 setup do
   @event = Event.create(:name => "Ruby Tuesday")
-  @event.attendees.key.sadd(Person.create(:name => "D").id)
-  @event.attendees.key.sadd(Person.create(:name => "C").id)
-  @event.attendees.key.sadd(Person.create(:name => "B").id)
-  @event.attendees.key.sadd(Person.create(:name => "A").id)
+  @event.attendees.add(Person.create(:name => "D"))
+  @event.attendees.add(Person.create(:name => "C"))
+  @event.attendees.add(Person.create(:name => "B"))
+  @event.attendees.add(Person.create(:name => "A"))
 end
 
 test "sort the model instances by the values provided" do
@@ -481,10 +494,10 @@ end
 # Collections initialized with a Model parameter
 setup do
   @user = User.create(:email => "albert@example.com")
-  @user.posts.key.sadd(Post.create(:body => "D").id)
-  @user.posts.key.sadd(Post.create(:body => "C").id)
-  @user.posts.key.sadd(Post.create(:body => "B").id)
-  @user.posts.key.sadd(Post.create(:body => "A").id)
+  @user.posts.add(Post.create(:body => "D"))
+  @user.posts.add(Post.create(:body => "C"))
+  @user.posts.add(Post.create(:body => "B"))
+  @user.posts.add(Post.create(:body => "A"))
 end
 
 test "return instances of the passed model" do
@@ -669,18 +682,10 @@ test "poster-example for overriding writers" do
   assert_equal "foo@bar.com", a.email
 end
 
+
 __END__
 
 These are the vestigial tests for future reference
-
-test "return the unsaved object if validation fails" do
-  assert Person.create(:name => nil).kind_of?(Person)
-end
-
-test "return false if the validation fails" do
-  event = Meetup.create(:name => "Ruby Tuesday")
-  assert !event.update(:name => nil)
-end
 
 def monitor
   log = []

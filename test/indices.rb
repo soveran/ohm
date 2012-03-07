@@ -8,6 +8,11 @@ class User < Ohm::Model
   attribute :activation_code
   attribute :sandunga
   attribute :email_provider
+  index :email
+  index :email_provider
+  index :working_days
+  index :update
+  index :activation_code
 
   def working_days
     @working_days ||= []
@@ -24,12 +29,6 @@ class User < Ohm::Model
 end
 
 setup do
-  User.index :email
-  User.index :email_provider
-  User.index :working_days
-  User.index :update
-  User.index :activation_code
-
   @user1 = User.create(email: "foo", activation_code: "bar", update: "baz")
   @user2 = User.create(email: "bar")
   @user3 = User.create(email: "baz qux")
@@ -88,12 +87,6 @@ end
 
 # Indexing arbitrary attributes
 setup do
-  User.index :email
-  User.index :email_provider
-  User.index :working_days
-  User.index :update
-  User.index :activation_code
-
   @user1 = User.create(:email => "foo@gmail.com")
   @user2 = User.create(:email => "bar@gmail.com")
   @user3 = User.create(:email => "bazqux@yahoo.com")

@@ -4,6 +4,7 @@ require File.expand_path("./helper", File.dirname(__FILE__))
 
 class User < Ohm::Model
   attribute :email
+  unique :email
 
   def self.[](id)
     super(id.to_i)
@@ -11,9 +12,6 @@ class User < Ohm::Model
 end
 
 setup do
-  # Due to the change in how unique and indices work, we need
-  # to specify this after we cleanup the DB.
-  User.unique :email
   User.create(email: "a@a.com")
 end
 

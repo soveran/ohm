@@ -4,13 +4,12 @@ class User < Ohm::Model
   attribute :fname
   attribute :lname
   attribute :status
+  index :fname
+  index :lname
+  index :status
 end
 
 setup do
-  User.index :fname
-  User.index :lname
-  User.index :status
-
   u1 = User.create(fname: "John", lname: "Doe", status: "active")
   u2 = User.create(fname: "Jane", lname: "Doe", status: "active")
 

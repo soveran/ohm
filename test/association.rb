@@ -9,8 +9,6 @@ class Post < Ohm::Model
 end
 
 setup do
-  Post.index :user_id
-
   u = User.create
   p = Post.create(user: u)
 

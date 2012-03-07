@@ -19,10 +19,8 @@ else
     assert_equal ["baz", "bar"], res
   end
 
-  test do
-    lua = Ohm::Lua.new("./lua", Ohm.redis)
-
-    res = lua.run_file("save",
+  test do |lua|
+    res = lua.run_file("ohm-save",
       keys: ["User"],
       argv: ["fname", "John", "lname", "Doe"])
 

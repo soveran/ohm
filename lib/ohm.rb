@@ -4,11 +4,12 @@ require "nest"
 require "redis"
 require "securerandom"
 require "scrivener"
-require "ohm/pureruby" unless defined?(Ohm::Model::Scripted)
+require "ohm/transaction"
 
 module Ohm
   class Error < StandardError; end
   class MissingID < Error; end
+  class IndexNotFound < Error; end
   class UniqueIndexViolation < Error; end
 
   module Utils
@@ -17,10 +18,6 @@ module Ohm
       when Symbol then context.const_get(name)
       else name
       end
-    end
-
-    def self.symbols(list)
-      list.map(&:to_sym)
     end
   end
 
@@ -140,6 +137,10 @@ module Ohm
   class Set < Struct.new(:key, :namespace, :model)
     include Collection
 
+    def add(model)
+      key.sadd(model.id)
+    end
+
     def find(dict)
       keys = model.filters(dict)
       keys.push(key)
@@ -238,7 +239,13 @@ module Ohm
           "If you want to find by ID, use #{self}[id] instead."
       end
 
-      dict.map { |k, v| key[:indices][k][v] }
+      dict.map { |k, v| index_key(k, v) }
+    end
+
+    def self.index_key(att, val)
+      raise IndexNotFound unless indices.include?(att)
+
+      key[:indices][att][val]
     end
 
     def self.find(dict)
@@ -252,30 +259,27 @@ module Ohm
     end
 
     def self.indices
-      @indices ||= Utils.symbols(key[:indices].smembers)
+      @indices ||= []
     end
 
     def self.uniques
-      @uniques ||= Utils.symbols(key[:uniques].smembers)
+      @uniques ||= []
     end
 
     def self.collections
-      @collections ||= Utils.symbols(key[:collections].smembers)
+      @collections ||= []
     end
 
     def self.index(attribute)
-      @indices = nil
-      key[:indices].sadd(attribute)
+      indices << attribute unless indices.include?(attribute)
     end
 
     def self.unique(attribute)
-      @uniques = nil
-      key[:uniques].sadd(attribute)
+      uniques << attribute unless uniques.include?(attribute)
     end
 
     def self.set(name, model)
-      @collections = nil
-      key[:collections].sadd(name)
+      collections << name unless collections.include?(name)
 
       define_method name do
         model = Utils.const(self.class, model)
@@ -436,6 +440,58 @@ module Ohm
       to_hash.to_json
     end
 
+    def save(&block)
+      return if not valid?
+      save!(&block)
+    end
+
+    def save!
+      transaction do |t|
+        t.watch(*_unique_keys)
+        t.watch(key) if not new?
+
+        t.before do
+          _initialize_id if new?
+        end
+
+        t.read do |store|
+          _verify_uniques
+          store.existing = key.hgetall
+        end
+
+        t.write do |store|
+          model.key[:all].sadd(id)
+          _delete_uniques(store.existing)
+          _delete_indices(store.existing)
+          _save
+          _save_indices
+          _save_uniques
+        end
+
+        yield t if block_given?
+      end
+
+      return self
+    end
+
+    def delete
+      transaction do |t|
+        t.read do |store|
+          store.existing = key.hgetall
+        end
+
+        t.write do |store|
+          _delete_uniques(store.existing)
+          _delete_indices(store.existing)
+          model.collections.each { |e| key[e].del }
+          model.key[:all].srem(id)
+          key.del
+        end
+
+        yield t if block_given?
+      end
+    end
+
     def update(attributes)
       update_attributes(attributes)
       save
@@ -445,14 +501,73 @@ module Ohm
       atts.each { |att, val| send(:"#{att}=", val) }
     end
 
+    def transaction
+      txn = Transaction.new { |t| yield t }
+      txn.commit(db)
+    end
+
   protected
     attr_writer :id
+
+    def _initialize_id
+      @id = model.new_id.to_s
+    end
 
     def _skip_empty(atts)
       {}.tap do |ret|
         atts.each do |att, val|
           ret[att] = send(att).to_s unless val.to_s.empty?
         end
+      end
+    end
+
+    def _unique_keys
+      model.uniques.map { |att| model.key[:uniques][att] }
+    end
+
+    def _save
+      key.del
+      key.hmset(*_skip_empty(attributes).flatten)
+    end
+
+    def _verify_uniques
+      if att = _detect_duplicate
+        raise UniqueIndexViolation, "#{att} is not unique."
+      end
+    end
+
+    def _detect_duplicate
+      model.uniques.detect do |att|
+        id = model.key[:uniques][att].hget(attributes[att])
+        id && id != self.id.to_s
+      end
+    end
+
+    def _save_uniques
+      model.uniques.each do |att|
+        model.key[:uniques][att].hset(attributes[att], id)
+      end
+    end
+
+    def _delete_uniques(atts)
+      model.uniques.each do |att|
+        model.key[:uniques][att].hdel(atts[att.to_s])
+      end
+    end
+
+    def _delete_indices(atts)
+      model.indices.each do |att|
+        val = atts[att.to_s]
+
+        if val
+          model.key[:indices][att][val].srem(id)
+        end
+      end
+    end
+
+    def _save_indices
+      model.indices.each do |att|
+        model.key[:indices][att][attributes[att]].sadd(id)
       end
     end
   end
