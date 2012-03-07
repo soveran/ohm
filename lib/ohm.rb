@@ -189,7 +189,7 @@ module Ohm
     include Scrivener::Validations
 
     def self.conn
-      @conn ||= Connection.new(name)
+      @conn ||= Connection.new(name, Ohm.conn.options)
     end
 
     def self.connect(options)

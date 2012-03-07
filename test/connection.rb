@@ -62,3 +62,11 @@ test "model can define its own connection" do
   assert_equal B.conn.options,   {:url=>"redis://localhost:6379/1"}
   assert_equal Ohm.conn.options, {:url=>"redis://localhost:6379/0"}
 end
+
+test "model inherits Ohm.redis connection by default" do
+  Ohm.connect(:url => "redis://localhost:9876")
+  class C < Ohm::Model
+  end
+
+  assert_equal C.conn.options, Ohm.conn.options
+end
