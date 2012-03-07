@@ -446,6 +446,14 @@ module Ohm
 
   protected
     attr_writer :id
+
+    def _skip_empty(atts)
+      {}.tap do |ret|
+        atts.each do |att, val|
+          ret[att] = send(att).to_s unless val.to_s.empty?
+        end
+      end
+    end
   end
 
   class Lua

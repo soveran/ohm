@@ -5,10 +5,13 @@ module Ohm
     module Scripted
       def save
         return if not valid?
+        save!
+      end
 
+      def save!
         response = model.lua.run(SAVE,
           keys: [model, (key unless new?)],
-          argv: @attributes.flatten)
+          argv: _skip_empty(@attributes).flatten)
 
         case response[0]
         when 200

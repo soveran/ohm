@@ -7,9 +7,12 @@ module Ohm
         @id = model.new_id.to_s
       end
 
-      def save
+      def save(&block)
         return if not valid?
+        save!(&block)
+      end
 
+      def save!
         transaction do |t|
           t.watch(*_unique_keys)
           t.watch(key) if not new?
@@ -45,12 +48,6 @@ module Ohm
       def _save
         key.del
         key.hmset(*_skip_empty(attributes).flatten)
-      end
-
-      def _skip_empty(atts)
-        {}.tap do |ret|
-          atts.each { |k, v| ret[k] = v unless v.to_s.empty? }
-        end
       end
 
       def _verify_uniques
