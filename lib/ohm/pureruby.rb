@@ -115,5 +115,7 @@ module Ohm
         txn.commit(db)
       end
     end
+
+    include PureRuby
   end
 end

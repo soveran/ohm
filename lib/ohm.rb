@@ -4,7 +4,7 @@ require "nest"
 require "redis"
 require "securerandom"
 require "scrivener"
-require "ohm/pureruby"
+require "ohm/pureruby" unless defined?(Ohm::Model::Scripted)
 
 module Ohm
   class Error < StandardError; end
@@ -187,7 +187,6 @@ module Ohm
 
   class Model
     include Scrivener::Validations
-    include PureRuby if not defined?(Ohm::Model::Scripted)
 
     def self.conn
       @conn ||= Connection.new(name)
