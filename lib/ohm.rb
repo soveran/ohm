@@ -392,6 +392,15 @@ module Ohm
       return self
     end
 
+    def get(att)
+      @attributes[att] = key.hget(att)
+    end
+
+    def set(att, val)
+      val.to_s.empty? ? key.hdel(att) : key.hset(att, val)
+      @attributes[att] = val
+    end
+
     def new?
       !defined?(@id)
     end

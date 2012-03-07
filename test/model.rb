@@ -47,6 +47,29 @@ class Meetup < Ohm::Model
   attribute :location
 end
 
+test "get" do
+  m = Meetup.create(name: "Foo")
+  m.name = "Bar"
+
+  assert_equal "Foo", m.get(:name)
+  assert_equal "Foo", m.name
+end
+
+test "set" do
+  m = Meetup.create(name: "Foo")
+
+  m.set :name, "Bar"
+  assert_equal "Bar", m.name
+
+  m = Meetup[m.id]
+  assert_equal "Bar", m.name
+
+  # Deletes when value is nil.
+  m.set :name, nil
+  m = Meetup[m.id]
+  assert ! m.key.hexists(:name)
+end
+
 test "assign attributes from the hash" do
   event = Event.new(:name => "Ruby Tuesday")
   assert event.name == "Ruby Tuesday"
