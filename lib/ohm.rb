@@ -278,7 +278,9 @@ module Ohm
       key[:collections].sadd(name)
 
       define_method name do
-        Ohm::Set.new(key[name], model.key, Utils.const(self.class, model))
+        model = Utils.const(self.class, model)
+
+        Ohm::Set.new(key[name], model.key, model)
       end
     end
 
