@@ -31,6 +31,8 @@ module Ohm
             _save_indices
             _save_uniques
           end
+
+          yield t if block_given?
         end
 
         return self
@@ -105,6 +107,8 @@ module Ohm
             model.key[:all].srem(id)
             key.del
           end
+
+          yield t if block_given?
         end
       end
 
