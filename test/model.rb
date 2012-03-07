@@ -19,7 +19,7 @@ class Person < Ohm::Model
   index :initial
 
   def initial
-    name[0, 1].upcase
+    name[0, 1].upcase if name
   end
 end
 
@@ -396,6 +396,32 @@ test "load attributes as a strings" do
   assert "1" == Event[event.id].name
 end
 
+# Enumerable indices
+class Entry < Ohm::Model
+  attribute :tags
+  index :tag
+
+  def tag
+    tags.split(/\s+/)
+  end
+end
+
+setup do
+  Entry.create(tags: "foo bar baz")
+end
+
+test "finding by one entry in the enumerable" do |entry|
+  assert Entry.find(tag: "foo").include?(entry)
+  assert Entry.find(tag: "bar").include?(entry)
+  assert Entry.find(tag: "baz").include?(entry)
+end
+
+test "finding by multiple entries in the enumerable" do |entry|
+  assert Entry.find(tag: ["foo", "bar"]).include?(entry)
+  assert Entry.find(tag: ["bar", "baz"]).include?(entry)
+  assert Entry.find(tag: ["baz", "oof"]).empty?
+end
+
 # Attributes of type Set
 setup do
   @person1 = Person.create(:name => "Albert")
@@ -404,6 +430,16 @@ setup do
 
   @event = Event.new
   @event.name = "Ruby Tuesday"
+end
+
+test "filter elements" do
+  @event.save
+  @event.attendees.add(@person1)
+  @event.attendees.add(@person2)
+
+  assert [@person1] == @event.attendees.find(:initial => "A").all
+  assert [@person2] == @event.attendees.find(:initial => "B").all
+  assert [] == @event.attendees.find(:initial => "Z").all
 end
 
 test "not be available if the model is new" do
@@ -682,7 +718,6 @@ test "poster-example for overriding writers" do
   assert_equal "foo@bar.com", a.email
 end
 
-
 __END__
 
 These are the vestigial tests for future reference
@@ -716,16 +751,6 @@ test "load attributes lazily" do |id|
   log = monitor { event.name }
 
   assert log.empty?
-end
-
-test "filter elements" do
-  @event.save
-  @event.attendees.key.sadd(@person1)
-  @event.attendees.key.sadd(@person2)
-
-  assert [@person1] == @event.attendees.find(:initial => "A").all
-  assert [@person2] == @event.attendees.find(:initial => "B").all
-  assert [] == @event.attendees.find(:initial => "Z").all
 end
 
 test "allow slicing the list" do

@@ -7,7 +7,6 @@ class User < Ohm::Model
   attribute :update
   attribute :activation_code
   attribute :sandunga
-  attribute :email_provider
   index :email
   index :email_provider
   index :working_days
@@ -18,9 +17,8 @@ class User < Ohm::Model
     @working_days ||= []
   end
 
-  def save
-    self.email_provider = email.split("@").last
-    super
+  def email_provider
+    email.split("@").last
   end
 
   def before_save

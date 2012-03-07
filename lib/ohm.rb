@@ -239,13 +239,17 @@ module Ohm
           "If you want to find by ID, use #{self}[id] instead."
       end
 
-      dict.map { |k, v| index_key(k, v) }
+      dict.map { |k, v| toindices(k, v) }.flatten
     end
 
-    def self.index_key(att, val)
+    def self.toindices(att, val)
       raise IndexNotFound unless indices.include?(att)
 
-      key[:indices][att][val]
+      if val.kind_of?(Enumerable)
+        val.map { |v| key[:indices][att][v] }
+      else
+        [key[:indices][att][val]]
+      end
     end
 
     def self.find(dict)
@@ -457,6 +461,8 @@ module Ohm
         t.read do |store|
           _verify_uniques
           store.existing = key.hgetall
+          store.uniques  = _read_index_type(:uniques)
+          store.indices  = _read_index_type(:indices)
         end
 
         t.write do |store|
@@ -464,8 +470,8 @@ module Ohm
           _delete_uniques(store.existing)
           _delete_indices(store.existing)
           _save
-          _save_indices
-          _save_uniques
+          _save_indices(store.indices)
+          _save_uniques(store.uniques)
         end
 
         yield t if block_given?
@@ -538,14 +544,22 @@ module Ohm
 
     def _detect_duplicate
       model.uniques.detect do |att|
-        id = model.key[:uniques][att].hget(attributes[att])
+        id = model.key[:uniques][att].hget(send(att))
         id && id != self.id.to_s
       end
     end
 
-    def _save_uniques
-      model.uniques.each do |att|
-        model.key[:uniques][att].hset(attributes[att], id)
+    def _read_index_type(type)
+      {}.tap do |ret|
+        model.send(type).each do |att|
+          ret[att] = send(att)
+        end
+      end
+    end
+
+    def _save_uniques(uniques)
+      uniques.each do |att, val|
+        model.key[:uniques][att].hset(val, id)
       end
     end
 
@@ -565,9 +579,11 @@ module Ohm
       end
     end
 
-    def _save_indices
-      model.indices.each do |att|
-        model.key[:indices][att][attributes[att]].sadd(id)
+    def _save_indices(indices)
+      indices.each do |att, val|
+        model.toindices(att, val).each do |index|
+          index.sadd(id)
+        end
       end
     end
   end
