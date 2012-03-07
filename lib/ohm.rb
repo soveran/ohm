@@ -427,6 +427,7 @@ module Ohm
     def to_hash
       attrs = {}
       attrs[:id] = id unless new?
+      attrs[:errors] = errors if errors.any?
 
       return attrs
     end
