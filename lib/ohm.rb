@@ -332,9 +332,32 @@ module Ohm
     end
   end
 
+  # Anytime you filter a set with more than one requirement,
+  # you internally use a `MultiSet`. `MutiSet` is a bit slower
+  # than just a `Set` because it has to `SINTERSTORE` all
+  # the keys prior to retrieving the members, size, etc.
+  #
+  # Example:
+  #
+  #   User.all.kind_of?(Ohm::Set)
+  #   # => true
+  #
+  #   User.find(name: "John").kind_of?(Ohm::Set)
+  #   # => true
+  #
+  #   User.find(name: "John", age: 30).kind_of?(Ohm::MultiSet)
+  #   # => true
+  #
   class MultiSet < Struct.new(:keys, :namespace, :model)
     include Collection
 
+    # Chain new fiters on an existing set.
+    #
+    # Example:
+    #
+    #   set = User.find(name: "John", age: 30)
+    #   set.find(status: 'pending')
+    #
     def find(dict)
       keys = model.filters(dict)
       keys.push(*self.keys)
@@ -355,6 +378,55 @@ module Ohm
     end
   end
 
+  # The base class for all your models. In order to better understand it,
+  # here is a semi-realtime explanation of the details involved when creating
+  # a User instance.
+  #
+  # Example:
+  #
+  #   class User < Ohm::Model
+  #     attribute :name
+  #     index :name
+  #
+  #     attribute :email
+  #     unique :email
+  #
+  #     counter :points
+  #
+  #     set :posts, :Post
+  #   end
+  #
+  #   u = User.create(name: "John", email: "foo@bar.com")
+  #   u.incr :points
+  #   u.posts.add(Post.create)
+  #
+  # At the point of executing User.create(...), here are the commands
+  # in Redis executed:
+  #
+  #   # Generate an ID
+  #   INCR User:id
+  #
+  #   # Add the newly generated ID, (let's assuming the ID is 1).
+  #   SADD User:all 1
+  #
+  #   # Store the unique index
+  #   HSET User:uniques:email foo@bar.com 1
+  #
+  #   # Store the name index
+  #   SADD User:indices:name:John 1
+  #
+  #   # Store the HASH
+  #   HMSET User:1 name John email foo@bar.com
+  #
+  # Next we increment points:
+  #
+  #   HINCR User:1:counters points 1
+  #
+  # And then we add a Post to the `posts` set.
+  # (For brevity, let's assume the Post created has an ID of 1).
+  #
+  #   SADD User:1:posts 1
+  #
   class Model
     include Scrivener::Validations
 
@@ -376,51 +448,116 @@ module Ohm
       @lua ||= Lua.new(File.join(Dir.pwd, "lua"), db)
     end
 
+    # The namespace for all the keys generated using the model.
+    #
+    # Example:
+    #
+    #   class User < Ohm::Model
+    #
+    #   User.key == "User"
+    #   User.key.kind_of?(String)
+    #   # => true
+    #
+    #   User.key.kind_of?(Nest)
+    #   # => true
+    #
+    # To find out more about Nest, see:
+    #   http://github.com/soveran/nest
+    #
     def self.key
       @key ||= Nest.new(self.name, db)
     end
 
+    # Retrieve a record by ID.
+    #
+    # Example:
+    #
+    #   u = User.create
+    #   u == User[u.id]
+    #   # =>  true
+    #
     def self.[](id)
       new(id: id).load! if id && exists?(id)
     end
 
+    # Syntatic sugar for quickly retrieving a set
+    # of models given an array of IDs.
+    #
+    # Example:
+    #
+    #   ids = [1, 2, 3]
+    #   ids.map(&User)
+    #
+    # Note: The use of this should be a last resort for your
+    #       actual application runtime, or for simply debugging
+    #       in your console. If you care about performance, you
+    #       should pipeline your reads. For more information
+    #       checkout the implementation of Ohm::Set#fetch.
+    #
     def self.to_proc
       lambda { |id| self[id] }
     end
 
+    # Quickly check if the ID exists within <Model>:all.
     def self.exists?(id)
       key[:all].sismember(id)
     end
 
-    def self.new_id
-      key[:id].incr
-    end
-
+    # Used in conjuction with `unique` indices.
+    #
+    # Example:
+    #
+    #   class User < Ohm::Model
+    #     unique :email
+    #   end
+    #
+    #   u = User.create(email: "foo@bar.com")
+    #   u == User.with(:email, "foo@bar.com")
+    #   # => true
+    #
     def self.with(att, val)
       id = key[:uniques][att].hget(val)
       id && self[id]
     end
 
-    def self.filters(dict)
-      unless dict.kind_of?(Hash)
-        raise ArgumentError,
-          "You need to supply a hash with filters. " +
-          "If you want to find by ID, use #{self}[id] instead."
-      end
-
-      dict.map { |k, v| toindices(k, v) }.flatten
-    end
-
-    def self.toindices(att, val)
-      raise IndexNotFound unless indices.include?(att)
-
-      if val.kind_of?(Enumerable)
-        val.map { |v| key[:indices][att][v] }
-      else
-        [key[:indices][att][val]]
-      end
-    end
-
+    # Used in conjuction with `index` fields.
+    #
+    # Example:
+    #
+    #   class User < Ohm::Model
+    #     attribute :email
+    #
+    #     attribute :name
+    #     index :name
+    #
+    #     attribute :status
+    #     index :status
+    #
+    #     index :provider
+    #     index :tag
+    #
+    #     def provider
+    #       email[/@(.*?).com/, 1]
+    #     end
+    #
+    #     def tag
+    #       ["ruby", "pytohn"]
+    #     end
+    #   end
+    #
+    #   u = User.create(name: "John", status: "pending", email: "foo@me.com")
+    #   User.find(provider: "me", name: "John", status: "pending").include?(u)
+    #   # => true
+    #
+    #   User.find(tag: "ruby").include?(u)
+    #   # => true
+    #
+    #   User.find(tag: "python").include?(u)
+    #   # => true
+    #
+    #   User.find(tag: ["ruby", "python"]).include?(u)
+    #   # => true
+    #
     def self.find(dict)
       keys = filters(dict)
 
@@ -431,26 +568,37 @@ module Ohm
       end
     end
 
-    def self.indices
-      @indices ||= []
-    end
-
-    def self.uniques
-      @uniques ||= []
-    end
-
-    def self.collections
-      @collections ||= []
-    end
-
+    # Allows you to index an any method on your model. Once you
+    # index a method, you can use them in `find` statements.
     def self.index(attribute)
       indices << attribute unless indices.include?(attribute)
     end
 
+    # Allows you to index an any method on your model. Once you
+    # index a method, you can use them in `with` statements.
+    #
+    # Note: if there is a conflict while saving, an
+    # `Ohm::UniqueIndexViolation` violation is raised.
+    #
     def self.unique(attribute)
       uniques << attribute unless uniques.include?(attribute)
     end
 
+    # Declares an Ohm::Set given the name.
+    #
+    # Example:
+    #
+    #   class User < Ohm::Model
+    #     set :posts, :Post
+    #   end
+    #
+    #   u = User.create
+    #   u.posts.empty?
+    #   # => true
+    #
+    # Note: You can't use a model's SET until you save it, otherwise
+    #       you'll receive an Ohm::MissingID error.
+    #
     def self.set(name, model)
       collections << name unless collections.include?(name)
 
@@ -461,13 +609,25 @@ module Ohm
       end
     end
 
-    def self.to_reference
-      name.to_s.
-        match(/^(?:.*::)*(.*)$/)[1].
-        gsub(/([a-z\d])([A-Z])/, '\1_\2').
-        downcase.to_sym
-    end
-
+    # A macro for defining a method which basically does a find.
+    #
+    # Example:
+    #   class Post < Ohm::Model
+    #     reference :user, :User
+    #   end
+    #
+    #   class User < Ohm::Model
+    #     collection :posts, :Post
+    #   end
+    #
+    #   # is the same as
+    #
+    #   class User < Ohm::Model
+    #     def posts
+    #       Post.find(user_id: self.id)
+    #     end
+    #   end
+    #
     def self.collection(name, model, reference = to_reference)
       define_method name do
         model = Utils.const(self.class, model)
@@ -475,6 +635,35 @@ module Ohm
       end
     end
 
+    # A macro for defining an attribute, an index, and an accessor
+    # for a given model.
+    #
+    # Example:
+    #
+    #   class Post < Ohm::Model
+    #     reference :user, :User
+    #   end
+    #
+    #   # is the same as
+    #
+    #   class Post < Ohm::Model
+    #     attribute :user_id
+    #     index :user_id
+    #
+    #     def user
+    #       @_memo[:user] ||= User[user_id]
+    #     end
+    #
+    #     def user=(user)
+    #       self.user_id = user.id
+    #       @_memo[:user] = user
+    #     end
+    #
+    #     def user_id=(user_id)
+    #       @_memo.delete(:user_id)
+    #       self.user_id = user_id
+    #     end
+    #
     def self.reference(name, model)
       reader = :"#{name}_id"
       writer = :"#{name}_id="
@@ -503,6 +692,26 @@ module Ohm
       end
     end
 
+    # The bread and butter macro of all models. Basically declares
+    # persisted attributes. All attributes are stored on the Redis HASH.
+    #
+    # Example:
+    #   class User < Ohm::Model
+    #     attribute :name
+    #   end
+    #
+    #   # same as
+    #
+    #   class User < Ohm::Model
+    #     def name
+    #       @attributes[:name]
+    #     end
+    #
+    #     def name=(name)
+    #       @attributes[:name] = name
+    #     end
+    #   end
+    #
     def self.attribute(name, cast = nil)
       if cast
         define_method(name) do
@@ -519,6 +728,22 @@ module Ohm
       end
     end
 
+    # Used for storing counters which are meant to be manipulated
+    # independent from the model attributes. All the counters are
+    # internally stored in a different key.
+    #
+    # Example:
+    #
+    #   class User < Ohm::Model
+    #     counter :points
+    #   end
+    #
+    #   u = User.create
+    #   u.incr :points
+    #
+    #   Ohm.redis.hget "User:1:counters", "points"
+    #   # => 1
+    #
     def self.counter(name)
       define_method(name) do
         return 0 if new?
@@ -527,52 +752,109 @@ module Ohm
       end
     end
 
+    # An Ohm::Set wrapper for Model.key[:all].
     def self.all
       Set.new(key[:all], key, self)
     end
 
+    # Syntactic sugar for Model.new(atts).save
     def self.create(atts = {})
       new(atts).save
     end
 
-    def model
-      self.class
-    end
-
-    def db
-      model.db
-    end
-
+    # Allows you to manipulate the Redis HASH of the model
+    # directly.
+    #
+    # Example:
+    #
+    #   class User < Ohm::Model
+    #     attribute :name
+    #   end
+    #
+    #   u = User.create(name: "John")
+    #   u.key.hget(:name)
+    #   # => John
+    #
+    # For more details see
+    #   http://github.com/soveran/nest
+    #
     def key
       model.key[id]
     end
 
+    # You initialize a model using a dictionary
+    # of attributes.
+    #
+    # Example:
+    #
+    #   u = User.new(name: "John")
+    #
     def initialize(atts = {})
       @attributes = {}
       @_memo = {}
       update_attributes(atts)
     end
 
+    # The ID used to store this model. The ID is used together
+    # with the name of the class in order to form the Redis key.
+    #
+    # Example:
+    #
+    #   class User < Ohm::Model; end
+    #
+    #   u = User.create
+    #   u.id
+    #   # => 1
+    #
+    #   u.key
+    #   # => User:1
+    #
     def id
       raise MissingID if not defined?(@id)
       @id
     end
 
+    # Checks for equality by doing the following assertions:
+    #
+    # 1. That the passed model is of the same type.
+    # 2. That they have the same redis keys.
+    #
     def ==(other)
       other.kind_of?(model) && other.key == key
     rescue MissingID
       false
     end
 
+    # Used to preload all the attributes of this model
+    # from Redis. Used internally by `Model::[]`.
     def load!
       update_attributes(key.hgetall) unless new?
       return self
     end
 
+    # Reads an attribute remotly from Redis. Useful
+    # if you want to get the most recent value of the attribute
+    # and not rely on the loaded value in-ruby.
+    #
+    # Example:
+    #
+    #   User.create(name: "John")
+    #
+    #   Session 1     |    Session 2
+    #   --------------|------------------------
+    #   u = User[1]   |    u = User[1]
+    #   u.name = "J"  |
+    #   u.save        |
+    #                 |    u.name == "John"
+    #                 |    u.get(:name) == "J"
+    #
     def get(att)
       @attributes[att] = key.hget(att)
     end
 
+    # Atomically sets a value manually. The best usecase for this
+    # is when you simply want to update one value, without
+    # the need for Ohm to take care of indices, uniques, etc.
     def set(att, val)
       val.to_s.empty? ? key.hdel(att) : key.hset(att, val)
       @attributes[att] = val
@@ -582,14 +864,29 @@ module Ohm
       !defined?(@id)
     end
 
+    # Atomically increment a counter. Internally uses HINCRBY.
     def incr(att, count = 1)
       key[:counters].hincrby(att, count)
     end
 
+    # Atomically decrement a counter. Internally uses HINCRBY.
     def decr(att, count = 1)
       incr(att, -count)
     end
 
+    # Serves it's purpose when you try to use an Ohm Model as
+    # the key in a hash.
+    #
+    # Example:
+    #
+    #   h = {}
+    #
+    #   u = User.new
+    #
+    #   h[:u] = u
+    #   h[:u] == u
+    #   # => true
+    #
     def hash
       new? ? super : key.hash
     end
@@ -599,6 +896,34 @@ module Ohm
       @attributes
     end
 
+    # Allows you to export the ID and the errors of the model.
+    # The approach of ohm is to whitelist public attributes, as
+    # opposed to exporting each (possible sensitive) attribute.
+    #
+    # Example:
+    #
+    #   class User < Ohm::Model
+    #     attribute :name
+    #   end
+    #
+    #   u = User.create(name: "John")
+    #   u.to_hash
+    #   # => { id: "1" }
+    #
+    # In order to add additional attributes, simply override `to_hash`.
+    #
+    #   class User < Ohm::Model
+    #     attribute :name
+    #
+    #     def to_hash
+    #       super.merge(name: name)
+    #     end
+    #   end
+    #
+    #   u = User.create(name: "John")
+    #   u.to_hash
+    #   # => { id: "1", name: "John" }
+    #
     def to_hash
       attrs = {}
       attrs[:id] = id unless new?
@@ -607,15 +932,41 @@ module Ohm
       return attrs
     end
 
+    # Does a JSON export of the `to_hash` representation of the model.
     def to_json(*args)
       to_hash.to_json(*args)
     end
 
+    # Persists the model, indices, and uniques of the attributes. The
+    # `counter`s and `set`s are not touched during save.
+    #
+    # If the model is not valid, nil is returned. Otherwise, the persisted
+    # model is returned.
+    #
+    # Example:
+    #
+    #   class User < Ohm::Model
+    #     attribute :name
+    #
+    #     def validate
+    #       assert_present :name
+    #     end
+    #   end
+    #
+    #   User.new(name: nil).save
+    #   # => nil
+    #
+    #   u = User.new(name: "John").save
+    #   u.kind_of?(User)
+    #   # => true
+    #
     def save(&block)
       return if not valid?
       save!(&block)
     end
 
+    # Saves the model without checking for validity.
+    # Refer to `Model#save` for more details.
     def save!
       transaction do |t|
         t.watch(*_unique_keys)
@@ -647,6 +998,15 @@ module Ohm
       return self
     end
 
+    # Deletes the model including all the following keys:
+    #
+    # - <Model>:<id>
+    # - <Model>:<id>:counters
+    # - <Model>:<id>:<set name>
+    #
+    # If the model has uniques or indices, they're also
+    # cleaned up.
+    #
     def delete
       transaction do |t|
         t.read do |store|
@@ -666,22 +1026,87 @@ module Ohm
       end
     end
 
+    # Updates the model attributes and also persists them.
+    # Syntatic sugar for find + save.
+    #
+    # Example:
+    #
+    #   # Without using update
+    #   u = User[1]
+    #   u.update_attributes(name: "John")
+    #   u.save
+    #
+    #   # Using update
+    #   User[1].update(name: "John")
+    #
     def update(attributes)
       update_attributes(attributes)
       save
     end
 
+    # Writes the dictionary of key-value pairs to the model.
     def update_attributes(atts)
       atts.each { |att, val| send(:"#{att}=", val) }
     end
+
+  protected
+    def self.to_reference
+      name.to_s.
+        match(/^(?:.*::)*(.*)$/)[1].
+        gsub(/([a-z\d])([A-Z])/, '\1_\2').
+        downcase.to_sym
+    end
+
+    def self.indices
+      @indices ||= []
+    end
+
+    def self.uniques
+      @uniques ||= []
+    end
+
+    def self.collections
+      @collections ||= []
+    end
+
+    def self.filters(dict)
+      unless dict.kind_of?(Hash)
+        raise ArgumentError,
+          "You need to supply a hash with filters. " +
+          "If you want to find by ID, use #{self}[id] instead."
+      end
+
+      dict.map { |k, v| toindices(k, v) }.flatten
+    end
+
+    def self.toindices(att, val)
+      raise IndexNotFound unless indices.include?(att)
+
+      if val.kind_of?(Enumerable)
+        val.map { |v| key[:indices][att][v] }
+      else
+        [key[:indices][att][val]]
+      end
+    end
+
+    def self.new_id
+      key[:id].incr
+    end
+
+    attr_writer :id
 
     def transaction
       txn = Transaction.new { |t| yield t }
       txn.commit(db)
     end
 
-  protected
-    attr_writer :id
+    def model
+      self.class
+    end
+
+    def db
+      model.db
+    end
 
     def _initialize_id
       @id = model.new_id.to_s
