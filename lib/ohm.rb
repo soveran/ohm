@@ -447,7 +447,7 @@ module Ohm
       @lua ||= Lua.new(File.join(Dir.pwd, "lua"), db)
     end
 
-    # The namespace for all the keys generated using the model.
+    # The namespace for all the keys generated using this model.
     #
     # Example:
     #
@@ -567,14 +567,14 @@ module Ohm
       end
     end
 
-    # Allows you to index an any method on your model. Once you
+    # Allows you to index any method on your model. Once you
     # index a method, you can use them in `find` statements.
     def self.index(attribute)
       indices << attribute unless indices.include?(attribute)
     end
 
-    # Allows you to index an any method on your model. Once you
-    # index a method, you can use them in `with` statements.
+    # Allows you to create a uniue index for any method on your model.
+    # Once you add a unique index, you can use them in `with` statements.
     #
     # Note: if there is a conflict while saving, an
     # `Ohm::UniqueIndexViolation` violation is raised.
@@ -595,7 +595,7 @@ module Ohm
     #   u.posts.empty?
     #   # => true
     #
-    # Note: You can't use a model's SET until you save it, otherwise
+    # Note: You can't use a model's SET until you save it. If you do,
     #       you'll receive an Ohm::MissingID error.
     #
     def self.set(name, model)
@@ -896,8 +896,8 @@ module Ohm
     end
 
     # Allows you to export the ID and the errors of the model.
-    # The approach of ohm is to whitelist public attributes, as
-    # opposed to exporting each (possible sensitive) attribute.
+    # The approach of Ohm is to whitelist public attributes, as
+    # opposed to exporting each (possibly sensitive) attribute.
     #
     # Example:
     #
