@@ -7,6 +7,29 @@ require "scrivener"
 require "ohm/transaction"
 
 module Ohm
+  # All of the known errors in Ohm can be traced back
+  # to one of these exceptions classes.
+  #
+  # MissingID:
+  #
+  #   Comment.new.id # => error
+  #   Comment.new.key
+  #
+  #   Solution: You need to save your model first.
+  #
+  # IndexNotFound:
+  #
+  #   Comment.find(foo: "Bar") # => error
+  #
+  #   Solution: Comment.index :foo
+  #
+  # UniqueIndexViolation:
+  #
+  #   Raised when trying to save an object with a `unique` index.
+  #
+  #   Solution: rescue Ohm::UniqueIndexViolation during save,
+  #             but also, do some validations even before attempting
+  #             to save.
   class Error < StandardError; end
   class MissingID < Error; end
   class IndexNotFound < Error; end
