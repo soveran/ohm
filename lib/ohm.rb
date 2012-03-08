@@ -356,8 +356,6 @@ module Ohm
 
         key[:counters].hget(name).to_i
       end
-
-      key[:counters].sadd(name)
     end
 
     def self.all
@@ -491,6 +489,7 @@ module Ohm
           _delete_indices(store.existing)
           model.collections.each { |e| key[e].del }
           model.key[:all].srem(id)
+          key[:counters].del
           key.del
         end
 

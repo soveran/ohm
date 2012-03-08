@@ -51,6 +51,16 @@ class Meetup < Ohm::Model
   end
 end
 
+test "counters are cleaned up during deletion" do
+  e = Event.create(name: "Foo")
+  e.incr :votes, 10
+
+  assert_equal 10, e.votes
+
+  e.delete
+  assert ! e.key[:counters].exists
+end
+
 test "return the unsaved object if validation fails" do
   assert Person.create(:name => nil).kind_of?(Person)
 end
