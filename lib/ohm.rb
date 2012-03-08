@@ -205,14 +205,24 @@ module Ohm
     #       It doesn't do any form of type checking.
     #
     def include?(model)
-      execute { |key| key.sismember(model.id) }
+      exists?(model.id)
     end
 
-    # The total members of this SET (SCARD).
+    # Returns the total size of the set using SCARD.
     def size
       execute { |key| key.scard }
     end
 
+    # Syntactic sugar for #sort_by or #sort.
+    #
+    # Example:
+    #
+    #   User.all.first ==
+    #     User.all.sort(limit: [0, 1]).first
+    #
+    #   User.all.first(by: :name, "ALPHA") ==
+    #     User.all.sort_by(:name, order: "ALPHA", limit: [0, 1]).first
+    #
     def first(options = {})
       opts = options.dup
       opts.merge!(limit: [0, 1])
@@ -224,15 +234,30 @@ module Ohm
       end
     end
 
+    # Grabs all the elements of this set using SMEMBERS.
     def ids
       execute { |key| key.smembers }
     end
 
+    # Allows you to retrieve a specific element using an ID from this set.
+    #
+    # Example:
+    #
+    #   # Let's say we got the ID 1 from a request parameter.
+    #   id = 1
+    #
+    #   # We want to retrieve the post if it's included in the user's posts.
+    #   post = user.posts[id]
+    #
     def [](id)
-      model[id] if execute { |key| key.sismember(id) }
+      model[id] if exists?(id)
     end
 
   private
+    def exists?(id)
+      execute { |key| key.sismember(id) }
+    end
+
     def fetch(ids)
       arr = model.db.pipelined do
         ids.each { |id| namespace[id].hgetall }
@@ -249,10 +274,26 @@ module Ohm
   class Set < Struct.new(:key, :namespace, :model)
     include Collection
 
+    # Add a model directly to the set.
+    #
+    # Example:
+    #
+    #   user = User.create
+    #   post = Post.create
+    #
+    #   user.posts.add(post)
+    #
     def add(model)
       key.sadd(model.id)
     end
 
+    # Chain new fiters on an existing set.
+    #
+    # Example:
+    #
+    #   set = User.find(name: "John")
+    #   set.find(age: 30)
+    #
     def find(dict)
       keys = model.filters(dict)
       keys.push(key)
@@ -260,6 +301,22 @@ module Ohm
       MultiSet.new(keys, namespace, model)
     end
 
+    # Replace all the existing elements of a set
+    # with a different collection of models. This happens
+    # atomically in a MULTI-EXEC block.
+    #
+    # Example:
+    #
+    #   user = User.create
+    #   p1 = Post.create
+    #   user.posts.add(p1)
+    #
+    #   p2, p3 = Post.create, Post.create
+    #   user.posts.replace([p2, p3])
+    #
+    #   user.posts.include?(p1)
+    #   # => false
+    #
     def replace(models)
       ids = models.map { |model| model.id }
 
