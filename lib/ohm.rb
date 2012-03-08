@@ -400,13 +400,12 @@ module Ohm
   #   u.incr :points
   #   u.posts.add(Post.create)
   #
-  # At the point of executing User.create(...), here are the commands
-  # in Redis executed:
+  # When you execute `User.create(...)`, you run the following Redis commands:
   #
   #   # Generate an ID
   #   INCR User:id
   #
-  #   # Add the newly generated ID, (let's assuming the ID is 1).
+  #   # Add the newly generated ID, (let's assume the ID is 1).
   #   SADD User:all 1
   #
   #   # Store the unique index
