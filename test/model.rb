@@ -447,9 +447,9 @@ test "filter elements" do
   @event.attendees.add(@person1)
   @event.attendees.add(@person2)
 
-  assert [@person1] == @event.attendees.find(:initial => "A").all
-  assert [@person2] == @event.attendees.find(:initial => "B").all
-  assert [] == @event.attendees.find(:initial => "Z").all
+  assert [@person1] == @event.attendees.find(:initial => "A").to_a
+  assert [@person2] == @event.attendees.find(:initial => "B").to_a
+  assert [] == @event.attendees.find(:initial => "Z").to_a
 end
 
 test "not be available if the model is new" do
@@ -482,7 +482,7 @@ test "return instances of the passed model" do
   @event.save
   @event.attendees.add(@person1)
 
-  assert [@person1] == @event.attendees.all
+  assert [@person1] == @event.attendees.to_a
   assert @person1 == @event.attendees[@person1.id]
 end
 
@@ -506,11 +506,11 @@ test "replace the values in the set" do
   @event.save
   @event.attendees.add(@person1)
 
-  assert [@person1] == @event.attendees.all
+  assert [@person1] == @event.attendees.to_a
 
   @event.attendees.replace([@person2, @person3])
 
-  assert [@person2, @person3] == @event.attendees.all.sort_by(&:id)
+  assert [@person2, @person3] == @event.attendees.to_a.sort_by(&:id)
 end
 
 # Sorting lists and sets by model attributes

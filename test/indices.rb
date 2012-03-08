@@ -51,7 +51,7 @@ test "avoid intersections with the all collection" do
 end
 
 test "cleanup the temporary key after use" do
-  assert User.find(:email => "foo", :activation_code => "bar").all
+  assert User.find(:email => "foo", :activation_code => "bar").to_a
 
   assert Ohm.redis.keys("User:temp:*").empty?
 end
@@ -69,18 +69,18 @@ test "update indices when changing attribute values" do
   @user1.email = "baz"
   @user1.save
 
-  assert [] == User.find(:email => "foo").all
-  assert [@user1] == User.find(:email => "baz").all
+  assert [] == User.find(:email => "foo").to_a
+  assert [@user1] == User.find(:email => "baz").to_a
 end
 
 test "remove from the index after deleting" do
   @user2.delete
 
-  assert [] == User.find(:email => "bar").all
+  assert [] == User.find(:email => "bar").to_a
 end
 
 test "work with attributes that contain spaces" do
-  assert [@user3] == User.find(:email => "baz qux").all
+  assert [@user3] == User.find(:email => "baz qux").to_a
 end
 
 # Indexing arbitrary attributes
@@ -93,5 +93,5 @@ end
 test "allow indexing by an arbitrary attribute" do
   gmail = User.find(:email_provider => "gmail.com").to_a
   assert [@user1, @user2] == gmail.sort_by { |u| u.id }
-  assert [@user3] == User.find(:email_provider => "yahoo.com").all
+  assert [@user3] == User.find(:email_provider => "yahoo.com").to_a
 end

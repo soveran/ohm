@@ -13,7 +13,7 @@ module Ohm
   # MissingID:
   #
   #   Comment.new.id # => error
-  #   Comment.new.key
+  #   Comment.new.key # => error
   #
   #   Solution: You need to save your model first.
   #
@@ -35,7 +35,27 @@ module Ohm
   class IndexNotFound < Error; end
   class UniqueIndexViolation < Error; end
 
+  # Instead of monkey patching Kernel or trying to be clever, it's best
+  # to confine all the helper methods in a Utils module.
   module Utils
+    # Used by: `attribute`, `counter`, `set`, `reference`, `collection`
+    #
+    # Employed as a solution to avoid `NameError` problems when
+    # trying to load models referring to other models not yet loaded.
+    #
+    # Example:
+    #
+    #   class Comment < Ohm::Model
+    #     reference :user, User # NameError undefined constant User.
+    #   end
+    #
+    #   Instead of relying on some clever `const_missing` hack, we can
+    #   simply use a Symbol.
+    #
+    #   class Comment < Ohm::Model
+    #     reference :user, :User
+    #   end
+    #
     def self.const(context, name)
       case name
       when Symbol then context.const_get(name)
@@ -75,38 +95,95 @@ module Ohm
     @conn ||= Connection.new
   end
 
+  # Stores the connection options for the Redis instance.
+  #
+  # Examples:
+  #
+  #   Ohm.connect(port: 6380, db: 1, host: "10.0.1.1")
+  #   Ohm.connect(url: "redis://10.0.1.1:6380/1")
+  #
+  # All of the options are simply passed on to `Redis.connect`.
+  #
   def self.connect(options = {})
     conn.start(options)
   end
 
+  # Use this if you want to do quick adhoc redis commands against the
+  # defined Ohm connection.
+  #
+  # Examples:
+  #
+  #   Ohm.redis.keys("User:*")
+  #   Ohm.redis.set("foo", "bar")
+  #
   def self.redis
     conn.redis
   end
 
+  # A simple wrapper for Ohm.redis.flushdb.
   def self.flush
     redis.flushdb
   end
 
+  # Defines all the base collection methods used by `Set` and `MultiSet`.
+  # Starting in Ohm 1.0, all the collections are loaded in one pipeline.
   module Collection
     include Enumerable
 
-    def all
+    # Actually fetches the data from Redis in one go.
+    def to_a
       fetch(ids)
     end
-    alias :to_a :all
 
     def each
-      all.each { |e| yield e }
+      to_a.each { |e| yield e }
     end
 
     def empty?
       size == 0
     end
 
+    # Allows you to sort by any field in your model.
+    #
+    # Example:
+    #
+    #   class User < Ohm::Model
+    #     attribute :name
+    #   end
+    #
+    #   User.all.sort_by(:name, order: "ALPHA")
+    #   User.all.sort_by(:name, order: "ALPHA DESC")
+    #   User.all.sort_by(:name, order: "ALPHA DESC", limit: [0, 10])
+    #
+    # Note: This is slower compared to just doing `sort`, specifically
+    # because Redis has to read each individual Hash in order to sort them.
+    #
     def sort_by(att, options = {})
       sort(options.merge(by: namespace["*->%s" % att]))
     end
 
+    # Allows you to sort your models using their IDs. This is much faster
+    # than `sort_by`. If you simply want to get records in ascending or
+    # descending order, then this is the best method to do that.
+    #
+    # Example:
+    #
+    #   class User < Ohm::Model
+    #     attribute :name
+    #   end
+    #
+    #   User.create(name: "John")
+    #   User.create(name: "Jane")
+    #
+    #   User.all.sort.map(&:id) == ["1", "2"]
+    #   # => true
+    #
+    #   User.all.sort(order: "ASC").map(&:id) == ["1", "2"]
+    #   # => true
+    #
+    #   User.all.sort(order: "DESC").map(&:id) == ["2", "1"]
+    #   # => true
+    #
     def sort(options = {})
       if options.has_key?(:get)
         options[:get] = namespace["*->%s" % options[:get]]
@@ -116,10 +193,22 @@ module Ohm
       fetch(execute { |key| key.sort(options) })
     end
 
+    # Check if a model is included in this SET.
+    #
+    # Example:
+    #
+    #   u = User.create
+    #   User.all.include?(u)
+    #   # => true
+    #
+    # Note: Ohm simply checks that the model's ID is included in the set.
+    #       It doesn't do any form of type checking.
+    #
     def include?(model)
       execute { |key| key.sismember(model.id) }
     end
 
+    # The total members of this SET (SCARD).
     def size
       execute { |key| key.scard }
     end
