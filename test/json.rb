@@ -65,20 +65,10 @@ test "just be the to_hash of a model" do
   assert "Ruby" == json["language"]
 end
 
-__END__
-test "export a hash with the errors" do
-  person = Venue.new
-  person.valid?
+test "export an array of records to json" do
+  Programmer.create(language: "Ruby")
+  Programmer.create(language: "Python")
 
-  assert Hash[:errors => [[:name, :not_present]]] == person.to_hash
-end
-
-test "export a hash with its id and the errors" do
-  person = Venue.create(:name => "John Doe")
-  person.name = nil
-  person.valid?
-
-  expected_hash = { :id => '1', :errors => [[:name, :not_present]] }
-
-  assert expected_hash == person.to_hash
+  expected = [{ id: "1", language: "Ruby" }, { id: "2", language: "Python"}].to_json
+  assert_equal expected, Programmer.all.to_a.to_json
 end

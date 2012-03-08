@@ -438,8 +438,8 @@ module Ohm
       return attrs
     end
 
-    def to_json
-      to_hash.to_json
+    def to_json(*args)
+      to_hash.to_json(*args)
     end
 
     def save(&block)
