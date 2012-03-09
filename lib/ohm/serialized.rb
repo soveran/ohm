@@ -1,11 +1,6 @@
 require 'bigdecimal'
 require 'time'
 require 'date'
-begin
-  require 'yajl/json_gem'
-rescue LoadError
-  puts 'Warning: Ohm::Serialized requires Yajl for symbolized_keys parsing'
-end
 
 module Ohm
 
@@ -119,6 +114,12 @@ module Ohm
     end
     
     class JSONSerializer < Serializer
+      begin
+        require 'yajl/json_gem' unless defined? ActiveSupport::JSON
+      rescue LoadError
+        puts 'Warning: Ohm::Serialized requires Yajl for symbolized_keys parsing'
+      end
+
       def initialize(type, options={})
         super( type, { symbolize_keys: true }.merge( options ) )
       end
@@ -130,7 +131,7 @@ module Ohm
       end
       
       def to_str( val )
-        JSON.generate( val, options ) if val
+        ( val.respond_to?(:to_json) ? val.to_json : JSON.generate( val, options )  ) if val
       rescue JSON::GeneratorError
         val.to_s
       end
