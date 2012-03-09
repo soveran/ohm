@@ -7,41 +7,45 @@ require "scrivener"
 require "ohm/transaction"
 
 module Ohm
-  # All of the known errors in Ohm can be traced back
-  # to one of these exceptions classes.
+
+  # All of the known errors in Ohm can be traced back to one of these
+  # exceptions.
   #
   # MissingID:
   #
-  #   Comment.new.id # => error
-  #   Comment.new.key # => error
+  #   Comment.new.id # => Error
+  #   Comment.new.key # => Error
   #
-  #   Solution: You need to save your model first.
+  #   Solution: you need to save your model first.
   #
   # IndexNotFound:
   #
-  #   Comment.find(foo: "Bar") # => error
+  #   Comment.find(foo: "Bar") # => Error
   #
-  #   Solution: Comment.index :foo
+  #   Solution: add an index with `Comment.index :foo`.
   #
   # UniqueIndexViolation:
   #
-  #   Raised when trying to save an object with a `unique` index.
+  #   Raised when trying to save an object with a `unique` index for
+  #   which the value already exists.
   #
-  #   Solution: rescue Ohm::UniqueIndexViolation during save,
-  #             but also, do some validations even before attempting
-  #             to save.
+  #   Solution: rescue `Ohm::UniqueIndexViolation` during save, but
+  #   also, do some validations even before attempting to save.
+  #
   class Error < StandardError; end
   class MissingID < Error; end
   class IndexNotFound < Error; end
   class UniqueIndexViolation < Error; end
 
-  # Instead of monkey patching Kernel or trying to be clever, it's best
-  # to confine all the helper methods in a Utils module.
+  # Instead of monkey patching Kernel or trying to be clever, it's
+  # best to confine all the helper methods in a Utils module.
   module Utils
-    # Used by: `attribute`, `counter`, `set`, `reference`, `collection`
+
+    # Used by: `attribute`, `counter`, `set`, `reference`,
+    # `collection`.
     #
-    # Employed as a solution to avoid `NameError` problems when
-    # trying to load models referring to other models not yet loaded.
+    # Employed as a solution to avoid `NameError` problems when trying
+    # to load models referring to other models not yet loaded.
     #
     # Example:
     #
@@ -108,7 +112,7 @@ module Ohm
     conn.start(options)
   end
 
-  # Use this if you want to do quick adhoc redis commands against the
+  # Use this if you want to do quick ad hoc redis commands against the
   # defined Ohm connection.
   #
   # Examples:
@@ -120,17 +124,16 @@ module Ohm
     conn.redis
   end
 
-  # A simple wrapper for Ohm.redis.flushdb.
+  # Wrapper for Ohm.redis.flushdb.
   def self.flush
     redis.flushdb
   end
 
-  # Defines all the base collection methods used by `Set` and `MultiSet`.
-  # Starting in Ohm 1.0, all the collections are loaded in one pipeline.
+  # Defines most of the methods used by `Set` and `MultiSet`.
   module Collection
     include Enumerable
 
-    # Actually fetches the data from Redis in one go.
+    # Fetch the data from Redis in one go.
     def to_a
       fetch(ids)
     end
@@ -156,15 +159,17 @@ module Ohm
     #   User.all.sort_by(:name, order: "ALPHA DESC", limit: [0, 10])
     #
     # Note: This is slower compared to just doing `sort`, specifically
-    # because Redis has to read each individual Hash in order to sort them.
+    # because Redis has to read each individual hash in order to sort
+    # them.
     #
     def sort_by(att, options = {})
       sort(options.merge(by: namespace["*->%s" % att]))
     end
 
-    # Allows you to sort your models using their IDs. This is much faster
-    # than `sort_by`. If you simply want to get records in ascending or
-    # descending order, then this is the best method to do that.
+    # Allows you to sort your models using their IDs. This is much
+    # faster than `sort_by`. If you simply want to get records in
+    # ascending or descending order, then this is the best method to
+    # do that.
     #
     # Example:
     #
@@ -193,16 +198,17 @@ module Ohm
       fetch(execute { |key| key.sort(options) })
     end
 
-    # Check if a model is included in this SET.
+    # Check if a model is included in this set.
     #
     # Example:
     #
     #   u = User.create
+    #
     #   User.all.include?(u)
     #   # => true
     #
-    # Note: Ohm simply checks that the model's ID is included in the set.
-    #       It doesn't do any form of type checking.
+    # Note: Ohm simply checks that the model's ID is included in the
+    # set. It doesn't do any form of type checking.
     #
     def include?(model)
       exists?(model.id)
@@ -213,7 +219,8 @@ module Ohm
       execute { |key| key.scard }
     end
 
-    # Syntactic sugar for #sort_by or #sort.
+    # Syntactic sugar for `sort_by` or `sort` when you only need the
+    # first element.
     #
     # Example:
     #
@@ -234,19 +241,19 @@ module Ohm
       end
     end
 
-    # Grabs all the elements of this set using SMEMBERS.
+    # Grab all the elements of this set using SMEMBERS.
     def ids
       execute { |key| key.smembers }
     end
 
-    # Allows you to retrieve a specific element using an ID from this set.
+    # Retrieve a specific element using an ID from this set.
     #
     # Example:
     #
     #   # Let's say we got the ID 1 from a request parameter.
     #   id = 1
     #
-    #   # We want to retrieve the post if it's included in the user's posts.
+    #   # Retrieve the post if it's included in the user's posts.
     #   post = user.posts[id]
     #
     def [](id)
@@ -301,9 +308,9 @@ module Ohm
       MultiSet.new(keys, namespace, model)
     end
 
-    # Replace all the existing elements of a set
-    # with a different collection of models. This happens
-    # atomically in a MULTI-EXEC block.
+    # Replace all the existing elements of a set with a different
+    # collection of models. This happens atomically in a MULTI-EXEC
+    # block.
     #
     # Example:
     #
@@ -332,10 +339,10 @@ module Ohm
     end
   end
 
-  # Anytime you filter a set with more than one requirement,
-  # you internally use a `MultiSet`. `MutiSet` is a bit slower
-  # than just a `Set` because it has to `SINTERSTORE` all
-  # the keys prior to retrieving the members, size, etc.
+  # Anytime you filter a set with more than one requirement, you
+  # internally use a `MultiSet`. `MutiSet` is a bit slower than just
+  # a `Set` because it has to `SINTERSTORE` all the keys prior to
+  # retrieving the members, size, etc.
   #
   # Example:
   #
@@ -378,9 +385,9 @@ module Ohm
     end
   end
 
-  # The base class for all your models. In order to better understand it,
-  # here is a semi-realtime explanation of the details involved when creating
-  # a User instance.
+  # The base class for all your models. In order to better understand
+  # it, here is a semi-realtime explanation of the details involved
+  # when creating a User instance.
   #
   # Example:
   #
@@ -400,7 +407,8 @@ module Ohm
   #   u.incr :points
   #   u.posts.add(Post.create)
   #
-  # When you execute `User.create(...)`, you run the following Redis commands:
+  # When you execute `User.create(...)`, you run the following Redis
+  # commands:
   #
   #   # Generate an ID
   #   INCR User:id
@@ -479,30 +487,28 @@ module Ohm
       new(id: id).load! if id && exists?(id)
     end
 
-    # Syntatic sugar for quickly retrieving a set
-    # of models given an array of IDs.
+    # Retrieve a set of models given an array of IDs.
     #
     # Example:
     #
     #   ids = [1, 2, 3]
     #   ids.map(&User)
     #
-    # Note: The use of this should be a last resort for your
-    #       actual application runtime, or for simply debugging
-    #       in your console. If you care about performance, you
-    #       should pipeline your reads. For more information
-    #       checkout the implementation of Ohm::Set#fetch.
+    # Note: The use of this should be a last resort for your actual
+    # application runtime, or for simply debugging in your console. If
+    # you care about performance, you should pipeline your reads. For
+    # more information checkout the implementation of Ohm::Set#fetch.
     #
     def self.to_proc
       lambda { |id| self[id] }
     end
 
-    # Quickly check if the ID exists within <Model>:all.
+    # Check if the ID exists within <Model>:all.
     def self.exists?(id)
       key[:all].sismember(id)
     end
 
-    # Used in conjuction with `unique` indices.
+    # Find values in `unique` indices.
     #
     # Example:
     #
@@ -519,7 +525,7 @@ module Ohm
       id && self[id]
     end
 
-    # Used in conjuction with `index` fields.
+    # Find values in indexed fields.
     #
     # Example:
     #
@@ -540,7 +546,7 @@ module Ohm
     #     end
     #
     #     def tag
-    #       ["ruby", "pytohn"]
+    #       ["ruby", "python"]
     #     end
     #   end
     #
@@ -567,14 +573,14 @@ module Ohm
       end
     end
 
-    # Allows you to index any method on your model. Once you
-    # index a method, you can use them in `find` statements.
+    # Index any method on your model. Once you index a method, you can
+    # use it in `find` statements.
     def self.index(attribute)
       indices << attribute unless indices.include?(attribute)
     end
 
-    # Allows you to create a uniue index for any method on your model.
-    # Once you add a unique index, you can use them in `with` statements.
+    # Create a unique index for any method on your model. Once you add
+    # a unique index, you can use it in `with` statements.
     #
     # Note: if there is a conflict while saving, an
     # `Ohm::UniqueIndexViolation` violation is raised.
@@ -583,7 +589,7 @@ module Ohm
       uniques << attribute unless uniques.include?(attribute)
     end
 
-    # Declares an Ohm::Set given the name.
+    # Declare an Ohm::Set with the given name.
     #
     # Example:
     #
@@ -595,8 +601,8 @@ module Ohm
     #   u.posts.empty?
     #   # => true
     #
-    # Note: You can't use a model's SET until you save it. If you do,
-    #       you'll receive an Ohm::MissingID error.
+    # Note: You can't use the set until you save the model. If you try
+    # to do it, you'll receive an Ohm::MissingID error.
     #
     def self.set(name, model)
       collections << name unless collections.include?(name)
@@ -643,7 +649,7 @@ module Ohm
     #     reference :user, :User
     #   end
     #
-    #   # is the same as
+    #   # It's the same as:
     #
     #   class Post < Ohm::Model
     #     attribute :user_id
@@ -662,6 +668,7 @@ module Ohm
     #       @_memo.delete(:user_id)
     #       self.user_id = user_id
     #     end
+    #   end
     #
     def self.reference(name, model)
       reader = :"#{name}_id"
@@ -692,14 +699,15 @@ module Ohm
     end
 
     # The bread and butter macro of all models. Basically declares
-    # persisted attributes. All attributes are stored on the Redis HASH.
+    # persisted attributes. All attributes are stored on the Redis
+    # hash.
     #
     # Example:
     #   class User < Ohm::Model
     #     attribute :name
     #   end
     #
-    #   # same as
+    #   # It's the same as:
     #
     #   class User < Ohm::Model
     #     def name
@@ -727,9 +735,11 @@ module Ohm
       end
     end
 
-    # Used for storing counters which are meant to be manipulated
-    # independent from the model attributes. All the counters are
-    # internally stored in a different key.
+    # Declare a counter. All the counters are internally stored in
+    # a different Redis hash, independent from the one that stores
+    # the model attributes. Counters are updated with the `incr` and
+    # `decr` methods, which interact directly with Redis. Their value
+    # can't be assigned as with regular attributes.
     #
     # Example:
     #
@@ -742,6 +752,9 @@ module Ohm
     #
     #   Ohm.redis.hget "User:1:counters", "points"
     #   # => 1
+    #
+    # Note: You can't use counters until you save the model. If you
+    # try to do it, you'll receive an Ohm::MissingID error.
     #
     def self.counter(name)
       define_method(name) do
@@ -761,8 +774,7 @@ module Ohm
       new(atts).save
     end
 
-    # Allows you to manipulate the Redis HASH of the model
-    # directly.
+    # Manipulate the Redis hash of attributes directly.
     #
     # Example:
     #
@@ -781,8 +793,7 @@ module Ohm
       model.key[id]
     end
 
-    # You initialize a model using a dictionary
-    # of attributes.
+    # Initialize a model using a dictionary of attributes.
     #
     # Example:
     #
@@ -794,7 +805,7 @@ module Ohm
       update_attributes(atts)
     end
 
-    # The ID used to store this model. The ID is used together
+    # Access the ID used to store this model. The ID is used together
     # with the name of the class in order to form the Redis key.
     #
     # Example:
@@ -813,10 +824,10 @@ module Ohm
       @id
     end
 
-    # Checks for equality by doing the following assertions:
+    # Check for equality by doing the following assertions:
     #
     # 1. That the passed model is of the same type.
-    # 2. That they have the same redis keys.
+    # 2. That they represent the same Redis key.
     #
     def ==(other)
       other.kind_of?(model) && other.key == key
@@ -824,36 +835,39 @@ module Ohm
       false
     end
 
-    # Used to preload all the attributes of this model
-    # from Redis. Used internally by `Model::[]`.
+    # Preload all the attributes of this model from Redis. Used
+    # internally by `Model::[]`.
     def load!
       update_attributes(key.hgetall) unless new?
       return self
     end
 
-    # Reads an attribute remotly from Redis. Useful
-    # if you want to get the most recent value of the attribute
-    # and not rely on the loaded value in-ruby.
+    # Read an attribute remotly from Redis. Useful if you want to get
+    # the most recent value of the attribute and not rely on locally
+    # cached value.
     #
     # Example:
     #
-    #   User.create(name: "John")
+    #   User.create(name: "A")
     #
     #   Session 1     |    Session 2
     #   --------------|------------------------
     #   u = User[1]   |    u = User[1]
-    #   u.name = "J"  |
+    #   u.name = "B"  |
     #   u.save        |
-    #                 |    u.name == "John"
-    #                 |    u.get(:name) == "J"
+    #                 |    u.name == "A"
+    #                 |    u.get(:name) == "B"
     #
     def get(att)
       @attributes[att] = key.hget(att)
     end
 
-    # Atomically sets a value manually. The best usecase for this
-    # is when you simply want to update one value, without
-    # the need for Ohm to take care of indices, uniques, etc.
+    # Update an attribute value atomically. The best usecase for this
+    # is when you simply want to update one value.
+    #
+    # Note: This method is dangerous because it doesn't update indices
+    # and uniques. Use it wisely. The safe equivalent is `update`.
+    #
     def set(att, val)
       val.to_s.empty? ? key.hdel(att) : key.hset(att, val)
       @attributes[att] = val
@@ -863,18 +877,17 @@ module Ohm
       !defined?(@id)
     end
 
-    # Atomically increment a counter. Internally uses HINCRBY.
+    # Increment a counter atomically. Internally uses HINCRBY.
     def incr(att, count = 1)
       key[:counters].hincrby(att, count)
     end
 
-    # Atomically decrement a counter. Internally uses HINCRBY.
+    # Decrement a counter atomically. Internally uses HINCRBY.
     def decr(att, count = 1)
       incr(att, -count)
     end
 
-    # Serves it's purpose when you try to use an Ohm Model as
-    # the key in a hash.
+    # Return a value that allows the use of models as hash keys.
     #
     # Example:
     #
@@ -895,9 +908,9 @@ module Ohm
       @attributes
     end
 
-    # Allows you to export the ID and the errors of the model.
-    # The approach of Ohm is to whitelist public attributes, as
-    # opposed to exporting each (possibly sensitive) attribute.
+    # Export the ID and the errors of the model. The approach of Ohm
+    # is to whitelist public attributes, as opposed to exporting each
+    # (possibly sensitive) attribute.
     #
     # Example:
     #
@@ -909,7 +922,7 @@ module Ohm
     #   u.to_hash
     #   # => { id: "1" }
     #
-    # In order to add additional attributes, simply override `to_hash`.
+    # In order to add additional attributes, you can override `to_hash`:
     #
     #   class User < Ohm::Model
     #     attribute :name
@@ -931,16 +944,16 @@ module Ohm
       return attrs
     end
 
-    # Does a JSON export of the `to_hash` representation of the model.
+    # Export a JSON representation of the model by encoding `to_hash`.
     def to_json(*args)
       to_hash.to_json(*args)
     end
 
-    # Persists the model, indices, and uniques of the attributes. The
-    # `counter`s and `set`s are not touched during save.
+    # Persist the model attributes and update indices and unique
+    # indices. The `counter`s and `set`s are not touched during save.
     #
-    # If the model is not valid, nil is returned. Otherwise, the persisted
-    # model is returned.
+    # If the model is not valid, nil is returned. Otherwise, the
+    # persisted model is returned.
     #
     # Example:
     #
@@ -964,8 +977,8 @@ module Ohm
       save!(&block)
     end
 
-    # Saves the model without checking for validity.
-    # Refer to `Model#save` for more details.
+    # Saves the model without checking for validity. Refer to
+    # `Model#save` for more details.
     def save!
       transaction do |t|
         t.watch(*_unique_keys)
@@ -997,14 +1010,13 @@ module Ohm
       return self
     end
 
-    # Deletes the model including all the following keys:
+    # Delete the model, including all the following keys:
     #
     # - <Model>:<id>
     # - <Model>:<id>:counters
     # - <Model>:<id>:<set name>
     #
-    # If the model has uniques or indices, they're also
-    # cleaned up.
+    # If the model has uniques or indices, they're also cleaned up.
     #
     def delete
       transaction do |t|
@@ -1025,25 +1037,24 @@ module Ohm
       end
     end
 
-    # Updates the model attributes and also persists them.
-    # Syntatic sugar for find + save.
+    # Update the model attributes and call save.
     #
     # Example:
     #
-    #   # Without using update
+    #   User[1].update(name: "John")
+    #
+    #   # It's the same as:
+    #
     #   u = User[1]
     #   u.update_attributes(name: "John")
     #   u.save
-    #
-    #   # Using update
-    #   User[1].update(name: "John")
     #
     def update(attributes)
       update_attributes(attributes)
       save
     end
 
-    # Writes the dictionary of key-value pairs to the model.
+    # Write the dictionary of key-value pairs to the model.
     def update_attributes(atts)
       atts.each { |att, val| send(:"#{att}=", val) }
     end
