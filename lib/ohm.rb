@@ -1714,8 +1714,8 @@ module Ohm
     #   Post.connect(:port => 6380, :db => 2)
     #
     # @see file:README.html#connecting Ohm.connect options documentation.
-    def self.connect(*options)
-      self.db = Ohm.connection(*options)
+    def self.connect(options = {})
+      @options = options
     end
 
     # @return [Ohm::Key] A key scoped to the model which uses this object's
@@ -1803,7 +1803,9 @@ module Ohm
 
     # Provides access to the Redis database. This is shared accross all models and instances.
     def self.db
-      Ohm.threaded[self] || Ohm.redis
+      return Ohm.redis unless defined?(@options)
+
+      Redis.connect(@options)
     end
 
     def self.db=(connection)
