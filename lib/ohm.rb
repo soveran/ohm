@@ -1716,11 +1716,16 @@ module Ohm
       to_hash.to_json(*args)
     end
 
-    # Convenience wrapper for {Ohm::Model.attributes}.
+    # Returns the attributes hash
     def attributes
-      self.class.attributes
+      @_attributes
     end
 
+    # Convenience wrapper for {Ohm::Model.attributes}.
+    def attribute_names
+      self.class.attributes
+    end
+    
     # Convenience wrapper for {Ohm::Model.counters}.
     def counters
       self.class.counters
@@ -1884,7 +1889,7 @@ module Ohm
 
     # Return the list of attributes, collections, counters etc. for inspect
     def attributes_for_inspect
-      (attributes + collections + counters)
+      (attribute_names + collections + counters)
     end
     
     attr :_type
@@ -1931,8 +1936,8 @@ module Ohm
     # @see http://code.google.com/p/redis/wiki/MultiExecCommand MULTI EXEC
     #      in the Redis Command Reference.
     def write
-      unless (attributes + counters).empty?
-        atts = (attributes + counters).inject([]) { |ret, att|
+      unless (attribute_names + counters).empty?
+        atts = (attribute_names + counters).inject([]) { |ret, att|
           value = serialize(att)
 
           ret.push(att, value) if not value.empty?
