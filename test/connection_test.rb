@@ -43,3 +43,59 @@ test "supports connecting by URL" do
     assert Errno::ECONNREFUSED == e.class
   end
 end
+
+test "Model.db is the same as Ohm.redis by default" do
+  class U < Ohm::Model
+  end
+
+  assert_equal U.db.object_id, Ohm.redis.object_id
+end
+
+test "provides a unique Model.db connection in one thread" do
+  class U < Ohm::Model
+  end
+
+  U.connect(db: 9876)
+
+  r1 = U.db
+  r2 = U.db
+
+  assert_equal r1.object_id, r2.object_id
+end
+
+test "provides distinct Model.db connections per thread" do
+  class U < Ohm::Model
+  end
+
+  U.connect(db: 9876)
+
+  r1 = nil
+  r2 = nil
+
+  Thread.new { r1 = U.db }.join
+  Thread.new { r2 = U.db }.join
+
+  assert r1.object_id != r2.object_id
+end
+
+test "busts threaded cache when doing Model.connect" do
+  class U < Ohm::Model
+  end
+
+  U.connect(db: 9876)
+  r1 = U.db
+
+  U.connect(db: 9876)
+  r2 = U.db
+
+  assert r1.object_id != r2.object_id
+end
+
+test "disallows the non-thread safe writing of Model.db" do
+  class U < Ohm::Model
+  end
+
+  assert_raise NoMethodError do
+    U.db = Redis.connect
+  end
+end

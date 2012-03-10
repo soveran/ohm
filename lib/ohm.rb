@@ -1715,6 +1715,7 @@ module Ohm
     #
     # @see file:README.html#connecting Ohm.connect options documentation.
     def self.connect(options = {})
+      Ohm.threaded[self] = nil
       @options = options
     end
 
@@ -1805,11 +1806,7 @@ module Ohm
     def self.db
       return Ohm.redis unless defined?(@options)
 
-      Redis.connect(@options)
-    end
-
-    def self.db=(connection)
-      Ohm.threaded[self] = connection
+      Ohm.threaded[self] ||= Redis.connect(@options)
     end
 
     # Allows you to do key manipulations scoped solely to your class.
