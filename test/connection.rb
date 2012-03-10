@@ -10,7 +10,7 @@ test "connects lazily" do
   begin
     Ohm.redis.get "foo"
   rescue => e
-    assert Errno::ECONNREFUSED == e.class
+    assert_equal Redis::CannotConnectError, e.class
   end
 end
 
@@ -40,7 +40,7 @@ test "supports connecting by URL" do
   begin
     Ohm.redis.get "foo"
   rescue => e
-    assert Errno::ECONNREFUSED == e.class
+    assert_equal Redis::CannotConnectError, e.class
   end
 end
 

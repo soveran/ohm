@@ -273,7 +273,7 @@ module Ohm
       return [] if arr.nil?
 
       arr.map.with_index do |atts, idx|
-        model.new(Hash[*atts].update(id: ids[idx]))
+        model.new(atts.update(id: ids[idx]))
       end
     end
   end
