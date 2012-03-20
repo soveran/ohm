@@ -9,6 +9,7 @@ require File.join(File.dirname(__FILE__), "ohm", "helpers")
 require File.join(File.dirname(__FILE__), "ohm", "pattern")
 require File.join(File.dirname(__FILE__), "ohm", "validations")
 require File.join(File.dirname(__FILE__), "ohm", "key")
+require "ohm/transaction"
 
 
 module Ohm
@@ -684,7 +685,7 @@ module Ohm
           sort_by(opts.delete(:by), opts).first
         else
           sort(opts).first
-        end
+        end.load
       end
 
       # Ruby-like interface wrapper around *SISMEMBER*.
@@ -1137,7 +1138,8 @@ module Ohm
     # @param [Symbol] name Name of the counter.
     def self.counter(name)
       define_method(name) do
-        read_local(name).to_i
+        return 0 if new?
+        key.hget(name).to_i
       end
 
       counters(self) << name unless counters.include?(name)
@@ -1257,8 +1259,8 @@ module Ohm
       end
 
       define_method(:"#{name}=") do |value|
-        @_memo.delete(name)
         send(writer, value ? value.send(fkey) : nil)
+        @_memo[name] = value
       end
 
       define_method(reader) do
@@ -1347,7 +1349,7 @@ module Ohm
     # @return [Ohm::Model, nil] The instance of Ohm::Model or nil of it does
     #                           not exist.
     def self.[](id)
-      new(:id => id) if id && root.exists?(id)
+      new(:id => id).load if id && root.exists?(id)
     end
 
     # @private Used for conveniently doing [1, 2].map(&Post) for example.
@@ -1548,7 +1550,14 @@ module Ohm
     def self.new(*args, &block)
       attrs = args.extract_options!
 
-      type =  args.shift || attrs[:id] && self.polymorphic && read_remote(root.key[attrs[:id]], :_type)
+      # if we have to fetch the _type attribute, might as well load them all in one shot
+      # however, we can't pass the full attributes through the initialize chain here, due to filtering
+      # (scrivener-like mechanism on initialize.)  so, instead we pre-warm a cache so that a
+      # subsequent call to load doesn't hit the db again
+      type = args.shift || 
+        if attrs[:id] && self.polymorphic && ( _attrs = _load_attributes( root.key[attrs[:id]].hgetall ) )
+          _attrs.delete(:_type)
+        end
       klass = constantize( type.to_s ) if type
 
       instance = 
@@ -1562,6 +1571,7 @@ module Ohm
 
       if instance
         instance.instance_variable_set(:@_type, klass)
+        instance.instance_variable_set(:@loaded, _attrs) unless instance.instance_variable_get(:@loaded)
         yield instance if block_given?
       end
       instance
@@ -1680,7 +1690,9 @@ module Ohm
     #   person = Person.create(:name => "John Doe")
     #   person.to_hash == { :id => '1', :name => "John Doe" }
     #   # => true
-    def to_hash(*options)
+    def to_hash(*args)
+      options = args.extract_options!
+      load unless options[:load] == false
       attrs = {}
       attrs[:id] = id unless new?
       attrs[:errors] = errors unless errors.empty?
@@ -1755,6 +1767,36 @@ module Ohm
     end
     alias :eql? :==
 
+    # Preload all the attributes of this model from Redis unless we already loaded them.
+    # Used internally by `Model::[]` etc.
+    def load
+      return load! unless @loaded
+      if Hash === @loaded
+        attrs = @loaded
+        @loaded = true
+        update_local(attrs)
+      end
+      self
+    end
+    
+    # (Re-)Load all the attributes from the database
+    def load!
+      unless new?
+        update_local(self.class._load_attributes(key.hgetall))
+        @changed = false
+        @loaded = true
+      end
+      self
+    end
+
+    def self._load_attributes(attrs)
+      ([:_type] + counters).each{|k| attrs.delete(k.to_s) }
+      attrs.each do |k,v|
+        attrs[k] = v.force_encoding('UTF-8') if v.respond_to?(:force_encoding)
+      end
+      attrs
+    end
+        
     # Allows you to safely use an instance of {Ohm::Model} as a key in a
     # Ruby hash without running into weird scenarios.
     #
@@ -1947,6 +1989,7 @@ module Ohm
         write_remotes(atts)
       end
       @changed = false
+      @loaded = false
     end
     
     # Get and serialize the attribute value for att for writing to the database
@@ -1984,6 +2027,11 @@ module Ohm
       else
         key.hset(att, value)
       end
+    end
+
+    def transaction
+      txn = Transaction.new { |t| yield t }
+      txn.commit(db)
     end
 
     # Wraps any missing constants lazily in {Ohm::Model::Wrapper} delaying
@@ -2168,7 +2216,9 @@ module Ohm
     # @param  [#to_s]  value The value of the attribute you want to set.
     # @return [#to_s]  returns value set
     def write_local(att, value)
-      changed! if read_local( att ) != _write_local(att, value)
+      _write_local(att, value)
+      changed! if !attributes.has_key?( att ) || read_local( att ) != value
+      value
     end
 
     def _write_local(att, value)
@@ -2182,7 +2232,7 @@ module Ohm
     # @param  [Symbol] att The attribute you you want to get.
     # @return [String] The value of att.
     def lazy_fetch(att)
-      self.class.read_remote(key,att) unless new?
+      self.class.read_remote(key,att) unless new? || @loaded
     end
     
     # Used internally to read a remote attribute and force the encoding
