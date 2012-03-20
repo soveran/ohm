@@ -681,11 +681,13 @@ module Ohm
         opts = options.dup
         opts.merge!(:limit => 1)
 
-        if opts[:by]
+        r = if opts[:by]
           sort_by(opts.delete(:by), opts).first
         else
           sort(opts).first
-        end.load
+        end
+        
+        r.load if r
       end
 
       # Ruby-like interface wrapper around *SISMEMBER*.
