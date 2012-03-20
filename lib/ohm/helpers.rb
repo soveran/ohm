@@ -5,7 +5,7 @@ unless nil.respond_to?(:empty?)
   end
 end
 
-unless Array.respond_to?(:wrap)
+unless Array.new.respond_to?(:wrap)
   class Array
   # File activesupport/lib/active_support/core_ext/array/wrap.rb, line 39
     def self.wrap(object)
@@ -20,12 +20,32 @@ unless Array.respond_to?(:wrap)
   end
 end
 
-unless Array.respond_to?(:extract_options!)
+unless Array.new.respond_to?(:extract_options!)
   class Array
     def extract_options!
       ( pop if Hash === last ) || {}
     end
   end
+end
+
+unless Hash.new.respond_to?(:symbolize_keys)
+  class Hash
+    # File activesupport/lib/active_support/core_ext/hash/keys.rb, line 21
+    # Return a new hash with all keys converted to symbols, as long as
+    # they respond to +to_sym+.
+    def symbolize_keys
+      dup.symbolize_keys!
+    end
+  
+    # Destructively convert all keys to symbols, as long as they respond
+    # to +to_sym+.
+    def symbolize_keys!
+      keys.each do |key|
+        self[(key.to_sym rescue key) || key] = delete(key)
+      end
+      self
+    end
+  end  
 end
 
 unless defined?(silence_warnings)
