@@ -119,7 +119,7 @@ module Ohm
         end
       end
 
-      phase[:after].each(&:call)
+      phase[:after].map(&:call).last
     end
 
     def run(procs, store)
