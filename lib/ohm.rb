@@ -308,6 +308,14 @@ module Ohm
       MultiSet.new(keys, namespace, model)
     end
 
+    def except(dict)
+      MultiSet.new([key], namespace, model).except(dict)
+    end
+
+    def union(dict)
+      MultiSet.new([key], namespace, model).union(dict)
+    end
+
     # Replace all the existing elements of a set with a different
     # collection of models. This happens atomically in a MULTI-EXEC
     # block.
@@ -372,10 +380,32 @@ module Ohm
       MultiSet.new(keys, namespace, model)
     end
 
+    def except(dict)
+      sdiff.push(*model.filters(dict)).uniq!
+
+      return self
+    end
+
+    def union(dict)
+      sunion.push(*model.filters(dict)).uniq!
+
+      return self
+    end
+
   private
+    def sunion
+      @sunion ||= []
+    end
+
+    def sdiff
+      @sdiff ||= []
+    end
+
     def execute
       key = namespace[:temp][SecureRandom.uuid]
       key.sinterstore(*keys)
+      key.sdiffstore(key, *sdiff)   if sdiff.any?
+      key.sunionstore(key, *sunion) if sunion.any?
 
       begin
         yield key
