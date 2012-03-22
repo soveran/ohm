@@ -294,6 +294,19 @@ module Ohm
       key.sadd(model.id)
     end
 
+    # Remove a model directly from the set.
+    #
+    # Example:
+    #
+    #   user = User.create
+    #   post = Post.create
+    #
+    #   user.posts.delete(post)
+    #
+    def delete(model)
+      key.srem(model.id)
+    end
+
     # Chain new fiters on an existing set.
     #
     # Example:

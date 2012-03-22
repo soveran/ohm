@@ -452,6 +452,18 @@ test "filter elements" do
   assert [] == @event.attendees.find(:initial => "Z").to_a
 end
 
+test "delete elements" do
+  @event.save
+  @event.attendees.add(@person1)
+  @event.attendees.add(@person2)
+
+  assert_equal 2, @event.attendees.size
+
+  @event.attendees.delete(@person2)
+  assert_equal 1, @event.attendees.size
+end
+
+
 test "not be available if the model is new" do
   assert_raise Ohm::MissingID do
     @event.attendees
