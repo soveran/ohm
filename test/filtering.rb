@@ -40,3 +40,25 @@ test "#[]" do |john, jane|
   assert_equal john, set[john.id]
   assert_equal jane, set[jane.id]
 end
+
+test "#except" do |john, jane|
+  out = User.create(status: "inactive", lname: "Doe")
+
+  res = User.find(lname: "Doe").except(status: "inactive")
+
+  assert_equal 2, res.size
+  assert res.include?(john)
+  assert res.include?(jane)
+end
+
+test "#union" do |john, jane|
+  included = User.create(status: "inactive", lname: "Doe")
+  excluded = User.create(status: "super", lname: "Doe")
+
+  res = User.find(status: "active").union(status: "inactive")
+
+  assert_equal 3, res.size
+  assert res.include?(john)
+  assert res.include?(jane)
+  assert res.include?(included)
+end
