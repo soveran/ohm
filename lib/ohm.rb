@@ -9,6 +9,7 @@ require File.join(File.dirname(__FILE__), "ohm", "helpers")
 require File.join(File.dirname(__FILE__), "ohm", "pattern")
 require File.join(File.dirname(__FILE__), "ohm", "validations")
 require File.join(File.dirname(__FILE__), "ohm", "key")
+require "ohm/screen"
 require "ohm/transaction"
 
 
@@ -1351,7 +1352,15 @@ module Ohm
     # @return [Ohm::Model, nil] The instance of Ohm::Model or nil of it does
     #                           not exist.
     def self.[](id)
-      new(:id => id).load if id && root.exists?(id)
+      new(:id => id).load if id 
+      rescue MissingID
+        nil
+    end
+
+    # The current Ohm::Screen in use by this thread
+    # This could also be specialized per class, e.g. Ohm::Screen.current[root]
+    def self.screen
+      Ohm::Screen.current
     end
 
     # @private Used for conveniently doing [1, 2].map(&Post) for example.
@@ -1551,24 +1560,32 @@ module Ohm
     #
     def self.new(*args, &block)
       attrs = args.extract_options!
+      id = attrs[:id]
+      k = root.key[id] if id
+      
+      # return the object if we have it already materialized
+      if id && ( r = screen[k] ) && ( args.empty? || args.first === r )
+        attrs.delete(:id)
+        #NB this silent setting is different than passing the args through initialize
+        # which is what happens if the object is not already materialized
+        r.update_local( attrs )
+        return r
+      end      
 
       # if we have to fetch the _type attribute, might as well load them all in one shot
       # however, we can't pass the full attributes through the initialize chain here, due to filtering
-      # (scrivener-like mechanism on initialize.)  so, instead we pre-warm a cache so that a
-      # subsequent call to load doesn't hit the db again
-      type = args.shift || 
-        if attrs[:id] && self.polymorphic && ( _attrs = _load_attributes( root.key[attrs[:id]].hgetall ) )
-          _attrs.delete(:_type)
-        end
+      # (scrivener-like mechanism on initialize.)  so, instead we just stash the
+      # attribute hash and process it later, if the client accesses any of the attributes
+      type = args.shift || id && self.polymorphic && ( _attrs = k.hgetall ) && _attrs.delete(:_type)
       klass = constantize( type.to_s ) if type
-
+      
       instance = 
         if klass && klass < self
           klass.new( klass, attrs )
         elsif !klass || klass == self
           super( attrs )
         else
-          nil
+          nil # raise?
         end
 
       if instance
@@ -1576,6 +1593,8 @@ module Ohm
         instance.instance_variable_set(:@loaded, _attrs) unless instance.instance_variable_get(:@loaded)
         yield instance if block_given?
       end
+      
+      screen[k] = instance unless instance.new?
       instance
     end
     
@@ -1773,29 +1792,32 @@ module Ohm
     # Used internally by `Model::[]` etc.
     def load
       return load! unless @loaded
-      if Hash === @loaded
-        attrs = @loaded
-        @loaded = true
-        update_local(attrs)
-      end
+      # if we have preloaded attributes, process them now
+      _load_attributes(@loaded) if Hash === @loaded
       self
     end
     
     # (Re-)Load all the attributes from the database
     def load!
-      unless new?
-        update_local(self.class._load_attributes(key.hgetall))
-        @changed = false
-        @loaded = true
-      end
+      _load_attributes(key.hgetall) unless new?
       self
     end
+    
+    def loaded?
+      @loaded
+    end
+    
+    def _load_attributes(attrs)
+      raise MissingID.new( "#{self.class}[#{id}] not found" ) if attrs.empty?
 
-    def self._load_attributes(attrs)
       ([:_type] + counters).each{|k| attrs.delete(k.to_s) }
       attrs.each do |k,v|
         attrs[k] = v.force_encoding('UTF-8') if v.respond_to?(:force_encoding)
       end
+      
+      @loaded = true
+      update_local(attrs)
+      @changed = false
       attrs
     end
         
@@ -1948,6 +1970,8 @@ module Ohm
       initialize_id if new?
         
       mutex do
+        # don't try to load the nascent object
+        @loaded = true
         create_model_membership
         write
         add_to_indices
@@ -1991,7 +2015,8 @@ module Ohm
         write_remotes(atts)
       end
       @changed = false
-      @loaded = false
+      @loaded = nil
+      self.class.screen[key] = self
     end
     
     # Get and serialize the attribute value for att for writing to the database
@@ -2219,11 +2244,11 @@ module Ohm
     # @return [#to_s]  returns value set
     def write_local(att, value)
       _write_local(att, value)
-      changed! if !attributes.has_key?( att ) || read_local( att ) != value
+      changed! # if !attributes.has_key?( att ) || read_local( att ) != value
       value
     end
 
-    def _write_local(att, value)
+    def _write_local(att,value)
       @_attributes[att] = value
     end
     
@@ -2234,7 +2259,8 @@ module Ohm
     # @param  [Symbol] att The attribute you you want to get.
     # @return [String] The value of att.
     def lazy_fetch(att)
-      self.class.read_remote(key,att) unless new? || @loaded
+      # if you done load one missing key, you done load 'em all
+      load && @_attributes.has_key?(att) && read_local(att) unless new?
     end
     
     # Used internally to read a remote attribute and force the encoding
