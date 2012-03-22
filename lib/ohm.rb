@@ -321,10 +321,30 @@ module Ohm
       MultiSet.new(keys, namespace, model)
     end
 
+    # Reduce the set using any number of filters.
+    #
+    # Example:
+    #
+    #   set = User.find(name: "John")
+    #   set.except(country: "US")
+    #
+    #   # You can also do it in one line.
+    #   User.find(name: "John").except(country: "US")
+    #
     def except(dict)
       MultiSet.new([key], namespace, model).except(dict)
     end
 
+    # Do a union to the existing set using any number of filters.
+    #
+    # Example:
+    #
+    #   set = User.find(name: "John")
+    #   set.union(name: "Jane")
+    #
+    #   # You can also do it in one line.
+    #   User.find(name: "John").union(name: "Jane")
+    #
     def union(dict)
       MultiSet.new([key], namespace, model).union(dict)
     end
@@ -393,12 +413,32 @@ module Ohm
       MultiSet.new(keys, namespace, model)
     end
 
+    # Reduce the set using any number of filters.
+    #
+    # Example:
+    #
+    #   set = User.find(name: "John")
+    #   set.except(country: "US")
+    #
+    #   # You can also do it in one line.
+    #   User.find(name: "John").except(country: "US")
+    #
     def except(dict)
       sdiff.push(*model.filters(dict)).uniq!
 
       return self
     end
 
+    # Do a union to the existing set using any number of filters.
+    #
+    # Example:
+    #
+    #   set = User.find(name: "John")
+    #   set.union(name: "Jane")
+    #
+    #   # You can also do it in one line.
+    #   User.find(name: "John").union(name: "Jane")
+    #
     def union(dict)
       sunion.push(*model.filters(dict)).uniq!
 

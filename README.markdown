@@ -456,6 +456,9 @@ You can find a collection of records with the `find` method:
     # Find all users from Argentina, except those with a suspended account.
     User.find(:country => "Argentina").except(:status => "suspended")
 
+    # Find all users both from Argentina and Uruguay
+    User.find(:country => "Argentina").union(:country => "Uruguay")
+
 Note that calling these methods results in new sets being created
 on the fly. This is important so that you can perform further operations
 before reading the items to the client.
