@@ -4,6 +4,20 @@ require File.expand_path("./helper", File.dirname(__FILE__))
 
 prepare.clear
 
+test "no rewriting of settings hash when using Ohm.connect" do
+  settings = { url: "redis://127.0.0.1:6379/15" }.freeze
+
+  ex = nil
+
+  begin
+    Ohm.connect(settings)
+  rescue RuntimeError => e
+    ex = e
+  end
+
+  assert_equal ex, nil
+end
+
 test "connects lazily" do
   Ohm.connect(:port => 9876)
 
