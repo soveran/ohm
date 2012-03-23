@@ -281,22 +281,48 @@ module Ohm
   class List < Struct.new(:key, :namespace, :model)
     include Enumerable
 
+    # Returns the total size of the list using LLEN.
     def size
       key.llen
     end
 
+    # Returns the first element of the list using LINDEX.
     def first
       model[key.lindex(0)]
     end
 
+    # Returns the last element of the list using LINDEX.
     def last
       model[key.lindex(-1)]
     end
 
+    # Checks if the model is part of this List.
+    #
+    # An important thing to note is that this method loads all of the
+    # elements of the List since there is no command in Redis that
+    # allows you to actually check the list contents efficiently.
+    #
+    # You may want to avoid doing this if your list has say, 10K entries.
     def include?(model)
       ids.include?(model.id.to_s)
     end
 
+    # Replace all the existing elements of a list with a different
+    # collection of models. This happens atomically in a MULTI-EXEC
+    # block.
+    #
+    # Example:
+    #
+    #   user = User.create
+    #   p1 = Post.create
+    #   user.posts.push(p1)
+    #
+    #   p2, p3 = Post.create, Post.create
+    #   user.posts.replace([p2, p3])
+    #
+    #   user.posts.include?(p1)
+    #   # => false
+    #
     def replace(models)
       ids = models.map { |model| model.id }
 
@@ -306,6 +332,7 @@ module Ohm
       end
     end
 
+    # Fetch the data from Redis in one go.
     def to_a
       fetch(ids)
     end
@@ -318,14 +345,41 @@ module Ohm
       size == 0
     end
 
+    # Pushes the model to the _end_ of the list using RPUSH.
     def push(model)
       key.rpush(model.id)
     end
 
+    # Pushes the model to the _beginning_ of the list using LPUSH.
     def unshift(model)
       key.lpush(model.id)
     end
 
+    # Delete a model from the list.
+    #
+    # Note: If your list contains the model multiple times, this method
+    # will delete all instances of that model in one go.
+    #
+    # Example:
+    #
+    #   class Comment < Ohm::Model
+    #   end
+    #
+    #   class Post < Ohm::Model
+    #     list :comments, Comment
+    #   end
+    #
+    #   p = Post.create
+    #   c = Comment.create
+    #
+    #   p.comments.push(c)
+    #   p.comments.push(c)
+    #
+    #   p.comments.delete(c)
+    #
+    #   p.comments.size == 0
+    #   # => true
+    #
     def delete(model)
       # LREM key 0 <id> means remove all elements matching <id>
       # @see http://redis.io/commands/lrem
@@ -769,6 +823,26 @@ module Ohm
       end
     end
 
+    # Declare an Ohm::List with the given name.
+    #
+    # Example:
+    #
+    #   class Comment < Ohm::Model
+    #   end
+    #
+    #   class Post < Ohm::Model
+    #     list :comments, :Comment
+    #   end
+    #
+    #   p = Post.create
+    #   p.comments.push(Comment.create)
+    #   p.comments.unshift(Comment.create)
+    #   p.comments.size == 2
+    #   # => true
+    #
+    # Note: You can't use the list until you save the model. If you try
+    # to do it, you'll receive an Ohm::MissingID error.
+    #
     def self.list(name, model)
       collections << name unless collections.include?(name)
 
