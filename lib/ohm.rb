@@ -278,6 +278,76 @@ module Ohm
     end
   end
 
+  class List < Struct.new(:key, :namespace, :model)
+    def size
+      key.llen
+    end
+
+    def first
+      model[key.lindex(0)]
+    end
+
+    def last
+      model[key.lindex(-1)]
+    end
+
+    def include?(model)
+      ids.include?(model.id.to_s)
+    end
+
+    def replace(models)
+      ids = models.map { |model| model.id }
+
+      model.db.multi do
+        key.del
+        ids.each { |id| key.rpush(id) }
+      end
+    end
+
+    def to_a
+      fetch(ids)
+    end
+
+    def each
+      to_a.each { |element| yield element }
+    end
+
+    def empty?
+      size == 0
+    end
+
+    def push(model)
+      key.rpush(model.id)
+    end
+
+    def unshift(model)
+      key.lpush(model.id)
+    end
+
+    def delete(model)
+      # LREM key 0 <id> means remove all elements matching <id>
+      # @see http://redis.io/commands/lrem
+      key.lrem(0, model.id)
+    end
+
+  private
+    def ids
+      key.lrange(0, -1)
+    end
+
+    def fetch(ids)
+      arr = model.db.pipelined do
+        ids.each { |id| namespace[id].hgetall }
+      end
+
+      return [] if arr.nil?
+
+      arr.map.with_index do |atts, idx|
+        model.new(atts.update(id: ids[idx]))
+      end
+    end
+  end
+
   class Set < Struct.new(:key, :namespace, :model)
     include Collection
 
@@ -694,6 +764,16 @@ module Ohm
         model = Utils.const(self.class, model)
 
         Ohm::Set.new(key[name], model.key, model)
+      end
+    end
+
+    def self.list(name, model)
+      collections << name unless collections.include?(name)
+
+      define_method name do
+        model = Utils.const(self.class, model)
+
+        Ohm::List.new(key[name], model.key, model)
       end
     end
 
