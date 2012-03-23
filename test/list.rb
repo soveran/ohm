@@ -61,3 +61,9 @@ test "delete" do |p, c1, c2, c3|
   p.comments.delete(c3)
   assert p.comments.empty?
 end
+
+test "deleting main model cleans up the collection" do |p, _, _, _|
+  p.delete
+
+  assert ! Ohm.redis.exists(p.key[:comments])
+end
