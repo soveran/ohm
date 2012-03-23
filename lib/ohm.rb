@@ -279,6 +279,8 @@ module Ohm
   end
 
   class List < Struct.new(:key, :namespace, :model)
+    include Enumerable
+
     def size
       key.llen
     end
