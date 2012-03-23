@@ -1186,11 +1186,6 @@ module Ohm
       return attrs
     end
 
-    # Export a JSON representation of the model by encoding `to_hash`.
-    def to_json(*args)
-      to_hash.to_json(*args)
-    end
-
     # Persist the model attributes and update indices and unique
     # indices. The `counter`s and `set`s are not touched during save.
     #
