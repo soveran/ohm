@@ -234,13 +234,13 @@ If you need to check for validity before operating on lists, sets or
 counters, you can use this pattern:
 
     if event.valid?
-      event.comments << Comment.create(:body => "Great event!")
+      event.comments.add(Comment.create(:body => "Great event!"))
     end
 
 If you are saving the object, this will suffice:
 
     if event.save
-      event.comments << Comment.create(:body => "Wonderful event!")
+      event.comments.add(Comment.create(:body => "Wonderful event!"))
     end
 
 Working with Sets
@@ -254,9 +254,9 @@ Given the following model declaration:
     end
 
 You can add instances of `Person` to the set of attendees with the
-`<<` method:
+`add` method:
 
-    event.attendees << Person.create(:name => "Albert")
+    event.attendees.add(Person.create(:name => "Albert"))
 
     # And now...
     event.attendees.each do |person|
@@ -282,15 +282,18 @@ Order direction and strategy. You can pass in any of the following:
 
 It defaults to `ASC`.
 
-### :start
-
-The offset from which we should start with. Note that
-this is 0-indexed. It defaults to `0`.
+__Important Note:__ Starting with Redis 2.6, `ASC` and `DESC` only
+work with integers or floating point data types. If you need to sort
+by an alphanumeric field, add the `ALPHA` keyword.
 
 ### :limit
 
-The number of entries to get. If you don't pass in anything, it will
-get all the results from the LIST or SET that you are sorting.
+The offset and limit from which we should start with. Note that
+this is 0-indexed. It defaults to `0`.
+
+Example:
+
+`limit: [0, 10]` will get the first 10 entries starting from offset 0.
 
 ### :by
 
@@ -302,6 +305,10 @@ and it's within the current model you are sorting.
 
     Post.all.sort_by(:title)     # SORT Post:all BY Post:*->title
     Post.all.sort(:by => :title) # SORT Post:all BY title
+
+__Tip:__ Unless you absolutely know what you're doing, use `sort`
+when you want to sort your models by their `id`, and use `sort_by`
+otherwise.
 
 ### :get
 
@@ -315,29 +322,6 @@ that `sort_by` does much of the hand-coding for you.
 
     Post.all.sort(:by => :title, :get => :title)
     # SORT Post:all BY title GET title
-
-
-### :store
-
-An optional key which you may use to cache the sorted result. The key
-may or may not exist.
-
-This option can only be used together with `:get`.
-
-The type that is used for the STORE key is a LIST.
-
-    Post.all.sort_by(:title, :store => "FOO")
-
-    # Get all the results stored in FOO.
-    Post.db.lrange("FOO", 0, -1)
-
-When using temporary values, it might be a good idea to use a `volatile`
-key. In Ohm, a volatile key means it just starts with a `~` character.
-
-    Post.all.sort_by(:title, :get => :title,
-                     :store => Post.key.volatile["FOO"])
-
-    Post.key.volatile["FOO"].lrange 0, -1
 
 
 Associations
@@ -424,7 +408,7 @@ in the other model. The following all produce the same effect:
     Post.to_reference == :post
     # => true
 
-Indexes
+Indices
 -------
 
 An {Ohm::Model.index index} is a set that's handled automatically by Ohm. For
@@ -463,7 +447,25 @@ Note that calling these methods results in new sets being created
 on the fly. This is important so that you can perform further operations
 before reading the items to the client.
 
-For more information, see [SINTERSTORE](http://redis.io/commands/sinterstore) and [SDIFFSTORE](http://redis.io/commands/sdiffstore).
+For more information, see [SINTERSTORE](http://redis.io/commands/sinterstore), [SDIFFSTORE](http://redis.io/commands/sdiffstore) and [SUNIONSTORE](http://redis.io/commands/sunionstore)
+
+Uniques
+-------
+
+Uniques are similar to indices except that there can only be one record per
+entry. The canonical example of course would be the email of your user, e.g.
+
+    class User < Ohm::Model
+      attribute :email
+      unique :email
+    end
+
+    u = User.create(email: "foo@bar.com")
+    u == User.with(:email, "foo@bar.com")
+    # => true
+
+    User.create(email: "foo@bar.com")
+    # => raises Ohm::UniqueIndexViolation
 
 Validations
 -----------
@@ -511,13 +513,6 @@ representation. The error code for this assertion is :not_numeric.
 
     assert_numeric :votes
 
-### assert_unique
-
-Validates that the attribute or array of attributes are unique.
-For this, an index of the same kind must exist. The error code is :not_unique.
-
-    assert_unique :email
-
 Errors
 ------
 
@@ -533,55 +528,28 @@ Given the following example:
       assert_present :foo
       assert_numeric :bar
       assert_format :baz, /^\d{2}$/
-      assert_unique :qux
     end
 
 If all the assertions fail, the following errors will be present:
 
     obj.errors
-    # => [[:foo, :not_present], [:bar, :not_numeric], [:baz, :format], [:qux, :not_unique]]
-
-Presenting errors
------------------
-
-Unlike other ORMs, that define the full error messages in the model
-itself, Ohm encourages you to define the error messages outside. If
-you are using Ohm in the context of a web framework, the views are the
-proper place to write the error messages.
-
-Ohm provides a presenter that helps you in this quest. The basic usage
-is as follows:
-
-    error_messages = @model.errors.present do |e|
-      e.on [:name, :not_present], "Name must be present"
-      e.on [:account, :not_present], "You must supply an account"
-    end
-
-    error_messages
-    # => ["Name must be present", "You must supply an account"]
-
-Having the error message definitions in the views means you can use any
-sort of helpers. You can also use blocks instead of strings for the
-values. The result of the block is used as the error message:
-
-    error_messages = @model.errors.present do |e|
-      e.on [:email, :not_unique] do
-        "The email #{@model.email} is already registered."
-      end
-    end
-
-    error_messages
-    # => ["The email foo@example.com is already registered."]
+    # => { foo: [:not_present], bar: [:not_numeric], baz: [:format] }
 
 Ohm Extensions
 ==============
 
 Ohm is rather small and can be extended in many ways.
 
-A lot of amazing contributions are available at [Ohm Contrib](http://cyx.github.com/ohm-contrib/doc/), make sure to check them if you need to extend Ohm's functionality.
+A lot of amazing contributions are available at [Ohm Contrib][contrib]
+make sure to check them if you need to extend Ohm's functionality.
+
+[contrib]: http://cyx.github.com/ohm-contrib/doc/, 
 
 Tutorials
 =========
+
+NOTE: These tutorials were written against Ohm 0.1.x. Please give us
+a while to fully update all of them.
 
 Check the examples to get a feeling of the design patterns for Redis.
 
@@ -594,11 +562,12 @@ Check the examples to get a feeling of the design patterns for Redis.
 7. [Slugs and permalinks](http://ohm.keyvalue.org/examples/slug.html)
 8. [Tagging](http://ohm.keyvalue.org/examples/tagging.html)
 
+
 Versions
 ========
 
-Ohm uses features from Redis > 1.3.10. If you are stuck in previous
-versions, please use Ohm 0.0.35 instead.
+Ohm uses features from Redis > 2.6.x. If you are stuck in previous
+versions, please use Ohm 0.1.x instead.
 
 Upgrading from 0.0.x to 0.1
 ---------------------------
