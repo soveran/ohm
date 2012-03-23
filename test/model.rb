@@ -51,6 +51,13 @@ class Meetup < Ohm::Model
   end
 end
 
+test "empty model is ok" do
+  class Foo < Ohm::Model
+  end
+
+  foo = Foo.create
+end
+
 test "counters are cleaned up during deletion" do
   e = Event.create(name: "Foo")
   e.incr :votes, 10

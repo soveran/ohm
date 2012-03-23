@@ -54,6 +54,22 @@ test "connection class" do
   assert conn.redis.kind_of?(Redis)
 end
 
+test "issue #46" do
+  class B < Ohm::Model
+    connect(:url => "redis://localhost:6379/15")
+  end
+
+  # We do this since we did prepare.clear above.
+  B.db.flushall
+
+  b1, b2 = nil, nil
+
+  Thread.new { b1 = B.create }.join
+  Thread.new { b2 = B.create }.join
+
+  assert_equal [b1, b2], B.all.sort.to_a
+end
+
 test "model can define its own connection" do
   class B < Ohm::Model
     connect(:url => "redis://localhost:6379/1")

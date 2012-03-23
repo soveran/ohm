@@ -21,5 +21,5 @@ $VERBOSE = true
 require "ohm"
 
 prepare do
-  Ohm.flush
+  Ohm.redis.flushall
 end

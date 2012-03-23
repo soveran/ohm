@@ -267,7 +267,7 @@ module Ohm
 
     def fetch(ids)
       arr = model.db.pipelined do
-        ids.each { |id| namespace[id].hgetall }
+        ids.each { |id| model.db.hgetall(namespace[id]) }
       end
 
       return [] if arr.nil?
@@ -393,7 +393,7 @@ module Ohm
 
     def fetch(ids)
       arr = model.db.pipelined do
-        ids.each { |id| namespace[id].hgetall }
+        ids.each { |id| model.db.hgetall(namespace[id]) }
       end
 
       return [] if arr.nil?
@@ -1366,6 +1366,8 @@ module Ohm
         atts.each do |att, val|
           ret[att] = send(att).to_s unless val.to_s.empty?
         end
+
+        throw :empty if ret.empty?
       end
     end
 
@@ -1374,8 +1376,10 @@ module Ohm
     end
 
     def _save
-      key.del
-      key.hmset(*_skip_empty(attributes).flatten)
+      catch :empty do
+        key.del
+        key.hmset(*_skip_empty(attributes).flatten)
+      end
     end
 
     def _verify_uniques
