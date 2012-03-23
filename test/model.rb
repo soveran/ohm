@@ -51,6 +51,21 @@ class Meetup < Ohm::Model
   end
 end
 
+class Invoice < Ohm::Model
+  def _initialize_id
+    @id = "_custom_id"
+  end
+end
+
+test "customized ID" do
+  inv = Invoice.create
+  assert_equal "_custom_id", inv.id
+
+  i = Invoice.create(id: "_diff_id")
+  assert_equal "_diff_id", i.id
+  assert_equal i, Invoice["_diff_id"]
+end
+
 test "empty model is ok" do
   class Foo < Ohm::Model
   end
