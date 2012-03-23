@@ -407,32 +407,6 @@ module Ohm
   class Set < Struct.new(:key, :namespace, :model)
     include Collection
 
-    # Add a model directly to the set.
-    #
-    # Example:
-    #
-    #   user = User.create
-    #   post = Post.create
-    #
-    #   user.posts.add(post)
-    #
-    def add(model)
-      key.sadd(model.id)
-    end
-
-    # Remove a model directly from the set.
-    #
-    # Example:
-    #
-    #   user = User.create
-    #   post = Post.create
-    #
-    #   user.posts.delete(post)
-    #
-    def delete(model)
-      key.srem(model.id)
-    end
-
     # Chain new fiters on an existing set.
     #
     # Example:
@@ -475,6 +449,39 @@ module Ohm
       MultiSet.new([key], namespace, model).union(dict)
     end
 
+  private
+    def execute
+      yield key
+    end
+  end
+
+  class MutableSet < Set
+    # Add a model directly to the set.
+    #
+    # Example:
+    #
+    #   user = User.create
+    #   post = Post.create
+    #
+    #   user.posts.add(post)
+    #
+    def add(model)
+      key.sadd(model.id)
+    end
+
+    # Remove a model directly from the set.
+    #
+    # Example:
+    #
+    #   user = User.create
+    #   post = Post.create
+    #
+    #   user.posts.delete(post)
+    #
+    def delete(model)
+      key.srem(model.id)
+    end
+
     # Replace all the existing elements of a set with a different
     # collection of models. This happens atomically in a MULTI-EXEC
     # block.
@@ -499,12 +506,8 @@ module Ohm
         ids.each { |id| key.sadd(id) }
       end
     end
-
-  private
-    def execute
-      yield key
-    end
   end
+
 
   # Anytime you filter a set with more than one requirement, you
   # internally use a `MultiSet`. `MutiSet` is a bit slower than just
@@ -819,7 +822,7 @@ module Ohm
       define_method name do
         model = Utils.const(self.class, model)
 
-        Ohm::Set.new(key[name], model.key, model)
+        Ohm::MutableSet.new(key[name], model.key, model)
       end
     end
 

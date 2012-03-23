@@ -24,6 +24,16 @@ test "findability" do |john, jane|
   assert User.find(lname: "Doe", fname: "Jane").include?(jane)
 end
 
+test "sets aren't mutable" do |john, jane|
+  assert_raise NoMethodError do
+    User.find(lname: "Doe").add(john)
+  end
+
+  assert_raise NoMethodError do
+    User.find(lname: "Doe", fname: "John").add(john)
+  end
+end
+
 test "#first" do |john, jane|
   set = User.find(lname: "Doe", status: "active")
 
