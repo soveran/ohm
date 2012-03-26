@@ -46,7 +46,7 @@ module Ohm
       class EntryAlreadyExistsError < ::RuntimeError
       end
 
-      def method_missing(writer, value)
+      def method_missing(writer, value = nil)
         super unless writer[-1] == "="
 
         reader = writer[0..-2].to_sym

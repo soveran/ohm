@@ -173,6 +173,18 @@ test "storage in composed transactions" do |db|
   assert_equal "enon", db.get("foo")
 end
 
+test "reading an storage entries that doesn't exist raises" do |db|
+  t1 = Ohm::Transaction.new do |t|
+    t.read do |s|
+      s.foo
+    end
+  end
+
+  assert_raise NoMethodError do
+    t1.commit(db)
+  end
+end
+
 test "storage entries can't be overriden" do |db|
   t1 = Ohm::Transaction.new do |t|
     t.read do |s|
