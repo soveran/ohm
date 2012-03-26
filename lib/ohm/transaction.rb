@@ -69,14 +69,14 @@ module Ohm
     attr :phase
 
     def initialize
-      @phase = Hash.new { |h, k| h[k] = ::Set.new }
+      @phase = Hash.new { |h, k| h[k] = Array.new }
 
       yield self if block_given?
     end
 
     def append(t)
       t.phase.each do |key, values|
-        phase[key].merge(values)
+        phase[key].concat(values - phase[key])
       end
 
       self

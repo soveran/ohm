@@ -95,7 +95,7 @@ test "composed transaction" do |db|
 
   assert_equal "bar", db.get("foo")
 
-  assert_equal Set.new(["foo"]), t5.phase[:watch]
+  assert_equal ["foo"], t5.phase[:watch]
   assert_equal 2, t5.phase[:write].size
 end
 
