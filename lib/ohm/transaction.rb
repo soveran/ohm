@@ -41,8 +41,6 @@ module Ohm
   # @see http://redis.io/topic/transactions Transactions in Redis.
   class Transaction
     class Store
-      attr :dict
-
       class EntryAlreadyExistsError < RuntimeError
       end
 
@@ -54,15 +52,15 @@ module Ohm
       end
 
       def [](key)
-        raise NoEntryError unless dict.member?(key)
+        raise NoEntryError unless @dict.member?(key)
 
-        dict[key]
+        @dict[key]
       end
 
       def []=(key, value)
-        raise EntryAlreadyExistsError if dict.member?(key)
+        raise EntryAlreadyExistsError if @dict.member?(key)
 
-        dict[key] = value
+        @dict[key] = value
       end
     end
 
