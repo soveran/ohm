@@ -126,4 +126,8 @@ module Ohm
       procs.each { |p| p.call(store) }
     end
   end
+
+  def self.transaction(&block)
+    Transaction.new(&block)
+  end
 end

@@ -203,74 +203,38 @@ test "storage entries can't be overriden" do |db|
   end
 end
 
-test "combining two model saves" do
+test "banking transaction" do |db|
   class A < Ohm::Model
+    attribute :amount
   end
 
   class B < Ohm::Model
+    attribute :amount
   end
 
-  class C < Ohm::Model
-  end
+  def transfer(amount, account1, account2)
+    Ohm.transaction do |t|
 
-  a = A.new
-  b = B.new
-  c = C.new
+      t.watch(account1.key, account2.key)
 
-  a.save do |t|
-    t.append(b.__save__)
-    t.append(c.__save__)
-  end
+      t.read do |s|
+        s.available = account1.get(:amount).to_i
+      end
 
-  assert a.id
-  assert b.id
-end
-
-__END__
-# We leave this here to indicate what the past behavior was with
-# model transactions.
-
-class Post < Ohm::Model
-  attribute :body
-  attribute :state
-  index :state
-
-  def before_save
-    self.body = body.to_s.strip
-  end
-
-  def before_create
-    self.state = "draft"
-  end
-end
-
-test "transactions in models" do |db|
-  p = Post.new(body: " foo ")
-
-  db.set "csv:foo", "A,B"
-
-  t1 = Ohm::Transaction.define do |t|
-    t.watch("csv:foo")
-
-    t.read do |s|
-      s.csv = db.get("csv:foo")
-    end
-
-    t.write do |s|
-      db.set("csv:foo", s.csv + "," + "C")
+      t.write do |s|
+        if s.available >= amount
+          account1.key.hincrby(:amount, - amount)
+          account2.key.hincrby(:amount,   amount)
+        end
+      end
     end
   end
 
-  main = Ohm::Transaction.new(p.transaction_for_create, t1)
-  main.commit(db)
+  a = A.create amount: 100
+  b = B.create amount: 0
 
-  # Verify the Post transaction proceeded without a hitch
-  p = Post[p.id]
+  transfer(100, a, b).commit(db)
 
-  assert_equal "draft", p.state
-  assert_equal "foo", p.body
-  assert Post.find(state: "draft").include?(p)
-
-  # Verify that the second transaction happened
-  assert_equal "A,B,C", db.get("csv:foo")
+  assert_equal a.get(:amount), "0"
+  assert_equal b.get(:amount), "100"
 end
