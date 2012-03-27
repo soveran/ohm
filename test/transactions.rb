@@ -203,6 +203,25 @@ test "storage entries can't be overriden" do |db|
   end
 end
 
+test "combining two model saves" do
+  class A < Ohm::Model
+  end
+
+  class B < Ohm::Model
+  end
+
+  a = A.new
+  b = B.new
+
+  t = Ohm::Transaction.new
+  t.append(a.transaction_for_save)
+  t.append(b.transaction_for_save)
+  t.commit(A.db)
+
+  assert a.id
+  assert b.id
+end
+
 __END__
 # We leave this here to indicate what the past behavior was with
 # model transactions.
