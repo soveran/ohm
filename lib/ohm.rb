@@ -1266,12 +1266,12 @@ module Ohm
     def delete
       transaction do |t|
         t.read do |store|
-          store.existing = key.hgetall
+          store[:existing] = key.hgetall
         end
 
         t.write do |store|
-          _delete_uniques(store.existing)
-          _delete_indices(store.existing)
+          _delete_uniques(store[:existing])
+          _delete_indices(store[:existing])
           model.collections.each { |e| key[e].del }
           model.key[:all].srem(id)
           key[:counters].del
