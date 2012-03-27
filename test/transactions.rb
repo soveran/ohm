@@ -210,13 +210,17 @@ test "combining two model saves" do
   class B < Ohm::Model
   end
 
+  class C < Ohm::Model
+  end
+
   a = A.new
   b = B.new
+  c = C.new
 
-  t = Ohm::Transaction.new
-  t.append(a.transaction_for_save)
-  t.append(b.transaction_for_save)
-  t.commit(A.db)
+  a.save do |t|
+    t.append(b.__save__)
+    t.append(c.__save__)
+  end
 
   assert a.id
   assert b.id

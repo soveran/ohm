@@ -1217,14 +1217,14 @@ module Ohm
     # Saves the model without checking for validity. Refer to
     # `Model#save` for more details.
     def save!
-      txn = transaction_for_save
-      yield txn if block_given?
-      txn.commit(db)
+      t = __save__
+      yield t if block_given?
+      t.commit(db)
 
       return self
     end
 
-    def transaction_for_save
+    def __save__
       Transaction.new do |t|
         t.watch(*_unique_keys)
         t.watch(key) if not new?
