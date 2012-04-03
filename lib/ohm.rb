@@ -1217,7 +1217,15 @@ module Ohm
     # Saves the model without checking for validity. Refer to
     # `Model#save` for more details.
     def save!
-      transaction do |t|
+      t = __save__
+      yield t if block_given?
+      t.commit(db)
+
+      return self
+    end
+
+    def __save__
+      Transaction.new do |t|
         t.watch(*_unique_keys)
         t.watch(key) if not new?
 
@@ -1225,26 +1233,26 @@ module Ohm
           _initialize_id if new?
         end
 
-        t.read do |store|
+        existing = nil
+        uniques  = nil
+        indices  = nil
+
+        t.read do
           _verify_uniques
-          store.existing = key.hgetall
-          store.uniques  = _read_index_type(:uniques)
-          store.indices  = _read_index_type(:indices)
+          existing = key.hgetall
+          uniques  = _read_index_type(:uniques)
+          indices  = _read_index_type(:indices)
         end
 
-        t.write do |store|
+        t.write do
           model.key[:all].sadd(id)
-          _delete_uniques(store.existing)
-          _delete_indices(store.existing)
+          _delete_uniques(existing)
+          _delete_indices(existing)
           _save
-          _save_indices(store.indices)
-          _save_uniques(store.uniques)
+          _save_indices(indices)
+          _save_uniques(uniques)
         end
-
-        yield t if block_given?
       end
-
-      return self
     end
 
     # Delete the model, including all the following keys:
@@ -1258,12 +1266,12 @@ module Ohm
     def delete
       transaction do |t|
         t.read do |store|
-          store.existing = key.hgetall
+          store[:existing] = key.hgetall
         end
 
         t.write do |store|
-          _delete_uniques(store.existing)
-          _delete_indices(store.existing)
+          _delete_uniques(store[:existing])
+          _delete_indices(store[:existing])
           model.collections.each { |e| key[e].del }
           model.key[:all].srem(id)
           key[:counters].del

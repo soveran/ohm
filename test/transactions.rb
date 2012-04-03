@@ -45,11 +45,11 @@ end
 test "transaction local storage" do |db|
   t1 = Ohm::Transaction.new do |t|
     t.read do |s|
-      s.foo = db.type("foo")
+      s[:foo] = db.type("foo")
     end
 
     t.write do |s|
-      db.set("foo", s.foo.reverse)
+      db.set("foo", s[:foo].reverse)
     end
   end
 
@@ -62,7 +62,7 @@ test "composed transaction" do |db|
   t1 = Ohm::Transaction.new do |t|
     t.watch("foo")
 
-    t.write do |s|
+    t.write do
       db.set("foo", "bar")
     end
   end
@@ -70,7 +70,7 @@ test "composed transaction" do |db|
   t2 = Ohm::Transaction.new do |t|
     t.watch("foo")
 
-    t.write do |s|
+    t.write do
       db.set("foo", "baz")
     end
   end
@@ -158,13 +158,13 @@ end
 test "storage in composed transactions" do |db|
   t1 = Ohm::Transaction.new do |t|
     t.read do |s|
-      s.foo = db.type("foo")
+      s[:foo] = db.type("foo")
     end
   end
 
   t2 = Ohm::Transaction.new do |t|
     t.write do |s|
-      db.set("foo", s.foo.reverse)
+      db.set("foo", s[:foo].reverse)
     end
   end
 
@@ -176,11 +176,11 @@ end
 test "reading an storage entries that doesn't exist raises" do |db|
   t1 = Ohm::Transaction.new do |t|
     t.read do |s|
-      s.foo
+      s[:foo]
     end
   end
 
-  assert_raise NoMethodError do
+  assert_raise Ohm::Transaction::Store::NoEntryError do
     t1.commit(db)
   end
 end
@@ -188,13 +188,13 @@ end
 test "storage entries can't be overriden" do |db|
   t1 = Ohm::Transaction.new do |t|
     t.read do |s|
-      s.foo = db.type("foo")
+      s[:foo] = db.type("foo")
     end
   end
 
   t2 = Ohm::Transaction.new do |t|
     t.read do |s|
-      s.foo = db.exists("foo")
+      s[:foo] = db.exists("foo")
     end
   end
 
@@ -203,51 +203,38 @@ test "storage entries can't be overriden" do |db|
   end
 end
 
-__END__
-# We leave this here to indicate what the past behavior was with
-# model transactions.
-
-class Post < Ohm::Model
-  attribute :body
-  attribute :state
-  index :state
-
-  def before_save
-    self.body = body.to_s.strip
+test "banking transaction" do |db|
+  class A < Ohm::Model
+    attribute :amount
   end
 
-  def before_create
-    self.state = "draft"
+  class B < Ohm::Model
+    attribute :amount
   end
-end
 
-test "transactions in models" do |db|
-  p = Post.new(body: " foo ")
+  def transfer(amount, account1, account2)
+    Ohm.transaction do |t|
 
-  db.set "csv:foo", "A,B"
+      t.watch(account1.key, account2.key)
 
-  t1 = Ohm::Transaction.define do |t|
-    t.watch("csv:foo")
+      t.read do |s|
+        s[:available] = account1.get(:amount).to_i
+      end
 
-    t.read do |s|
-      s.csv = db.get("csv:foo")
-    end
-
-    t.write do |s|
-      db.set("csv:foo", s.csv + "," + "C")
+      t.write do |s|
+        if s[:available] >= amount
+          account1.key.hincrby(:amount, - amount)
+          account2.key.hincrby(:amount,   amount)
+        end
+      end
     end
   end
 
-  main = Ohm::Transaction.new(p.transaction_for_create, t1)
-  main.commit(db)
+  a = A.create amount: 100
+  b = B.create amount: 0
 
-  # Verify the Post transaction proceeded without a hitch
-  p = Post[p.id]
+  transfer(100, a, b).commit(db)
 
-  assert_equal "draft", p.state
-  assert_equal "foo", p.body
-  assert Post.find(state: "draft").include?(p)
-
-  # Verify that the second transaction happened
-  assert_equal "A,B,C", db.get("csv:foo")
+  assert_equal a.get(:amount), "0"
+  assert_equal b.get(:amount), "100"
 end

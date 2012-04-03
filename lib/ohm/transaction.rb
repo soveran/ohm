@@ -1,5 +1,3 @@
-require "set"
-
 module Ohm
 
   # Transactions in Ohm are designed to be composable and atomic. They use
@@ -42,27 +40,27 @@ module Ohm
   #
   # @see http://redis.io/topic/transactions Transactions in Redis.
   class Transaction
-    class Store < BasicObject
-      class EntryAlreadyExistsError < ::RuntimeError
+    class Store
+      class EntryAlreadyExistsError < RuntimeError
       end
 
-      def method_missing(writer, value = nil)
-        super unless writer[-1] == "="
-
-        reader = writer[0..-2].to_sym
-
-        __metaclass__.send(:define_method, reader) do
-          value
-        end
-
-        __metaclass__.send(:define_method, writer) do |*_|
-          ::Kernel.raise EntryAlreadyExistsError
-        end
+      class NoEntryError < RuntimeError
       end
 
-    private
-      def __metaclass__
-        class << self; self end
+      def initialize
+        @dict = Hash.new
+      end
+
+      def [](key)
+        raise NoEntryError unless @dict.member?(key)
+
+        @dict[key]
+      end
+
+      def []=(key, value)
+        raise EntryAlreadyExistsError if @dict.member?(key)
+
+        @dict[key] = value
       end
     end
 
@@ -83,7 +81,7 @@ module Ohm
     end
 
     def watch(*keys)
-      phase[:watch] += keys
+      phase[:watch].concat(keys - phase[:watch])
     end
 
     def read(&block)
@@ -117,6 +115,8 @@ module Ohm
         break if db.multi do
           run(phase[:write], store)
         end
+
+        store = nil
       end
 
       phase[:after].each(&:call)
@@ -125,5 +125,9 @@ module Ohm
     def run(procs, store)
       procs.each { |p| p.call(store) }
     end
+  end
+
+  def self.transaction(&block)
+    Transaction.new(&block)
   end
 end
