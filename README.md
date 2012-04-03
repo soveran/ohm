@@ -123,47 +123,51 @@ the example below:
 
 ### Example
 
-    class Event < Ohm::Model
-      attribute :name
-      reference :venue, Venue
-      set :participants, Person
-      counter :votes
+```ruby
+class Event < Ohm::Model
+  attribute :name
+  reference :venue, Venue
+  set :participants, Person
+  counter :votes
 
-      index :name
+  index :name
 
-      def validate
-        assert_present :name
-      end
-    end
+  def validate
+    assert_present :name
+  end
+end
 
-    class Venue < Ohm::Model
-      attribute :name
-      collection :events, Event
-    end
+class Venue < Ohm::Model
+  attribute :name
+  collection :events, Event
+end
 
-    class Person < Ohm::Model
-      attribute :name
-    end
+class Person < Ohm::Model
+  attribute :name
+end
+```
 
 All models have the `id` attribute built in, you don't need to declare it.
 
 This is how you interact with IDs:
 
-    event = Event.create :name => "Ohm Worldwide Conference 2031"
-    event.id
-    # => 1
+```ruby
+event = Event.create :name => "Ohm Worldwide Conference 2031"
+event.id
+# => 1
 
-    # Find an event by id
-    event == Event[1]
-    # => true
+# Find an event by id
+event == Event[1]
+# => true
 
-    # Trying to find a non existent event
-    Event[2]
-    # => nil
+# Trying to find a non existent event
+Event[2]
+# => nil
 
-    # Finding all the events
-    Event.all
-    # => [#<Event @values={:id=>1, :name=>"Ohm Worldwide Conference 2031"}>]
+# Finding all the events
+Event.all
+# => [#<Event @values={:id=>1, :name=>"Ohm Worldwide Conference 2031"}>]
+```
 
 This example shows some basic features, like attribute declarations and
 validations. Keep reading to find out what you can do with models.
@@ -233,35 +237,43 @@ For most use cases, this pattern doesn't represent a problem.
 If you need to check for validity before operating on lists, sets or
 counters, you can use this pattern:
 
-    if event.valid?
-      event.comments.add(Comment.create(:body => "Great event!"))
-    end
+```ruby
+if event.valid?
+  event.comments.add(Comment.create(:body => "Great event!"))
+end
+```
 
 If you are saving the object, this will suffice:
 
-    if event.save
-      event.comments.add(Comment.create(:body => "Wonderful event!"))
-    end
+```ruby
+if event.save
+  event.comments.add(Comment.create(:body => "Wonderful event!"))
+end
+```
 
 Working with Sets
 -----------------
 
 Given the following model declaration:
 
-    class Event < Ohm::Model
-      attribute :name
-      set :attendees, Person
-    end
+```ruby
+class Event < Ohm::Model
+  attribute :name
+  set :attendees, Person
+end
+```
 
 You can add instances of `Person` to the set of attendees with the
 `add` method:
 
-    event.attendees.add(Person.create(:name => "Albert"))
+```ruby
+event.attendees.add(Person.create(:name => "Albert"))
 
-    # And now...
-    event.attendees.each do |person|
-      # ...do what you want with this person.
-    end
+# And now...
+event.attendees.each do |person|
+  # ...do what you want with this person.
+end
+```
 
 ## Sorting
 
@@ -275,10 +287,10 @@ order. Both methods receive an options hash which is explained below:
 
 Order direction and strategy. You can pass in any of the following:
 
-     1. ASC
-     2. ASC ALPHA (or ALPHA ASC)
-     3. DESC
-     4. DESC ALPHA (or ALPHA DESC)
+1. ASC
+2. ASC ALPHA (or ALPHA ASC)
+3. DESC
+4. DESC ALPHA (or ALPHA DESC)
 
 It defaults to `ASC`.
 
@@ -303,8 +315,10 @@ using {Ohm::Model::Collection#sort sort} and
 converts the passed argument with the assumption that it is a hash key
 and it's within the current model you are sorting.
 
-    Post.all.sort_by(:title)     # SORT Post:all BY Post:*->title
-    Post.all.sort(:by => :title) # SORT Post:all BY title
+```ruby
+Post.all.sort_by(:title)     # SORT Post:all BY Post:*->title
+Post.all.sort(:by => :title) # SORT Post:all BY title
+```
 
 __Tip:__ Unless you absolutely know what you're doing, use `sort`
 when you want to sort your models by their `id`, and use `sort_by`
@@ -317,11 +331,13 @@ the `:by` option, using {Ohm::Model::Collection#sort sort} and
 {Ohm::Model::Collection#sort_by sort_by} has distinct differences in
 that `sort_by` does much of the hand-coding for you.
 
-    Post.all.sort_by(:title, :get => :title)
-    # SORT Post:all BY Post:*->title GET Post:*->title
+```ruby
+Post.all.sort_by(:title, :get => :title)
+# SORT Post:all BY Post:*->title GET Post:*->title
 
-    Post.all.sort(:by => :title, :get => :title)
-    # SORT Post:all BY title GET title
+Post.all.sort(:by => :title, :get => :title)
+# SORT Post:all BY title GET title
+```
 
 
 Associations
@@ -329,16 +345,18 @@ Associations
 
 Ohm lets you declare `references` and `collections` to represent associations.
 
-    class Post < Ohm::Model
-      attribute :title
-      attribute :body
-      collection :comments, Comment
-    end
+```ruby
+class Post < Ohm::Model
+  attribute :title
+  attribute :body
+  collection :comments, Comment
+end
 
-    class Comment < Ohm::Model
-      attribute :body
-      reference :post, Post
-    end
+class Comment < Ohm::Model
+  attribute :body
+  reference :post, Post
+end
+```
 
 After this, every time you refer to `post.comments` you will be talking
 about instances of the model `Comment`. If you want to get a list of IDs
@@ -349,20 +367,22 @@ you can use `post.comments.key.smembers`.
 Doing a {Ohm::Model.reference reference} is actually just a shortcut for
 the following:
 
-    # Redefining our model above
-    class Comment < Ohm::Model
-      attribute :body
-      attribute :post_id
-      index :post_id
+```ruby
+# Redefining our model above
+class Comment < Ohm::Model
+  attribute :body
+  attribute :post_id
+  index :post_id
 
-      def post=(post)
-        self.post_id = post.id
-      end
+  def post=(post)
+    self.post_id = post.id
+  end
 
-      def post
-        Post[post_id]
-      end
-    end
+  def post
+    Post[post_id]
+  end
+end
+```
 
 The only difference with the actual implementation is that the model
 is memoized.
@@ -370,8 +390,9 @@ is memoized.
 The net effect here is we can conveniently set and retrieve `Post` objects,
 and also search comments using the `post_id` index.
 
-    Comment.find(:post_id => 1)
-
+```ruby
+Comment.find(:post_id => 1)
+```
 
 ### Collections explained
 
@@ -381,32 +402,36 @@ just a macro that defines a finder for you, and we know that to find a model
 by a field requires an {Ohm::Model.index index} to be defined for the field
 you want to search.
 
-    # Redefining our post above
-    class Post < Ohm::Model
-      attribute :title
-      attribute :body
+```ruby
+# Redefining our post above
+class Post < Ohm::Model
+  attribute :title
+  attribute :body
 
-      def comments
-        Comment.find(:post_id => self.id)
-      end
-    end
+  def comments
+    Comment.find(:post_id => self.id)
+  end
+end
+```
 
 The only "magic" happening is with the inference of the `index` that was used
 in the other model. The following all produce the same effect:
 
-    # easiest, with the basic assumption that the index is `:post_id`
-    collection :comments, Comment
+```ruby
+# easiest, with the basic assumption that the index is `:post_id`
+collection :comments, Comment
 
-    # we can explicitly declare this as follows too:
-    collection :comments, Comment, :post
+# we can explicitly declare this as follows too:
+collection :comments, Comment, :post
 
-    # finally, we can use the default argument for the third parameter which
-    # is `to_reference`.
-    collection :comments, Comment, to_reference
+# finally, we can use the default argument for the third parameter which
+# is `to_reference`.
+collection :comments, Comment, to_reference
 
-    # exploring `to_reference` reveals a very interesting and simple concept:
-    Post.to_reference == :post
-    # => true
+# exploring `to_reference` reveals a very interesting and simple concept:
+Post.to_reference == :post
+# => true
+```
 
 Indices
 -------
@@ -426,28 +451,34 @@ validation and the methods {Ohm::Model::Set#find find} and
 
 You can find a collection of records with the `find` method:
 
-    # This returns a collection of users with the username "Albert"
-    User.find(:username => "Albert")
+```ruby
+# This returns a collection of users with the username "Albert"
+User.find(:username => "Albert")
+```
 
 ### Filtering results
 
-    # Find all users from Argentina
-    User.find(:country => "Argentina")
+```ruby
+# Find all users from Argentina
+User.find(:country => "Argentina")
 
-    # Find all activated users from Argentina
-    User.find(:country => "Argentina", :status => "activated")
+# Find all activated users from Argentina
+User.find(:country => "Argentina", :status => "activated")
 
-    # Find all users from Argentina, except those with a suspended account.
-    User.find(:country => "Argentina").except(:status => "suspended")
+# Find all users from Argentina, except those with a suspended account.
+User.find(:country => "Argentina").except(:status => "suspended")
 
-    # Find all users both from Argentina and Uruguay
-    User.find(:country => "Argentina").union(:country => "Uruguay")
+# Find all users both from Argentina and Uruguay
+User.find(:country => "Argentina").union(:country => "Uruguay")
+```
 
 Note that calling these methods results in new sets being created
 on the fly. This is important so that you can perform further operations
 before reading the items to the client.
 
-For more information, see [SINTERSTORE](http://redis.io/commands/sinterstore), [SDIFFSTORE](http://redis.io/commands/sdiffstore) and [SUNIONSTORE](http://redis.io/commands/sunionstore)
+For more information, see [SINTERSTORE](http://redis.io/commands/sinterstore),
+[SDIFFSTORE](http://redis.io/commands/sdiffstore) and
+[SUNIONSTORE](http://redis.io/commands/sunionstore)
 
 Uniques
 -------
@@ -455,17 +486,19 @@ Uniques
 Uniques are similar to indices except that there can only be one record per
 entry. The canonical example of course would be the email of your user, e.g.
 
-    class User < Ohm::Model
-      attribute :email
-      unique :email
-    end
+```ruby
+class User < Ohm::Model
+  attribute :email
+  unique :email
+end
 
-    u = User.create(email: "foo@bar.com")
-    u == User.with(:email, "foo@bar.com")
-    # => true
+u = User.create(email: "foo@bar.com")
+u == User.with(:email, "foo@bar.com")
+# => true
 
-    User.create(email: "foo@bar.com")
-    # => raises Ohm::UniqueIndexViolation
+User.create(email: "foo@bar.com")
+# => raises Ohm::UniqueIndexViolation
+```
 
 Validations
 -----------
@@ -488,30 +521,38 @@ The `assert` method is used by all the other assertions. It pushes the
 second parameter to the list of errors if the first parameter evaluates
 to false.
 
-    def assert(value, error)
-      value or errors.push(error) && false
-    end
+```ruby
+def assert(value, error)
+  value or errors.push(error) && false
+end
+```
 
 ### assert_present
 
 Checks that the given field is not nil or empty. The error code for this
-assertion is :not_present.
+assertion is `:not_present`.
 
-    assert_present :name
+```ruby
+assert_present :name
+```
 
 ### assert_format
 
 Checks that the given field matches the provided format. The error code
 for this assertion is :format.
 
-    assert_format :username, /^\w+$/
+```ruby
+assert_format :username, /^\w+$/
+```
 
 ### assert_numeric
 
 Checks that the given field holds a number as a Fixnum or as a string
 representation. The error code for this assertion is :not_numeric.
 
-    assert_numeric :votes
+```ruby
+assert_numeric :votes
+```
 
 Errors
 ------
@@ -524,16 +565,20 @@ was issued and the error code.
 
 Given the following example:
 
-    def validate
-      assert_present :foo
-      assert_numeric :bar
-      assert_format :baz, /^\d{2}$/
-    end
+```ruby
+def validate
+  assert_present :foo
+  assert_numeric :bar
+  assert_format :baz, /^\d{2}$/
+end
+```
 
 If all the assertions fail, the following errors will be present:
 
-    obj.errors
-    # => { foo: [:not_present], bar: [:not_numeric], baz: [:format] }
+```ruby
+obj.errors
+# => { foo: [:not_present], bar: [:not_numeric], baz: [:format] }
+```
 
 Ohm Extensions
 ==============
@@ -576,11 +621,13 @@ Since Ohm 0.1 changes the persistence strategy (from 1-key-per-attribute
 to Hashes), you'll need to run a script to upgrade your old data set.
 Fortunately, it is built in:
 
-    require "ohm/utils/upgrade"
+```ruby
+require "ohm/utils/upgrade"
 
-    Ohm.connect :port => 6380
+Ohm.connect :port => 6380
 
-    Ohm::Utils::Upgrade.new([:User, :Post, :Comment]).run
+Ohm::Utils::Upgrade.new([:User, :Post, :Comment]).run
+```
 
 Yes, you need to provide the model names. The good part is that you
 don't have to load your application environment. Since we assume it's
