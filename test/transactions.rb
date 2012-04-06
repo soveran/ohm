@@ -230,8 +230,8 @@ test "banking transaction" do |db|
     end
   end
 
-  a = A.create amount: 100
-  b = B.create amount: 0
+  a = A.create :amount => 100
+  b = B.create :amount => 0
 
   transfer(100, a, b).commit(db)
 

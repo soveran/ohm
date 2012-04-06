@@ -38,7 +38,7 @@ if defined?(Ohm::Model::PureRuby)
   end
 
   test do
-    u = User.create(email: "FOO@BAR.COM", foo: "bar")
+    u = User.create(:email => "FOO@BAR.COM", :foo => "bar")
     assert_equal "foo@bar.com", u.email
     assert_equal ["bar"], u.key[:foos].smembers
 

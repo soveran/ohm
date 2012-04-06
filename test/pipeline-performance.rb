@@ -1,4 +1,6 @@
-require_relative "helper"
+# encoding: UTF-8
+
+require File.expand_path("./helper", File.dirname(__FILE__))
 
 Ohm.flush
 
@@ -14,14 +16,14 @@ class User < Ohm::Model
 end
 
 create = lambda do |i|
-  User.new(fname: "John#{i}",
-           lname: "Doe#{i}",
-           bday: Time.now.to_s,
-           gender: "Male",
-           city: "Los Angeles",
-           state: "CA",
-           country: "US",
-           zip: "90210").save
+  User.new(:fname => "John#{i}",
+           :lname => "Doe#{i}",
+           :bday => Time.now.to_s,
+           :gender => "Male",
+           :city => "Los Angeles",
+           :state => "CA",
+           :country => "US",
+           :zip => "90210").save
 end
 
 10.times(&create)
@@ -29,7 +31,7 @@ end
 require "benchmark"
 
 t1 = Benchmark.realtime do
-  User.all.sort_by(:fname, order: "DESC ALPHA").each do |user|
+  User.all.sort_by(:fname, :order => "DESC ALPHA").each do |user|
   end
 end
 
@@ -48,7 +50,7 @@ end
 90.times(&create)
 
 t1 = Benchmark.realtime do
-  User.all.sort_by(:fname, order: "DESC ALPHA").each do |user|
+  User.all.sort_by(:fname, :order => "DESC ALPHA").each do |user|
   end
 end
 

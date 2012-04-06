@@ -15,14 +15,14 @@ else
   test do |lua|
     lua.redis.set("foo", "baz")
 
-    res = lua.run_file("getset", keys: ["foo"], argv: ["bar"])
+    res = lua.run_file("getset", :keys => ["foo"], :argv => ["bar"])
     assert_equal ["baz", "bar"], res
   end
 
   test do |lua|
     res = lua.run_file("ohm-save",
-      keys: ["User"],
-      argv: ["fname", "John", "lname", "Doe"])
+      :keys => ["User"],
+      :argv => ["fname", "John", "lname", "Doe"])
 
     assert lua.redis.sismember("User:all", 1)
     assert_equal({ "fname" => "John", "lname" => "Doe" },
@@ -34,8 +34,8 @@ else
     lua.redis.sadd("User:indices", "lname")
 
     res = lua.run_file("save-with-indices",
-      keys: ["User:1", "User:all", "User:indices"],
-      argv: ["fname", "John", "lname", "Doe"])
+      :keys => ["User:1", "User:all", "User:indices"],
+      :argv => ["fname", "John", "lname", "Doe"])
 
     assert lua.redis.sismember("User:all", 1)
 

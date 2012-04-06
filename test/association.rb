@@ -10,7 +10,7 @@ end
 
 setup do
   u = User.create
-  p = Post.create(user: u)
+  p = Post.create(:user => u)
 
   [u, p]
 end

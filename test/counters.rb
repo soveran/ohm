@@ -43,7 +43,7 @@ test "an attribute gets saved properly" do
   Ad.attribute :name
   Ad.counter :hits
 
-  ad = Ad.create(name: "foo")
+  ad = Ad.create(:name => "foo")
   ad.incr :hits, 10
   assert_equal 10, ad.hits
 

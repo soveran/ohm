@@ -17,7 +17,7 @@ class User < Ohm::Model
 end
 
 setup do
-  User.create(email: "a@a.com")
+  User.create(:email => "a@a.com")
 end
 
 test "findability" do |u|
@@ -26,12 +26,12 @@ end
 
 test "raises when it already exists during create" do
   assert_raise Ohm::UniqueIndexViolation do
-    User.create(email: "a@a.com")
+    User.create(:email => "a@a.com")
   end
 end
 
 test "raises when it already exists during save" do
-  u = User.create(email: "b@b.com")
+  u = User.create(:email => "b@b.com")
   u.email = "a@a.com"
 
   assert_raise Ohm::UniqueIndexViolation do
@@ -52,8 +52,8 @@ test "doesn't raise when saving again and again" do |u|
 end
 
 test "removes the previous index when changing" do
-  u = User.create(email: "c@c.com")
-  u.update(email: "d@d.com")
+  u = User.create(:email => "c@c.com")
+  u.update(:email => "d@d.com")
 
   assert_equal nil, User.with(:email, "c@c.com")
   assert_equal nil, User.key[:unique][:email].hget("c@c.com")
@@ -68,20 +68,20 @@ test "removes the previous index when deleting" do |u|
 end
 
 test "unique virtual attribute" do
-  u = User.create(email: "foo@yahoo.com")
+  u = User.create(:email => "foo@yahoo.com")
 
   assert_equal u, User.with(:provider, "yahoo")
 
   # Yahoo should be allowed because this user is the one reserved for it.
-  u.update(email: "bar@yahoo.com")
+  u.update(:email => "bar@yahoo.com")
 
   # `a` is not allowed though.
   assert_raise Ohm::UniqueIndexViolation do
-    u.update(email: "bar@a.com")
+    u.update(:email => "bar@a.com")
   end
 
   # And so is yahoo if we try creating a different user.
   assert_raise Ohm::UniqueIndexViolation do
-    User.create(email: "baz@yahoo.com")
+    User.create(:email => "baz@yahoo.com")
   end
 end

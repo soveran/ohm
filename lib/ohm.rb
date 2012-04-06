@@ -20,7 +20,7 @@ module Ohm
   #
   # IndexNotFound:
   #
-  #   Comment.find(foo: "Bar") # => Error
+  #   Comment.find(:foo => "Bar") # => Error
   #
   #   Solution: add an index with `Comment.index :foo`.
   #
@@ -103,8 +103,8 @@ module Ohm
   #
   # Examples:
   #
-  #   Ohm.connect(port: 6380, db: 1, host: "10.0.1.1")
-  #   Ohm.connect(url: "redis://10.0.1.1:6380/1")
+  #   Ohm.connect(:port => 6380, :db => 1, :host => "10.0.1.1")
+  #   Ohm.connect(:url => "redis://10.0.1.1:6380/1")
   #
   # All of the options are simply passed on to `Redis.connect`.
   #
@@ -154,16 +154,16 @@ module Ohm
     #     attribute :name
     #   end
     #
-    #   User.all.sort_by(:name, order: "ALPHA")
-    #   User.all.sort_by(:name, order: "ALPHA DESC")
-    #   User.all.sort_by(:name, order: "ALPHA DESC", limit: [0, 10])
+    #   User.all.sort_by(:name, :order => "ALPHA")
+    #   User.all.sort_by(:name, :order => "ALPHA DESC")
+    #   User.all.sort_by(:name, :order => "ALPHA DESC", :limit => [0, 10])
     #
     # Note: This is slower compared to just doing `sort`, specifically
     # because Redis has to read each individual hash in order to sort
     # them.
     #
     def sort_by(att, options = {})
-      sort(options.merge(by: namespace["*->%s" % att]))
+      sort(options.merge(:by => namespace["*->%s" % att]))
     end
 
     # Allows you to sort your models using their IDs. This is much
@@ -177,16 +177,16 @@ module Ohm
     #     attribute :name
     #   end
     #
-    #   User.create(name: "John")
-    #   User.create(name: "Jane")
+    #   User.create(:name => "John")
+    #   User.create(:name => "Jane")
     #
     #   User.all.sort.map(&:id) == ["1", "2"]
     #   # => true
     #
-    #   User.all.sort(order: "ASC").map(&:id) == ["1", "2"]
+    #   User.all.sort(:order => "ASC").map(&:id) == ["1", "2"]
     #   # => true
     #
-    #   User.all.sort(order: "DESC").map(&:id) == ["2", "1"]
+    #   User.all.sort(:order => "DESC").map(&:id) == ["2", "1"]
     #   # => true
     #
     def sort(options = {})
@@ -225,14 +225,14 @@ module Ohm
     # Example:
     #
     #   User.all.first ==
-    #     User.all.sort(limit: [0, 1]).first
+    #     User.all.sort(:limit => [0, 1]).first
     #
-    #   User.all.first(by: :name, "ALPHA") ==
-    #     User.all.sort_by(:name, order: "ALPHA", limit: [0, 1]).first
+    #   User.all.first(:by => :name, "ALPHA") ==
+    #     User.all.sort_by(:name, :order => "ALPHA", :limit => [0, 1]).first
     #
     def first(options = {})
       opts = options.dup
-      opts.merge!(limit: [0, 1])
+      opts.merge!(:limit => [0, 1])
 
       if opts[:by]
         sort_by(opts.delete(:by), opts).first
@@ -270,11 +270,15 @@ module Ohm
         ids.each { |id| model.db.hgetall(namespace[id]) }
       end
 
-      return [] if arr.nil?
+      res = []
 
-      arr.map.with_index do |atts, idx|
-        model.new(Hash[*atts].update(id: ids[idx]))
+      return res if arr.nil?
+
+      arr.each_with_index do |atts, idx|
+        res << model.new(Hash[*atts].update(:id => ids[idx]))
       end
+
+      res
     end
   end
 
@@ -396,11 +400,15 @@ module Ohm
         ids.each { |id| model.db.hgetall(namespace[id]) }
       end
 
-      return [] if arr.nil?
+      res = []
 
-      arr.map.with_index do |atts, idx|
-        model.new(Hash[*atts].update(id: ids[idx]))
+      return res if arr.nil?
+
+      arr.each_with_index do |atts, idx|
+        res << model.new(Hash[*atts].update(:id => ids[idx]))
       end
+
+      res
     end
   end
 
@@ -411,8 +419,8 @@ module Ohm
     #
     # Example:
     #
-    #   set = User.find(name: "John")
-    #   set.find(age: 30)
+    #   set = User.find(:name => "John")
+    #   set.find(:age => 30)
     #
     def find(dict)
       keys = model.filters(dict)
@@ -425,11 +433,11 @@ module Ohm
     #
     # Example:
     #
-    #   set = User.find(name: "John")
-    #   set.except(country: "US")
+    #   set = User.find(:name => "John")
+    #   set.except(:country => "US")
     #
     #   # You can also do it in one line.
-    #   User.find(name: "John").except(country: "US")
+    #   User.find(:name => "John").except(:country => "US")
     #
     def except(dict)
       MultiSet.new([key], namespace, model).except(dict)
@@ -439,11 +447,11 @@ module Ohm
     #
     # Example:
     #
-    #   set = User.find(name: "John")
-    #   set.union(name: "Jane")
+    #   set = User.find(:name => "John")
+    #   set.union(:name => "Jane")
     #
     #   # You can also do it in one line.
-    #   User.find(name: "John").union(name: "Jane")
+    #   User.find(:name => "John").union(:name => "Jane")
     #
     def union(dict)
       MultiSet.new([key], namespace, model).union(dict)
@@ -519,10 +527,10 @@ module Ohm
   #   User.all.kind_of?(Ohm::Set)
   #   # => true
   #
-  #   User.find(name: "John").kind_of?(Ohm::Set)
+  #   User.find(:name => "John").kind_of?(Ohm::Set)
   #   # => true
   #
-  #   User.find(name: "John", age: 30).kind_of?(Ohm::MultiSet)
+  #   User.find(:name => "John", :age => 30).kind_of?(Ohm::MultiSet)
   #   # => true
   #
   class MultiSet < Struct.new(:keys, :namespace, :model)
@@ -532,8 +540,8 @@ module Ohm
     #
     # Example:
     #
-    #   set = User.find(name: "John", age: 30)
-    #   set.find(status: 'pending')
+    #   set = User.find(:name => "John", :age => 30)
+    #   set.find(:status => 'pending')
     #
     def find(dict)
       keys = model.filters(dict)
@@ -546,11 +554,11 @@ module Ohm
     #
     # Example:
     #
-    #   set = User.find(name: "John")
-    #   set.except(country: "US")
+    #   set = User.find(:name => "John")
+    #   set.except(:country => "US")
     #
     #   # You can also do it in one line.
-    #   User.find(name: "John").except(country: "US")
+    #   User.find(:name => "John").except(:country => "US")
     #
     def except(dict)
       sdiff.push(*model.filters(dict)).uniq!
@@ -562,11 +570,11 @@ module Ohm
     #
     # Example:
     #
-    #   set = User.find(name: "John")
-    #   set.union(name: "Jane")
+    #   set = User.find(:name => "John")
+    #   set.union(:name => "Jane")
     #
     #   # You can also do it in one line.
-    #   User.find(name: "John").union(name: "Jane")
+    #   User.find(:name => "John").union(:name => "Jane")
     #
     def union(dict)
       sunion.push(*model.filters(dict)).uniq!
@@ -584,7 +592,7 @@ module Ohm
     end
 
     def execute
-      key = namespace[:temp][SecureRandom.uuid]
+      key = namespace[:temp][SecureRandom.hex(32)]
       key.sinterstore(*keys)
       key.sdiffstore(key, *sdiff)   if sdiff.any?
       key.sunionstore(key, *sunion) if sunion.any?
@@ -615,7 +623,7 @@ module Ohm
   #     set :posts, :Post
   #   end
   #
-  #   u = User.create(name: "John", email: "foo@bar.com")
+  #   u = User.create(:name => "John", :email => "foo@bar.com")
   #   u.incr :points
   #   u.posts.add(Post.create)
   #
@@ -696,7 +704,7 @@ module Ohm
     #   # =>  true
     #
     def self.[](id)
-      new(id: id).load! if id && exists?(id)
+      new(:id => id).load! if id && exists?(id)
     end
 
     # Retrieve a set of models given an array of IDs.
@@ -728,7 +736,7 @@ module Ohm
     #     unique :email
     #   end
     #
-    #   u = User.create(email: "foo@bar.com")
+    #   u = User.create(:email => "foo@bar.com")
     #   u == User.with(:email, "foo@bar.com")
     #   # => true
     #
@@ -762,17 +770,17 @@ module Ohm
     #     end
     #   end
     #
-    #   u = User.create(name: "John", status: "pending", email: "foo@me.com")
-    #   User.find(provider: "me", name: "John", status: "pending").include?(u)
+    #   u = User.create(:name => "John", :status => "pending", :email => "foo@me.com")
+    #   User.find(:provider => "me", :name => "John", :status => "pending").include?(u)
     #   # => true
     #
-    #   User.find(tag: "ruby").include?(u)
+    #   User.find(:tag => "ruby").include?(u)
     #   # => true
     #
-    #   User.find(tag: "python").include?(u)
+    #   User.find(:tag => "python").include?(u)
     #   # => true
     #
-    #   User.find(tag: ["ruby", "python"]).include?(u)
+    #   User.find(:tag => ["ruby", "python"]).include?(u)
     #   # => true
     #
     def self.find(dict)
@@ -871,7 +879,7 @@ module Ohm
     #
     #   class User < Ohm::Model
     #     def posts
-    #       Post.find(user_id: self.id)
+    #       Post.find(:user_id => self.id)
     #     end
     #   end
     #
@@ -1024,7 +1032,7 @@ module Ohm
     #     attribute :name
     #   end
     #
-    #   u = User.create(name: "John")
+    #   u = User.create(:name => "John")
     #   u.key.hget(:name)
     #   # => John
     #
@@ -1039,7 +1047,7 @@ module Ohm
     #
     # Example:
     #
-    #   u = User.new(name: "John")
+    #   u = User.new(:name => "John")
     #
     def initialize(atts = {})
       @attributes = {}
@@ -1090,7 +1098,7 @@ module Ohm
     #
     # Example:
     #
-    #   User.create(name: "A")
+    #   User.create(:name => "A")
     #
     #   Session 1     |    Session 2
     #   --------------|------------------------
@@ -1160,9 +1168,9 @@ module Ohm
     #     attribute :name
     #   end
     #
-    #   u = User.create(name: "John")
+    #   u = User.create(:name => "John")
     #   u.to_hash
-    #   # => { id: "1" }
+    #   # => { :id => "1" }
     #
     # In order to add additional attributes, you can override `to_hash`:
     #
@@ -1170,13 +1178,13 @@ module Ohm
     #     attribute :name
     #
     #     def to_hash
-    #       super.merge(name: name)
+    #       super.merge(:name => name)
     #     end
     #   end
     #
-    #   u = User.create(name: "John")
+    #   u = User.create(:name => "John")
     #   u.to_hash
-    #   # => { id: "1", name: "John" }
+    #   # => { :id => "1", :name => "John" }
     #
     def to_hash
       attrs = {}
@@ -1202,10 +1210,10 @@ module Ohm
     #     end
     #   end
     #
-    #   User.new(name: nil).save
+    #   User.new(:name => nil).save
     #   # => nil
     #
-    #   u = User.new(name: "John").save
+    #   u = User.new(:name => "John").save
     #   u.kind_of?(User)
     #   # => true
     #
@@ -1286,12 +1294,12 @@ module Ohm
     #
     # Example:
     #
-    #   User[1].update(name: "John")
+    #   User[1].update(:name => "John")
     #
     #   # It's the same as:
     #
     #   u = User[1]
-    #   u.update_attributes(name: "John")
+    #   u.update_attributes(:name => "John")
     #   u.save
     #
     def update(attributes)
@@ -1384,7 +1392,7 @@ module Ohm
     def _save
       catch :empty do
         key.del
-        key.hmset(*_skip_empty(attributes).flatten)
+        key.hmset(*_skip_empty(attributes).to_a.flatten)
       end
     end
 
@@ -1461,10 +1469,12 @@ module Ohm
       keys = options[:keys]
       argv = options[:argv]
 
+      params = keys + argv
+
       begin
-        redis.evalsha(sha(script), keys.size, *keys, *argv)
+        redis.evalsha(sha(script), keys.size, *params)
       rescue RuntimeError
-        redis.eval(script, keys.size, *keys, *argv)
+        redis.eval(script, keys.size, *params)
       end
     end
 

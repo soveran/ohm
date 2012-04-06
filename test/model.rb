@@ -61,7 +61,7 @@ test "customized ID" do
   inv = Invoice.create
   assert_equal "_custom_id", inv.id
 
-  i = Invoice.create(id: "_diff_id")
+  i = Invoice.create(:id => "_diff_id")
   assert_equal "_diff_id", i.id
   assert_equal i, Invoice["_diff_id"]
 end
@@ -74,7 +74,7 @@ test "empty model is ok" do
 end
 
 test "counters are cleaned up during deletion" do
-  e = Event.create(name: "Foo")
+  e = Event.create(:name => "Foo")
   e.incr :votes, 10
 
   assert_equal 10, e.votes
@@ -93,7 +93,7 @@ test "return false if the validation fails" do
 end
 
 test "get" do
-  m = Meetup.create(name: "Foo")
+  m = Meetup.create(:name => "Foo")
   m.name = "Bar"
 
   assert_equal "Foo", m.get(:name)
@@ -101,7 +101,7 @@ test "get" do
 end
 
 test "set" do
-  m = Meetup.create(name: "Foo")
+  m = Meetup.create(:name => "Foo")
 
   m.set :name, "Bar"
   assert_equal "Bar", m.name
@@ -411,7 +411,7 @@ test "work on lists" do
   post.related.key.rpush(Post.create(:body => "B").id)
   post.related.key.rpush(Post.create(:body => "A").id)
 
-  res = post.related.sort_by(:body, order: "ALPHA ASC").map { |r| r.body }
+  res = post.related.sort_by(:body, :order => "ALPHA ASC").map { |r| r.body }
   assert_equal ["A", "B", "C"], res
 end
 
@@ -439,19 +439,19 @@ class Entry < Ohm::Model
 end
 
 setup do
-  Entry.create(tags: "foo bar baz")
+  Entry.create(:tags => "foo bar baz")
 end
 
 test "finding by one entry in the enumerable" do |entry|
-  assert Entry.find(tag: "foo").include?(entry)
-  assert Entry.find(tag: "bar").include?(entry)
-  assert Entry.find(tag: "baz").include?(entry)
+  assert Entry.find(:tag => "foo").include?(entry)
+  assert Entry.find(:tag => "bar").include?(entry)
+  assert Entry.find(:tag => "baz").include?(entry)
 end
 
 test "finding by multiple entries in the enumerable" do |entry|
-  assert Entry.find(tag: ["foo", "bar"]).include?(entry)
-  assert Entry.find(tag: ["bar", "baz"]).include?(entry)
-  assert Entry.find(tag: ["baz", "oof"]).empty?
+  assert Entry.find(:tag => ["foo", "bar"]).include?(entry)
+  assert Entry.find(:tag => ["bar", "baz"]).include?(entry)
+  assert Entry.find(:tag => ["baz", "oof"]).empty?
 end
 
 # Attributes of type Set
@@ -562,12 +562,12 @@ test "sort the model instances by the values provided" do
 end
 
 test "accept a number in the limit parameter" do
-  people = @event.attendees.sort_by(:name, limit: [0, 2], order: "ALPHA")
+  people = @event.attendees.sort_by(:name, :limit => [0, 2], :order => "ALPHA")
   assert %w[A B] == people.map { |person| person.name }
 end
 
 test "use the start parameter as an offset if the limit is provided" do
-  people = @event.attendees.sort_by(:name, limit: [1, 2], order: "ALPHA")
+  people = @event.attendees.sort_by(:name, :limit => [1, 2], :order => "ALPHA")
   assert %w[B C] == people.map { |person| person.name }
 end
 
@@ -742,7 +742,7 @@ test "typecast attributes" do
   end
 
   option = Option.create :votes => 20
-  option.update(votes: option.votes + 1)
+  option.update(:votes => option.votes + 1)
 
   assert_equal 21, option.votes
 end
@@ -758,7 +758,7 @@ test "poster-example for overriding writers" do
     end
   end
 
-  a = Advertiser.new(email: " FOO@BAR.COM ")
+  a = Advertiser.new(:email => " FOO@BAR.COM ")
   assert_equal "foo@bar.com", a.email
 end
 

@@ -102,7 +102,7 @@ task :paste_lua_inline do
   # save = "foo"
   # del  = "bar"
 
-  ohm = File.read("./lib/ohm.rb", encoding: "utf-8")
+  ohm = File.read("./lib/ohm.rb", :encoding => "utf-8")
   ohm.gsub!(/SAVE =(.*?)$(.*?)EOT/m, wrap("SAVE", save))
   ohm.gsub!(/DELETE =(.*?)$(.*?)EOT/m, wrap("DELETE", del))
 

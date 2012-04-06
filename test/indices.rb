@@ -27,13 +27,13 @@ class User < Ohm::Model
 end
 
 setup do
-  @user1 = User.create(email: "foo", activation_code: "bar", update: "baz")
-  @user2 = User.create(email: "bar")
-  @user3 = User.create(email: "baz qux")
+  @user1 = User.create(:email => "foo", :activation_code => "bar", :update => "baz")
+  @user2 = User.create(:email => "bar")
+  @user3 = User.create(:email => "baz qux")
 end
 
 test "be able to find by the given attribute" do
-  assert @user1 == User.find(email: "foo").first
+  assert @user1 == User.find(:email => "foo").first
 end
 
 test "raise an error if the parameter supplied is not a hash" do
@@ -47,7 +47,7 @@ test "raise an error if the parameter supplied is not a hash" do
 end
 
 test "avoid intersections with the all collection" do
-  assert_equal "User:indices:email:foo", User.find(email: "foo").key
+  assert_equal "User:indices:email:foo", User.find(:email => "foo").key
 end
 
 test "cleanup the temporary key after use" do

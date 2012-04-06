@@ -35,7 +35,7 @@ test "export a hash with the errors" do
   person = Venue.new
   person.valid?
 
-  assert_equal({ errors: { name: [:not_present] }}, person.to_hash)
+  assert_equal({ :errors => { :name => [:not_present] }}, person.to_hash)
 end
 
 test "export a hash with the its id" do
@@ -48,7 +48,7 @@ test "export a hash with its id and the errors" do
   person.name = nil
   person.valid?
 
-  expected_hash = { id: '1', errors: { name: [:not_present] }}
+  expected_hash = { :id => '1', :errors => { :name => [:not_present] }}
   assert expected_hash == person.to_hash
 end
 
@@ -68,19 +68,19 @@ test "just be the to_hash of a model" do
 end
 
 test "export an array of records to json" do
-  Programmer.create(language: "Ruby")
-  Programmer.create(language: "Python")
+  Programmer.create(:language => "Ruby")
+  Programmer.create(:language => "Python")
 
-  expected = [{ id: "1", language: "Ruby" }, { id: "2", language: "Python"}].to_json
+  expected = [{ :id => "1", :language => "Ruby" }, { :id => "2", :language => "Python"}].to_json
   assert_equal expected, Programmer.all.to_json
 end
 
 test "export an array of lists to json" do
-  venue = Venue.create(name: "Foo")
+  venue = Venue.create(:name => "Foo")
 
-  venue.programmers.push(Programmer.create(language: "Ruby"))
-  venue.programmers.push(Programmer.create(language: "Python"))
+  venue.programmers.push(Programmer.create(:language => "Ruby"))
+  venue.programmers.push(Programmer.create(:language => "Python"))
 
-  expected = [{ id: "1", language: "Ruby" }, { id: "2", language: "Python"}].to_json
+  expected = [{ :id => "1", :language => "Ruby" }, { :id => "2", :language => "Python"}].to_json
   assert_equal expected, venue.programmers.to_json
 end

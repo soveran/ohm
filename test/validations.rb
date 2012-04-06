@@ -68,7 +68,7 @@ scope do
       event.save
 
       assert event.new?
-      assert_equal({capacity: [:not_numeric]}, event.errors)
+      assert_equal({:capacity => [:not_numeric]}, event.errors)
     end
 
     test "fail when the value is not numeric" do |event|
@@ -82,7 +82,7 @@ scope do
       event.save
 
       assert event.new?
-      assert_equal({capacity: [:not_numeric]}, event.errors)
+      assert_equal({:capacity => [:not_numeric]}, event.errors)
     end
 
     test "succeed when the value is numeric" do |event|
@@ -182,14 +182,14 @@ scope do
     test "fail when the attribute is nil" do |target|
       target.validate
 
-      assert_equal({ name: [:not_present] }, target.errors)
+      assert_equal({ :name => [:not_present] }, target.errors)
     end
 
     test "fail when the attribute is empty" do |target|
       target.name = ""
       target.validate
 
-      assert_equal({ name: [:not_present] }, target.errors)
+      assert_equal({ :name => [:not_present] }, target.errors)
     end
   end
 end

@@ -7,6 +7,7 @@ begin
 rescue LoadError
 end
 
+require "rubygems"
 require "cutest"
 
 def silence_warnings
