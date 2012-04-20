@@ -84,4 +84,36 @@ test "#union" do |john, jane|
   assert res.include?(john)
   assert res.include?(jane)
   assert res.include?(included)
+
+  res = User.find(:status => "active").union(:status => "inactive").find(:lname => "Doe")
+
+  assert res.any? { |e| e.status == "inactive" }
+end
+
+# book author thing via @myobie
+scope do
+  class Book < Ohm::Model
+    collection :authors, :Author
+  end
+
+  class Author < Ohm::Model
+    reference :book, :Book
+
+    attribute :mood
+    index :mood
+  end
+
+  test do
+    book1 = Book.create
+    book2 = Book.create
+
+    auth1 = Author.create(:book => book1, :mood => "happy")
+    auth2 = Author.create(:book => book1, :mood => "sad")
+    auth3 = Author.create(:book => book2, :mood => "sad")
+
+    result = book1.authors.find(:mood => "happy").
+      union(:book_id => book1.id, :mood => "sad")
+
+    assert_equal 2, result.size
+  end
 end

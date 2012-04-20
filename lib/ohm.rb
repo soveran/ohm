@@ -536,6 +536,9 @@ module Ohm
   class MultiSet < Struct.new(:keys, :namespace, :model)
     include Collection
 
+    attr_writer :sunion
+    attr_writer :sdiff
+
     # Chain new fiters on an existing set.
     #
     # Example:
@@ -547,7 +550,11 @@ module Ohm
       keys = model.filters(dict)
       keys.push(*self.keys)
 
-      MultiSet.new(keys, namespace, model)
+      set = MultiSet.new(keys, namespace, model)
+      set.sdiff  = sdiff
+      set.sunion = sunion
+
+      return set
     end
 
     # Reduce the set using any number of filters.
@@ -594,13 +601,30 @@ module Ohm
     def execute
       key = namespace[:temp][SecureRandom.hex(32)]
       key.sinterstore(*keys)
-      key.sdiffstore(key, *sdiff)   if sdiff.any?
-      key.sunionstore(key, *sunion) if sunion.any?
+
+      diffkey = nil
+      unionkey = nil
+
+      if sdiff.any?
+        diffkey = namespace[:temp][SecureRandom.hex(32)]
+        diffkey.sinterstore(*sdiff)
+
+        key.sdiffstore(key, diffkey)
+      end
+
+      if sunion.any?
+        unionkey = namespace[:temp][SecureRandom.hex(32)]
+        unionkey.sinterstore(*sunion)
+
+        key.sunionstore(key, unionkey)
+      end
 
       begin
         yield key
       ensure
         key.del
+        diffkey.del if diffkey
+        unionkey.del if unionkey
       end
     end
   end
