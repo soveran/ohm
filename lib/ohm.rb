@@ -1433,9 +1433,7 @@ module Ohm
       model.indices.each do |att|
         val = atts[att.to_s]
 
-        if val
-          model.key[:indices][att][val].srem(id)
-        end
+        model.key[:indices][att][val].srem(id)
       end
     end
 

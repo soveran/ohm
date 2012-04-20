@@ -61,6 +61,19 @@ test "#except" do |john, jane|
   assert res.include?(jane)
 end
 
+test "indices bug related to a nil attribute" do |john, jane|
+  # First we create a record with a nil attribute
+  out = User.create(:status => nil, :lname => "Doe")
+
+  # Then, we update the old nil attribute to a different
+  # non-nil, value.
+  out.update(status: "inactive")
+
+  # At this point, the index for the nil attribute should
+  # have been cleared.
+  assert_equal 0, User.db.scard("User:indices:status:")
+end
+
 test "#union" do |john, jane|
   included = User.create(:status => "inactive", :lname => "Doe")
   excluded = User.create(:status => "super", :lname => "Doe")
