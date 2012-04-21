@@ -607,7 +607,7 @@ module Ohm
 
     def execute
 
-      # Hold the actual final result key this MultiSet.
+      # Hold the final result key for this MultiSet.
       main = nil
 
       filters.each do |operation, list|
