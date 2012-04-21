@@ -103,7 +103,7 @@ scope do
     index :mood
   end
 
-  test do
+  setup do
     book1 = Book.create
     book2 = Book.create
 
@@ -111,9 +111,21 @@ scope do
     auth2 = Author.create(:book => book1, :mood => "sad")
     auth3 = Author.create(:book => book2, :mood => "sad")
 
+    [book1, book2]
+  end
+
+  test do |book1, book2|
     result = book1.authors.find(:mood => "happy").
       union(:book_id => book1.id, :mood => "sad")
 
     assert_equal 2, result.size
+  end
+
+  test do |book1, book2|
+    res = Author.find(:book_id => book1.id, :mood => "happy").
+      union(:book_id => book2.id, :mood => "sad").
+      union(:book_id => book2.id, :mood => "happy")
+
+    assert_equal 2, res.size
   end
 end

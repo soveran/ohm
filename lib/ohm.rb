@@ -423,10 +423,9 @@ module Ohm
     #   set.find(:age => 30)
     #
     def find(dict)
-      keys = model.filters(dict)
-      keys.push(key)
+      filters = model.filters(dict).push(key)
 
-      MultiSet.new(keys, namespace, model)
+      MultiSet.new(namespace, model).append(:sinterstore, filters)
     end
 
     # Reduce the set using any number of filters.
@@ -440,7 +439,7 @@ module Ohm
     #   User.find(:name => "John").except(:country => "US")
     #
     def except(dict)
-      MultiSet.new([key], namespace, model).except(dict)
+      MultiSet.new(namespace, model).append(:sinterstore, key).except(dict)
     end
 
     # Do a union to the existing set using any number of filters.
@@ -454,7 +453,7 @@ module Ohm
     #   User.find(:name => "John").union(:name => "Jane")
     #
     def union(dict)
-      MultiSet.new([key], namespace, model).union(dict)
+      MultiSet.new(namespace, model).append(:sinterstore, key).union(dict)
     end
 
   private
@@ -516,7 +515,6 @@ module Ohm
     end
   end
 
-
   # Anytime you filter a set with more than one requirement, you
   # internally use a `MultiSet`. `MutiSet` is a bit slower than just
   # a `Set` because it has to `SINTERSTORE` all the keys prior to
@@ -533,11 +531,14 @@ module Ohm
   #   User.find(:name => "John", :age => 30).kind_of?(Ohm::MultiSet)
   #   # => true
   #
-  class MultiSet < Struct.new(:keys, :namespace, :model)
+  class MultiSet < Struct.new(:namespace, :model)
     include Collection
 
-    attr_writer :sunion
-    attr_writer :sdiff
+    def append(operation, list)
+      filters.push([operation, list])
+
+      return self
+    end
 
     # Chain new fiters on an existing set.
     #
@@ -547,14 +548,9 @@ module Ohm
     #   set.find(:status => 'pending')
     #
     def find(dict)
-      keys = model.filters(dict)
-      keys.push(*self.keys)
+      filters.push([:sinterstore, model.filters(dict)])
 
-      set = MultiSet.new(keys, namespace, model)
-      set.sdiff  = sdiff
-      set.sunion = sunion
-
-      return set
+      return self
     end
 
     # Reduce the set using any number of filters.
@@ -568,7 +564,7 @@ module Ohm
     #   User.find(:name => "John").except(:country => "US")
     #
     def except(dict)
-      sdiff.push(*model.filters(dict)).uniq!
+      filters.push([:sdiffstore, model.filters(dict)])
 
       return self
     end
@@ -584,47 +580,70 @@ module Ohm
     #   User.find(:name => "John").union(:name => "Jane")
     #
     def union(dict)
-      sunion.push(*model.filters(dict)).uniq!
+      filters.push([:sunionstore, model.filters(dict)])
 
       return self
     end
 
   private
-    def sunion
-      @sunion ||= []
+    def filters
+      @filters ||= []
     end
 
-    def sdiff
-      @sdiff ||= []
+    def temp_keys
+      @temp_keys ||= []
+    end
+
+    def clean_temp_keys
+      model.db.pipelined do
+        temp_keys.each do |key|
+          model.db.del(key)
+        end
+
+        temp_keys.clear
+      end
+    end
+
+    def generate_temp_key
+      key = namespace[:temp][SecureRandom.hex(32)]
+      temp_keys << key
+      return key
     end
 
     def execute
-      key = namespace[:temp][SecureRandom.hex(32)]
-      key.sinterstore(*keys)
+      # `main` will hold the actual end-result key for this entire MultiSet.
+      main = nil
 
-      diffkey = nil
-      unionkey = nil
+      filters.each do |operation, list|
+        # operation can be sinterstore, sdiffstore, or sunionstore.
+        # each operation we do, i.e. `.union(...)`, will be considered
+        # one intersected set, hence we need to `sinterstore` all
+        # the filters in a temporary set.
+        temp = generate_temp_key
+        temp.sinterstore(*list)
 
-      if sdiff.any?
-        diffkey = namespace[:temp][SecureRandom.hex(32)]
-        diffkey.sinterstore(*sdiff)
-
-        key.sdiffstore(key, diffkey)
-      end
-
-      if sunion.any?
-        unionkey = namespace[:temp][SecureRandom.hex(32)]
-        unionkey.sinterstore(*sunion)
-
-        key.sunionstore(key, unionkey)
+        # if this is the first set, we simply assign the generated
+        # set to main, which could possibly be the return value
+        # for simple filters like one `.find(...)`.
+        if main.nil?
+          main = temp
+        else
+          # we append the generated temporary set using the operation.
+          # i.e. if we have (mood=happy & book=1) and we have an
+          # `sunionstore`, we do (mood=happy & book=1) | (mood=sad & book=1)
+          main.send(operation, main, temp)
+        end
       end
 
       begin
-        yield key
+        # at this point, we have the final aggregated set, which we yield
+        # to the caller. the caller can do all the normal set operations,
+        # i.e. SCARD, SMEMBERS, etc.
+        yield main
       ensure
-        key.del
-        diffkey.del if diffkey
-        unionkey.del if unionkey
+        # we have to make sure we clean up the temporary keys to avoid
+        # memory leaks and the unintended explosion of memory usage.
+        clean_temp_keys
       end
     end
   end
@@ -813,7 +832,7 @@ module Ohm
       if keys.size == 1
         Ohm::Set.new(keys.first, key, self)
       else
-        Ohm::MultiSet.new(keys, key, self)
+        Ohm::MultiSet.new(key, self).append(:sinterstore, keys)
       end
     end
 
