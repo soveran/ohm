@@ -595,40 +595,38 @@ module Ohm
     end
 
     def clean_temp_keys
-      model.db.pipelined do
-        temp_keys.each do |key|
-          model.db.del(key)
-        end
-
-        temp_keys.clear
-      end
+      model.db.del(*temp_keys)
+      temp_keys.clear
     end
 
     def generate_temp_key
       key = namespace[:temp][SecureRandom.hex(32)]
       temp_keys << key
-      return key
+      key
     end
 
     def execute
-      # `main` will hold the actual end-result key for this entire MultiSet.
+
+      # Hold the actual final result key this MultiSet.
       main = nil
 
       filters.each do |operation, list|
-        # operation can be sinterstore, sdiffstore, or sunionstore.
+
+        # Operation can be sinterstore, sdiffstore, or sunionstore.
         # each operation we do, i.e. `.union(...)`, will be considered
         # one intersected set, hence we need to `sinterstore` all
         # the filters in a temporary set.
         temp = generate_temp_key
         temp.sinterstore(*list)
 
-        # if this is the first set, we simply assign the generated
+        # If this is the first set, we simply assign the generated
         # set to main, which could possibly be the return value
         # for simple filters like one `.find(...)`.
         if main.nil?
           main = temp
         else
-          # we append the generated temporary set using the operation.
+
+          # Append the generated temporary set using the operation.
           # i.e. if we have (mood=happy & book=1) and we have an
           # `sunionstore`, we do (mood=happy & book=1) | (mood=sad & book=1)
           main.send(operation, main, temp)
@@ -636,12 +634,15 @@ module Ohm
       end
 
       begin
-        # at this point, we have the final aggregated set, which we yield
+
+        # At this point, we have the final aggregated set, which we yield
         # to the caller. the caller can do all the normal set operations,
         # i.e. SCARD, SMEMBERS, etc.
         yield main
+
       ensure
-        # we have to make sure we clean up the temporary keys to avoid
+
+        # We have to make sure we clean up the temporary keys to avoid
         # memory leaks and the unintended explosion of memory usage.
         clean_temp_keys
       end
