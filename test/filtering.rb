@@ -114,17 +114,42 @@ scope do
     [book1, book2]
   end
 
-  test do |book1, book2|
+  test "straight up intersection + union" do |book1, book2|
     result = book1.authors.find(:mood => "happy").
       union(:book_id => book1.id, :mood => "sad")
 
     assert_equal 2, result.size
   end
 
-  test do |book1, book2|
+  test "appending an empty set via union" do |book1, book2|
     res = Author.find(:book_id => book1.id, :mood => "happy").
       union(:book_id => book2.id, :mood => "sad").
       union(:book_id => book2.id, :mood => "happy")
+
+    assert_equal 2, res.size
+  end
+
+  test "revert by applying the original intersection" do |book1, book2|
+    res = Author.find(:book_id => book1.id, :mood => "happy").
+      union(:book_id => book2.id, :mood => "sad").
+      find(:book_id => book1.id, :mood => "happy")
+
+    assert_equal 1, res.size
+  end
+
+  test "remove original intersection by doing diff" do |book1, book2|
+    res = Author.find(:book_id => book1.id, :mood => "happy").
+      union(:book_id => book2.id, :mood => "sad").
+      except(:book_id => book1.id, :mood => "happy")
+
+    assert_equal 1, res.size
+    assert res.map(&:mood).include?("sad")
+    assert res.map(&:book_id).include?(book2.id)
+  end
+
+  test "@myobie usecase" do |book1, book2|
+    res = book1.authors.find(:mood => "happy").
+      union(:mood => "sad", :book_id => book1.id)
 
     assert_equal 2, res.size
   end
