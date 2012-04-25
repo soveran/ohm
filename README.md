@@ -635,24 +635,6 @@ make sure to check them if you need to extend Ohm's functionality.
 
 [contrib]: http://cyx.github.com/ohm-contrib/doc/
 
-Tutorials
-=========
-
-NOTE: These tutorials were written against Ohm 0.1.x. Please give us
-a while to fully update all of them.
-
-Check the examples to get a feeling of the design patterns for Redis.
-
-1. [Activity Feed](http://ohm.keyvalue.org/examples/activity-feed.html)
-2. [Chaining finds](http://ohm.keyvalue.org/examples/chaining.html)
-3. [Serialization to JSON](http://ohm.keyvalue.org/examples/json-hash.html)
-4. [One to many associations](http://ohm.keyvalue.org/examples/one-to-many.html)
-5. [Philosophy behind Ohm](http://ohm.keyvalue.org/examples/philosophy.html)
-6. [Learning Ohm internals](http://ohm.keyvalue.org/examples/redis-logging.html)
-7. [Slugs and permalinks](http://ohm.keyvalue.org/examples/slug.html)
-8. [Tagging](http://ohm.keyvalue.org/examples/tagging.html)
-
-
 Versions
 ========
 
