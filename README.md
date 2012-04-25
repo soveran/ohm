@@ -635,12 +635,6 @@ make sure to check them if you need to extend Ohm's functionality.
 
 [contrib]: http://cyx.github.com/ohm-contrib/doc/
 
-Versions
-========
-
-Ohm uses features from Redis > 2.6.x. If you are stuck in previous
-versions, please use Ohm 0.1.x instead.
-
 Upgrading from 0.1.x to 1.0.0
 -----------------------------
 
