@@ -77,7 +77,7 @@ set the environment variable `REDIS_URL`.
 
 Here are the options for {Ohm.connect} in detail:
 
-### :url
+### :url (recommended)
 
 A Redis URL of the form `redis://:<passwd>@<host>:<port>/<db>`.
 Note that if you specify a URL and one of the other options at
@@ -126,8 +126,8 @@ the example below:
 ```ruby
 class Event < Ohm::Model
   attribute :name
-  reference :venue, Venue
-  set :participants, Person
+  reference :venue, :Venue
+  set :participants, :Person
   counter :votes
 
   index :name
@@ -139,7 +139,7 @@ end
 
 class Venue < Ohm::Model
   attribute :name
-  collection :events, Event
+  collection :events, :Event
 end
 
 class Person < Ohm::Model
@@ -259,7 +259,7 @@ Given the following model declaration:
 ```ruby
 class Event < Ohm::Model
   attribute :name
-  set :attendees, Person
+  set :attendees, :Person
 end
 ```
 
@@ -349,12 +349,12 @@ Ohm lets you declare `references` and `collections` to represent associations.
 class Post < Ohm::Model
   attribute :title
   attribute :body
-  collection :comments, Comment
+  collection :comments, :Comment
 end
 
 class Comment < Ohm::Model
   attribute :body
-  reference :post, Post
+  reference :post, :Post
 end
 ```
 
@@ -419,14 +419,14 @@ in the other model. The following all produce the same effect:
 
 ```ruby
 # easiest, with the basic assumption that the index is `:post_id`
-collection :comments, Comment
+collection :comments, :Comment
 
 # we can explicitly declare this as follows too:
-collection :comments, Comment, :post
+collection :comments, :Comment, :post
 
 # finally, we can use the default argument for the third parameter which
 # is `to_reference`.
-collection :comments, Comment, to_reference
+collection :comments, :Comment, to_reference
 
 # exploring `to_reference` reveals a very interesting and simple concept:
 Post.to_reference == :post
@@ -554,6 +554,51 @@ representation. The error code for this assertion is :not_numeric.
 assert_numeric :votes
 ```
 
+### assert_url
+
+Provides a pretty general URL regular expression match. An important
+point to make is that this assumes that the URL should start with
+`http://` or `https://`. The error code for this assertion is
+`:not_url`.
+
+### assert_email
+
+In this current day and age, almost all web applications need to
+validate an email address. This pretty much matches 99% of the emails
+out there. The error code for this assertion is `:not_email`.
+
+### assert_member
+
+Checks that a given field is contained within a set of values (i.e.
+like an `ENUM`).
+
+``` ruby
+def validate
+  assert_member :state, %w{pending paid delivered}
+end
+```
+
+The error code for this assertion is `:not_valid`
+
+### assert_length
+
+Checks that a given field's length falls under a specified range.
+
+``` ruby
+def validate
+  assert_length :username, 3..20
+end
+```
+
+The error code for this assertion is `:not_in_range`.
+
+### assert_decimal
+
+Checks that a given field looks like a number in the human sense
+of the word. Valid numbers are: 0.1, .1, 1, 1.1, 3.14159, etc.
+
+The error code for this assertion is `:not_decimal`.
+
 Errors
 ------
 
@@ -614,27 +659,13 @@ Versions
 Ohm uses features from Redis > 2.6.x. If you are stuck in previous
 versions, please use Ohm 0.1.x instead.
 
-Upgrading from 0.0.x to 0.1
----------------------------
+Upgrading from 0.1.x to 1.0.0
+-----------------------------
 
-Since Ohm 0.1 changes the persistence strategy (from 1-key-per-attribute
-to Hashes), you'll need to run a script to upgrade your old data set.
-Fortunately, it is built in:
-
-```ruby
-require "ohm/utils/upgrade"
-
-Ohm.connect :port => 6380
-
-Ohm::Utils::Upgrade.new([:User, :Post, :Comment]).run
-```
-
-Yes, you need to provide the model names. The good part is that you
-don't have to load your application environment. Since we assume it's
-very likely that you have a bunch of data, the script uses
-[Batch](http://github.com/djanowski/batch) to show you some progress
-while the process runs.
-
+The changes in Ohm 1 break the compatibility with previous versions.
+We will do our best to provide a script to ease the pain of upgrading.
+In the meantime, it's recommended that you use the new version only
+for new projects.
 
 [redis]: http://redis.io
 [ohm]: http://github.com/soveran/ohm
