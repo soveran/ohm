@@ -635,8 +635,8 @@ make sure to check them if you need to extend Ohm's functionality.
 
 [contrib]: http://cyx.github.com/ohm-contrib/doc/
 
-Upgrading from 0.1.x to 1.0.0
------------------------------
+Upgrading
+=========
 
 The changes in Ohm 1 break the compatibility with previous versions.
 We will do our best to provide a script to ease the pain of upgrading.
