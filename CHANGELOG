@@ -1,15 +1,15 @@
 1.0
 
-- Fetching a batch of objects are now done through one pipeline, effectively
+- Fetching a batch of objects is now done through one pipeline, effectively
   reducing the IO to just 2 operations (one for SMEMBERS / LRANGE, one for
   the actual HGET of all the individual HASHes.)
-- write_remote / read_remote have been replace with set / get respectively.
-- Ohm::Model.uniqque has been added.
+- write_remote / read_remote have been replaced with set / get respectively.
+- Ohm::Model.unique has been added.
 - Ohm::Model::Set has been renamed to Ohm::Set
 - Ohm::Model::List has been renamed to Ohm::List
 - Ohm::Model::Collection is gone.
-- Ohm::Validations is gone.
-- Ohm::Key is gone.
+- Ohm::Validations is gone. Ohm now uses Scrivener::Validations.
+- Ohm::Key is gone. Ohm now uses Nest directly.
 - No more concept of volatile keys.
 - Ohm::Model::Wrapper is gone.
 - Use Symbols for constants instead of relying on Ohm::Model.const_missing.
@@ -19,11 +19,12 @@
   of necessary methods.
 - You can no longer mutate a collection / set as before, e.g. doing
   User.find(...).add(User[1]) will throw an error.
-- #union has been added. You can now chain it with your filters.
+- The #union operation has been added. You can now chain it with your filters.
 - Temporary keys when doing finds are now automatically cleaned up.
-- counters are now stored in their own key instead, i.e. in 
+- Counters are now stored in their own key instead, i.e. in
   User:<id>:counters.
-- JSON support is now explicitly required by doing `require ohm/json`.
-- All save / delete / update operations are now done using CAS
-  (see check and set in redis.io)
-- All indices are now stored as is (without converting to base64).
+- JSON support has to be explicitly required by doing `require
+  "ohm/json"`.
+- All save / delete / update operations are now done using
+  transactions (see http://redis.io/topics/transactions).
+- All indices are now stored without converting the values to base64.
