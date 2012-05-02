@@ -129,8 +129,29 @@ module Ohm
     redis.flushdb
   end
 
+  # Wraps the whole pipelining functionality.
+  module PipelinedFetch
+  private
+    def fetch(ids)
+      arr = db.pipelined do
+        ids.each { |id| db.hgetall(namespace[id]) }
+      end
+
+      res = []
+
+      return res if arr.nil?
+
+      arr.each_with_index do |atts, idx|
+        res << model.new(Hash[*atts].update(:id => ids[idx]))
+      end
+
+      res
+    end
+  end
+
   # Defines most of the methods used by `Set` and `MultiSet`.
   module Collection
+    include PipelinedFetch
     include Enumerable
 
     # Fetch the data from Redis in one go.
@@ -192,10 +213,10 @@ module Ohm
     def sort(options = {})
       if options.has_key?(:get)
         options[:get] = namespace["*->%s" % options[:get]]
-        return execute { |key| key.sort(options) }
+        return execute { |key| db.sort(key, options) }
       end
 
-      fetch(execute { |key| key.sort(options) })
+      fetch(execute { |key| db.sort(key, options) })
     end
 
     # Check if a model is included in this set.
@@ -216,7 +237,7 @@ module Ohm
 
     # Returns the total size of the set using SCARD.
     def size
-      execute { |key| key.scard }
+      execute { |key| db.scard(key) }
     end
 
     # Syntactic sugar for `sort_by` or `sort` when you only need the
@@ -243,7 +264,7 @@ module Ohm
 
     # Grab all the elements of this set using SMEMBERS.
     def ids
-      execute { |key| key.smembers }
+      execute { |key| db.smembers(key) }
     end
 
     # Retrieve a specific element using an ID from this set.
@@ -262,42 +283,27 @@ module Ohm
 
   private
     def exists?(id)
-      execute { |key| key.sismember(id) }
-    end
-
-    def fetch(ids)
-      arr = model.db.pipelined do
-        ids.each { |id| model.db.hgetall(namespace[id]) }
-      end
-
-      res = []
-
-      return res if arr.nil?
-
-      arr.each_with_index do |atts, idx|
-        res << model.new(Hash[*atts].update(:id => ids[idx]))
-      end
-
-      res
+      execute { |key| db.sismember(key, id) }
     end
   end
 
   class List < Struct.new(:key, :namespace, :model)
+    include PipelinedFetch
     include Enumerable
 
     # Returns the total size of the list using LLEN.
     def size
-      key.llen
+      db.llen(key)
     end
 
     # Returns the first element of the list using LINDEX.
     def first
-      model[key.lindex(0)]
+      model[db.lindex(key, 0)]
     end
 
     # Returns the last element of the list using LINDEX.
     def last
-      model[key.lindex(-1)]
+      model[db.lindex(key, -1)]
     end
 
     # Checks if the model is part of this List.
@@ -331,8 +337,8 @@ module Ohm
       ids = models.map { |model| model.id }
 
       model.db.multi do
-        key.del
-        ids.each { |id| key.rpush(id) }
+        db.del(key)
+        ids.each { |id| db.rpush(key, id) }
       end
     end
 
@@ -351,12 +357,12 @@ module Ohm
 
     # Pushes the model to the _end_ of the list using RPUSH.
     def push(model)
-      key.rpush(model.id)
+      db.rpush(key, model.id)
     end
 
     # Pushes the model to the _beginning_ of the list using LPUSH.
     def unshift(model)
-      key.lpush(model.id)
+      db.lpush(key, model.id)
     end
 
     # Delete a model from the list.
@@ -387,28 +393,16 @@ module Ohm
     def delete(model)
       # LREM key 0 <id> means remove all elements matching <id>
       # @see http://redis.io/commands/lrem
-      key.lrem(0, model.id)
+      db.lrem(key, 0, model.id)
     end
 
   private
     def ids
-      key.lrange(0, -1)
+      db.lrange(key, 0, -1)
     end
 
-    def fetch(ids)
-      arr = model.db.pipelined do
-        ids.each { |id| model.db.hgetall(namespace[id]) }
-      end
-
-      res = []
-
-      return res if arr.nil?
-
-      arr.each_with_index do |atts, idx|
-        res << model.new(Hash[*atts].update(:id => ids[idx]))
-      end
-
-      res
+    def db
+      model.db
     end
   end
 
@@ -460,6 +454,10 @@ module Ohm
     def execute
       yield key
     end
+
+    def db
+      model.db
+    end
   end
 
   class MutableSet < Set
@@ -473,7 +471,7 @@ module Ohm
     #   user.posts.add(post)
     #
     def add(model)
-      key.sadd(model.id)
+      db.sadd(key, model.id)
     end
 
     # Remove a model directly from the set.
@@ -486,7 +484,7 @@ module Ohm
     #   user.posts.delete(post)
     #
     def delete(model)
-      key.srem(model.id)
+      db.srem(key, model.id)
     end
 
     # Replace all the existing elements of a set with a different
@@ -509,8 +507,8 @@ module Ohm
       ids = models.map { |model| model.id }
 
       key.redis.multi do
-        key.del
-        ids.each { |id| key.sadd(id) }
+        db.del(key)
+        ids.each { |id| db.sadd(key, id) }
       end
     end
   end
@@ -586,6 +584,10 @@ module Ohm
     end
 
   private
+    def db
+      model.db
+    end
+
     def filters
       @filters ||= []
     end
@@ -595,7 +597,7 @@ module Ohm
     end
 
     def clean_temp_keys
-      model.db.del(*temp_keys)
+      db.del(*temp_keys)
       temp_keys.clear
     end
 
@@ -617,7 +619,7 @@ module Ohm
         # one intersected set, hence we need to `sinterstore` all
         # the filters in a temporary set.
         temp = generate_temp_key
-        temp.sinterstore(*list)
+        db.sinterstore(temp, *list)
 
         # If this is the first set, we simply assign the generated
         # set to main, which could possibly be the return value
@@ -629,7 +631,12 @@ module Ohm
           # Append the generated temporary set using the operation.
           # i.e. if we have (mood=happy & book=1) and we have an
           # `sunionstore`, we do (mood=happy & book=1) | (mood=sad & book=1)
-          main.send(operation, main, temp)
+          #
+          # Here we dynamically call the stored command, e.g.
+          #
+          #   SUNIONSTORE main main temp
+          #
+          db.send(operation, main, main, temp)
         end
       end
 
@@ -769,7 +776,7 @@ module Ohm
 
     # Check if the ID exists within <Model>:all.
     def self.exists?(id)
-      key[:all].sismember(id)
+      db.sismember(key[:all], id)
     end
 
     # Find values in `unique` indices.
@@ -785,7 +792,7 @@ module Ohm
     #   # => true
     #
     def self.with(att, val)
-      id = key[:uniques][att].hget(val)
+      id = db.hget(key[:uniques][att], val)
       id && self[id]
     end
 
@@ -814,8 +821,8 @@ module Ohm
     #     end
     #   end
     #
-    #   u = User.create(:name => "John", :status => "pending", :email => "foo@me.com")
-    #   User.find(:provider => "me", :name => "John", :status => "pending").include?(u)
+    #   u = User.create(name: "John", status: "pending", email: "foo@me.com")
+    #   User.find(provider: "me", name: "John", status: "pending").include?(u)
     #   # => true
     #
     #   User.find(:tag => "ruby").include?(u)
@@ -1054,7 +1061,7 @@ module Ohm
       define_method(name) do
         return 0 if new?
 
-        key[:counters].hget(name).to_i
+        db.hget(key[:counters], name).to_i
       end
     end
 
@@ -1132,7 +1139,7 @@ module Ohm
     # Preload all the attributes of this model from Redis. Used
     # internally by `Model::[]`.
     def load!
-      update_attributes(key.hgetall) unless new?
+      update_attributes(db.hgetall(key)) unless new?
       return self
     end
 
@@ -1153,7 +1160,7 @@ module Ohm
     #                 |    u.get(:name) == "B"
     #
     def get(att)
-      @attributes[att] = key.hget(att)
+      @attributes[att] = db.hget(key, att)
     end
 
     # Update an attribute value atomically. The best usecase for this
@@ -1163,7 +1170,7 @@ module Ohm
     # and uniques. Use it wisely. The safe equivalent is `update`.
     #
     def set(att, val)
-      val.to_s.empty? ? key.hdel(att) : key.hset(att, val)
+      val.to_s.empty? ? db.hdel(key, att) : db.hset(key, att, val)
       @attributes[att] = val
     end
 
@@ -1173,7 +1180,7 @@ module Ohm
 
     # Increment a counter atomically. Internally uses HINCRBY.
     def incr(att, count = 1)
-      key[:counters].hincrby(att, count)
+      db.hincrby(key[:counters], att, count)
     end
 
     # Decrement a counter atomically. Internally uses HINCRBY.
@@ -1291,13 +1298,13 @@ module Ohm
 
         t.read do
           _verify_uniques
-          existing = key.hgetall
+          existing = db.hgetall(key)
           uniques  = _read_index_type(:uniques)
           indices  = _read_index_type(:indices)
         end
 
         t.write do
-          model.key[:all].sadd(id)
+          db.sadd(model.key[:all], id)
           _delete_uniques(existing)
           _delete_indices(existing)
           _save
@@ -1318,16 +1325,16 @@ module Ohm
     def delete
       transaction do |t|
         t.read do |store|
-          store[:existing] = key.hgetall
+          store[:existing] = db.hgetall(key)
         end
 
         t.write do |store|
           _delete_uniques(store[:existing])
           _delete_indices(store[:existing])
-          model.collections.each { |e| key[e].del }
-          model.key[:all].srem(id)
-          key[:counters].del
-          key.del
+          model.collections.each { |e| db.del(key[e]) }
+          db.srem(model.key[:all], id)
+          db.del(key[:counters])
+          db.del(key)
         end
 
         yield t if block_given?
@@ -1397,7 +1404,7 @@ module Ohm
     end
 
     def self.new_id
-      key[:id].incr
+      db.incr(key[:id])
     end
 
     attr_writer :id
@@ -1435,8 +1442,8 @@ module Ohm
 
     def _save
       catch :empty do
-        key.del
-        key.hmset(*_skip_empty(attributes).to_a.flatten)
+        db.del(key)
+        db.hmset(key, *_skip_empty(attributes).to_a.flatten)
       end
     end
 
@@ -1448,7 +1455,7 @@ module Ohm
 
     def _detect_duplicate
       model.uniques.detect do |att|
-        id = model.key[:uniques][att].hget(send(att))
+        id = db.hget(model.key[:uniques][att], send(att))
         id && id != self.id.to_s
       end
     end
@@ -1463,13 +1470,13 @@ module Ohm
 
     def _save_uniques(uniques)
       uniques.each do |att, val|
-        model.key[:uniques][att].hset(val, id)
+        db.hset(model.key[:uniques][att], val, id)
       end
     end
 
     def _delete_uniques(atts)
       model.uniques.each do |att|
-        model.key[:uniques][att].hdel(atts[att.to_s])
+        db.hdel(model.key[:uniques][att], atts[att.to_s])
       end
     end
 
@@ -1477,14 +1484,14 @@ module Ohm
       model.indices.each do |att|
         val = atts[att.to_s]
 
-        model.key[:indices][att][val].srem(id)
+        db.srem(model.key[:indices][att][val], id)
       end
     end
 
     def _save_indices(indices)
       indices.each do |att, val|
         model.toindices(att, val).each do |index|
-          index.sadd(id)
+          db.sadd(index, id)
         end
       end
     end
