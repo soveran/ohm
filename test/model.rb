@@ -347,7 +347,8 @@ test "be no leftover keys" do
   assert_equal [], Ohm.redis.keys("*")
 
   Foo.create(:name => "Bar")
-  expected = %w[Foo:1 Foo:all Foo:id Foo:indices:name:Bar]
+  expected = %w[Foo:1 Foo:1:_indices Foo:all Foo:id Foo:indices:name:Bar]
+
   assert expected.sort == Ohm.redis.keys("*").sort
 
   Foo[1].delete

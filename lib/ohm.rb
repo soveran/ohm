@@ -1286,27 +1286,34 @@ module Ohm
     def __save__
       Transaction.new do |t|
         t.watch(*_unique_keys)
-        t.watch(key) if not new?
+
+        if not new?
+          t.watch(key)
+          t.watch(key[:_indices]) if model.indices.any?
+          t.watch(key[:_uniques]) if model.uniques.any?
+        end
 
         t.before do
           _initialize_id if new?
         end
 
-        existing = nil
+        _uniques = nil
         uniques  = nil
+        _indices = nil
         indices  = nil
 
         t.read do
           _verify_uniques
-          existing = db.hgetall(key)
+          _uniques = db.hgetall(key[:_uniques])
+          _indices = db.smembers(key[:_indices])
           uniques  = _read_index_type(:uniques)
           indices  = _read_index_type(:indices)
         end
 
         t.write do
           db.sadd(model.key[:all], id)
-          _delete_uniques(existing)
-          _delete_indices(existing)
+          _delete_uniques(_uniques)
+          _delete_indices(_indices)
           _save
           _save_indices(indices)
           _save_uniques(uniques)
@@ -1324,13 +1331,23 @@ module Ohm
     #
     def delete
       transaction do |t|
-        t.read do |store|
-          store[:existing] = db.hgetall(key)
+        _uniques = nil
+        _indices = nil
+
+        t.watch(*_unique_keys)
+
+        t.watch(key)
+        t.watch(key[:_indices]) if model.indices.any?
+        t.watch(key[:_uniques]) if model.uniques.any?
+
+        t.read do
+          _uniques = db.hgetall(key[:_uniques])
+          _indices = db.smembers(key[:_indices])
         end
 
-        t.write do |store|
-          _delete_uniques(store[:existing])
-          _delete_indices(store[:existing])
+        t.write do
+          _delete_uniques(_uniques)
+          _delete_indices(_indices)
           model.collections.each { |e| db.del(key[e]) }
           db.srem(model.key[:all], id)
           db.del(key[:counters])
@@ -1470,28 +1487,37 @@ module Ohm
 
     def _save_uniques(uniques)
       uniques.each do |att, val|
-        db.hset(model.key[:uniques][att], val, id)
+        unique = model.key[:uniques][att]
+
+        db.hset(unique, val, id)
+        db.hset(key[:_uniques], unique, val)
       end
     end
 
-    def _delete_uniques(atts)
-      model.uniques.each do |att|
-        db.hdel(model.key[:uniques][att], atts[att.to_s])
+    def _delete_uniques(_uniques)
+      _uniques.each do |unique, val|
+        db.hdel(unique, val)
+        db.hdel(key[:_uniques], unique)
       end
     end
 
-    def _delete_indices(atts)
-      model.indices.each do |att|
-        val = atts[att.to_s]
-
-        db.srem(model.key[:indices][att][val], id)
+    def _delete_indices(_indices)
+      _indices.each do |index|
+        db.srem(index, id)
+        db.srem(key[:_indices], index)
       end
+      # model.indices.each do |att|
+      #   val = atts[att.to_s]
+
+      #   db.srem(model.key[:indices][att][val], id)
+      # end
     end
 
     def _save_indices(indices)
       indices.each do |att, val|
         model.toindices(att, val).each do |index|
           db.sadd(index, id)
+          db.sadd(key[:_indices], index)
         end
       end
     end

@@ -95,3 +95,35 @@ test "allow indexing by an arbitrary attribute" do
   assert [@user1, @user2] == gmail.sort_by { |u| u.id }
   assert [@user3] == User.find(:email_provider => "yahoo.com").to_a
 end
+
+scope do
+  # Just to give more context around this bug, basically it happens
+  # when you define a virtual unique or index.
+  #
+  # Previously it was unable to cleanup the indices mainly because
+  # it relied on the attributes being set.
+  class Node < Ohm::Model
+    index :available
+    attribute :capacity
+
+    unique :available
+
+    def available
+      capacity.to_i <= 90
+    end
+  end
+
+  test "index bug" do
+    n = Node.create
+    n.update(capacity: 91)
+
+    assert_equal 0, Node.find(available: true).size
+  end
+
+  test "uniques bug" do
+    n = Node.create
+    n.update(capacity: 91)
+
+    assert_equal nil, Node.with(:available, true)
+  end
+end
