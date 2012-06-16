@@ -70,7 +70,7 @@ end
 
 -- When saving the attributes of the model, we skip the empty strings
 -- and nil values so we can also save a bit on space.
-function skip_empty(table)
+local function skip_empty(table)
   local ret = {}
 
   for k, v in pairs(table) do
