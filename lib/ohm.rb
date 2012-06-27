@@ -768,7 +768,7 @@ module Ohm
     # Note: The use of this should be a last resort for your actual
     # application runtime, or for simply debugging in your console. If
     # you care about performance, you should pipeline your reads. For
-    # more information checkout the implementation of Ohm::Set#fetch.
+    # more information checkout the implementation of Ohm::List#fetch.
     #
     def self.to_proc
       lambda { |id| self[id] }
