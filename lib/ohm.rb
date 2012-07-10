@@ -546,7 +546,7 @@ module Ohm
     #   set.find(:status => 'pending')
     #
     def find(dict)
-      filters.push([:sinterstore, model.filters(dict)])
+      append(:sinterstore, model.filters(dict))
 
       return self
     end
@@ -562,7 +562,7 @@ module Ohm
     #   User.find(:name => "John").except(:country => "US")
     #
     def except(dict)
-      filters.push([:sdiffstore, model.filters(dict)])
+      append(:sdiffstore, model.filters(dict))
 
       return self
     end
@@ -578,7 +578,7 @@ module Ohm
     #   User.find(:name => "John").union(:name => "Jane")
     #
     def union(dict)
-      filters.push([:sunionstore, model.filters(dict)])
+      append(:sunionstore, model.filters(dict))
 
       return self
     end
@@ -608,7 +608,6 @@ module Ohm
     end
 
     def execute
-
       # Hold the final result key for this MultiSet.
       main = nil
 
