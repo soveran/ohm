@@ -5,6 +5,7 @@ require "redis"
 require "securerandom"
 require "scrivener"
 require "ohm/transaction"
+require "ohm/command"
 
 module Ohm
 
@@ -417,9 +418,9 @@ module Ohm
     #   set.find(:age => 30)
     #
     def find(dict)
-      filters = model.filters(dict).push(key)
-
-      MultiSet.new(namespace, model).append(:sinterstore, filters)
+      MultiSet.new(
+        namespace, model, Command[:sinterstore, key, *model.filters(dict)]
+      )
     end
 
     # Reduce the set using any number of filters.
@@ -433,7 +434,7 @@ module Ohm
     #   User.find(:name => "John").except(:country => "US")
     #
     def except(dict)
-      MultiSet.new(namespace, model).append(:sinterstore, key).except(dict)
+      MultiSet.new(namespace, model, key).except(dict)
     end
 
     # Do a union to the existing set using any number of filters.
@@ -447,7 +448,7 @@ module Ohm
     #   User.find(:name => "John").union(:name => "Jane")
     #
     def union(dict)
-      MultiSet.new(namespace, model).append(:sinterstore, key).union(dict)
+      MultiSet.new(namespace, model, key).union(dict)
     end
 
   private
@@ -529,14 +530,8 @@ module Ohm
   #   User.find(:name => "John", :age => 30).kind_of?(Ohm::MultiSet)
   #   # => true
   #
-  class MultiSet < Struct.new(:namespace, :model)
+  class MultiSet < Struct.new(:namespace, :model, :command)
     include Collection
-
-    def append(operation, list)
-      filters.push([operation, list])
-
-      return self
-    end
 
     # Chain new fiters on an existing set.
     #
@@ -546,9 +541,9 @@ module Ohm
     #   set.find(:status => 'pending')
     #
     def find(dict)
-      append(:sinterstore, model.filters(dict))
-
-      return self
+      MultiSet.new(
+        namespace, model, Command[:sinterstore, command, intersected(dict)]
+      )
     end
 
     # Reduce the set using any number of filters.
@@ -562,9 +557,9 @@ module Ohm
     #   User.find(:name => "John").except(:country => "US")
     #
     def except(dict)
-      append(:sdiffstore, model.filters(dict))
-
-      return self
+      MultiSet.new(
+        namespace, model, Command[:sdiffstore, command, intersected(dict)]
+      )
     end
 
     # Do a union to the existing set using any number of filters.
@@ -578,9 +573,9 @@ module Ohm
     #   User.find(:name => "John").union(:name => "Jane")
     #
     def union(dict)
-      append(:sunionstore, model.filters(dict))
-
-      return self
+      MultiSet.new(
+        namespace, model, Command[:sunionstore, command, intersected(dict)]
+      )
     end
 
   private
@@ -588,69 +583,27 @@ module Ohm
       model.db
     end
 
-    def filters
-      @filters ||= []
-    end
-
-    def temp_keys
-      @temp_keys ||= []
-    end
-
-    def clean_temp_keys
-      db.del(*temp_keys)
-      temp_keys.clear
-    end
-
-    def generate_temp_key
-      key = namespace[:temp][SecureRandom.hex(32)]
-      temp_keys << key
-      key
+    def intersected(dict)
+      Command[:sinterstore, *model.filters(dict)]
     end
 
     def execute
-      # Hold the final result key for this MultiSet.
-      main = nil
-
-      filters.each do |operation, list|
-
-        # Operation can be sinterstore, sdiffstore, or sunionstore.
-        # each operation we do, i.e. `.union(...)`, will be considered
-        # one intersected set, hence we need to `sinterstore` all
-        # the filters in a temporary set.
-        temp = generate_temp_key
-        db.sinterstore(temp, *list)
-
-        # If this is the first set, we simply assign the generated
-        # set to main, which could possibly be the return value
-        # for simple filters like one `.find(...)`.
-        if main.nil?
-          main = temp
-        else
-
-          # Append the generated temporary set using the operation.
-          # i.e. if we have (mood=happy & book=1) and we have an
-          # `sunionstore`, we do (mood=happy & book=1) | (mood=sad & book=1)
-          #
-          # Here we dynamically call the stored command, e.g.
-          #
-          #   SUNIONSTORE main main temp
-          #
-          db.send(operation, main, main, temp)
-        end
-      end
+      # namespace[:tmp] is where all the temp keys should be stored in.
+      # db will be where all the commands are executed against.
+      res = command.call(namespace[:tmp], db)
 
       begin
 
         # At this point, we have the final aggregated set, which we yield
         # to the caller. the caller can do all the normal set operations,
         # i.e. SCARD, SMEMBERS, etc.
-        yield main
+        yield res
 
       ensure
 
         # We have to make sure we clean up the temporary keys to avoid
         # memory leaks and the unintended explosion of memory usage.
-        clean_temp_keys
+        command.clean
       end
     end
   end
@@ -839,7 +792,7 @@ module Ohm
       if keys.size == 1
         Ohm::Set.new(keys.first, key, self)
       else
-        Ohm::MultiSet.new(key, self).append(:sinterstore, keys)
+        Ohm::MultiSet.new(key, self, Command.new(:sinterstore, *keys))
       end
     end
 
