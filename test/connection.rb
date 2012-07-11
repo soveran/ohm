@@ -2,6 +2,10 @@
 
 require File.expand_path("./helper", File.dirname(__FILE__))
 
+unless defined?(Redis::CannotConnectError)
+  Redis::CannotConnectError = Errno::ECONNREFUSED
+end
+
 prepare.clear
 
 test "no rewriting of settings hash when using Ohm.connect" do
