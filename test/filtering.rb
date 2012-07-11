@@ -175,7 +175,7 @@ scope do
   setup do
     io = StringIO.new
 
-    Post.db.client.logger = Logger.new(io)
+    Post.connect(:logger => Logger.new(io))
 
     Post.create(author: "matz", mood: "happy")
     Post.create(author: "rich", mood: "mad")

@@ -143,7 +143,7 @@ module Ohm
       return res if arr.nil?
 
       arr.each_with_index do |atts, idx|
-        res << model.new(Hash[*atts].update(:id => ids[idx]))
+        res << model.new(atts.update(:id => ids[idx]))
       end
 
       res
@@ -1493,15 +1493,10 @@ module Ohm
     end
 
     def run(script, options)
-      keys = options[:keys]
-      argv = options[:argv]
-
-      params = keys + argv
-
       begin
-        redis.evalsha(sha(script), keys.size, *params)
+        redis.evalsha(sha(script), options)
       rescue RuntimeError
-        redis.eval(script, keys.size, *params)
+        redis.eval(script, options)
       end
     end
 
