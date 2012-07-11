@@ -67,6 +67,16 @@ module Ohm
       else name
       end
     end
+
+    if Redis::VERSION >= "3.0.0"
+      def self.dict(dict)
+        dict
+      end
+    else
+      def self.dict(arr)
+        Hash[*arr]
+      end
+    end
   end
 
   class Connection
@@ -143,7 +153,7 @@ module Ohm
       return res if arr.nil?
 
       arr.each_with_index do |atts, idx|
-        res << model.new(atts.update(:id => ids[idx]))
+        res << model.new(Utils.dict(atts).update(:id => ids[idx]))
       end
 
       res
@@ -1472,41 +1482,6 @@ module Ohm
           db.sadd(key[:_indices], index)
         end
       end
-    end
-  end
-
-  class Lua
-    attr :dir
-    attr :redis
-    attr :files
-    attr :scripts
-
-    def initialize(dir, redis)
-      @dir = dir
-      @redis = redis
-      @files = Hash.new { |h, cmd| h[cmd] = read(cmd) }
-      @scripts = {}
-    end
-
-    def run_file(file, options)
-      run(files[file], options)
-    end
-
-    def run(script, options)
-      begin
-        redis.evalsha(sha(script), options)
-      rescue RuntimeError
-        redis.eval(script, options)
-      end
-    end
-
-  private
-    def read(file)
-      File.read("%s/%s.lua" % [dir, file])
-    end
-
-    def sha(script)
-      Digest::SHA1.hexdigest(script)
     end
   end
 end
