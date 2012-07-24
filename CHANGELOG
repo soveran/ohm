@@ -1,4 +1,8 @@
-1.0
+1.1.0
+
+- Compatible with redis-rb 3.
+
+1.0.0
 
 - Fetching a batch of objects is now done through one pipeline, effectively
   reducing the IO to just 2 operations (one for SMEMBERS / LRANGE, one for
