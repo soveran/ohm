@@ -103,7 +103,7 @@ end
 # An existing model with a valid name
 scope do
   setup do
-    event = Event.create(:name => "original")
+    Event.create(:name => "original")
   end
 
   # That has the name changed

@@ -52,7 +52,7 @@ test "#[]" do |john, jane|
 end
 
 test "#except" do |john, jane|
-  out = User.create(:status => "inactive", :lname => "Doe")
+  User.create(:status => "inactive", :lname => "Doe")
 
   res = User.find(:lname => "Doe").except(:status => "inactive")
 
@@ -80,8 +80,8 @@ test "indices bug related to a nil attribute" do |john, jane|
 end
 
 test "#union" do |john, jane|
+  User.create(:status => "super", :lname => "Doe")
   included = User.create(:status => "inactive", :lname => "Doe")
-  excluded = User.create(:status => "super", :lname => "Doe")
 
   res = User.find(:status => "active").union(:status => "inactive")
 
@@ -112,9 +112,9 @@ scope do
     book1 = Book.create
     book2 = Book.create
 
-    auth1 = Author.create(:book => book1, :mood => "happy")
-    auth2 = Author.create(:book => book1, :mood => "sad")
-    auth3 = Author.create(:book => book2, :mood => "sad")
+    Author.create(:book => book1, :mood => "happy")
+    Author.create(:book => book1, :mood => "sad")
+    Author.create(:book => book2, :mood => "sad")
 
     [book1, book2]
   end

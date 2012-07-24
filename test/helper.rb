@@ -15,7 +15,7 @@ def silence_warnings
   yield
 ensure
   $VERBOSE = original_verbose
-end
+end unless defined?(silence_warnings)
 
 $VERBOSE = true
 

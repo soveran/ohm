@@ -70,7 +70,7 @@ test "empty model is ok" do
   class Foo < Ohm::Model
   end
 
-  foo = Foo.create
+  Foo.create
 end
 
 test "counters are cleaned up during deletion" do
