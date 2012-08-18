@@ -568,7 +568,7 @@ module Ohm
     #
     def except(dict)
       MultiSet.new(
-        namespace, model, Command[:sdiffstore, command, intersected(dict)]
+        namespace, model, Command[:sdiffstore, command, unioned(dict)]
       )
     end
 
@@ -595,6 +595,10 @@ module Ohm
 
     def intersected(dict)
       Command[:sinterstore, *model.filters(dict)]
+    end
+    
+    def unioned(dict)
+      Command[:sunionstore, *model.filters(dict)]
     end
 
     def execute
