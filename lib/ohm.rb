@@ -195,7 +195,7 @@ module Ohm
     # them.
     #
     def sort_by(att, options = {})
-      sort(options.merge(:by => namespace["*->%s" % att]))
+      sort(options.merge(:by => to_key(att)))
     end
 
     # Allows you to sort your models using their IDs. This is much
@@ -223,7 +223,7 @@ module Ohm
     #
     def sort(options = {})
       if options.has_key?(:get)
-        options[:get] = namespace["*->%s" % options[:get]]
+        options[:get] = to_key(options[:get])
         return execute { |key| db.sort(key, options) }
       end
 
@@ -295,6 +295,14 @@ module Ohm
   private
     def exists?(id)
       execute { |key| db.sismember(key, id) }
+    end
+
+    def to_key(att)
+      if model.counters.include?(att)
+        namespace["*:counters->%s" % att]
+      else
+        namespace["*->%s" % att]
+      end
     end
   end
 
@@ -1020,6 +1028,7 @@ module Ohm
     # try to do it, you'll receive an Ohm::MissingID error.
     #
     def self.counter(name)
+      counters << name unless counters.include?(name)
       define_method(name) do
         return 0 if new?
 
@@ -1356,6 +1365,10 @@ module Ohm
 
     def self.uniques
       @uniques ||= []
+    end
+
+    def self.counters 
+      @counters ||= []
     end
 
     def self.collections
