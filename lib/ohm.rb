@@ -1029,6 +1029,7 @@ module Ohm
     #
     def self.counter(name)
       counters << name unless counters.include?(name)
+
       define_method(name) do
         return 0 if new?
 
