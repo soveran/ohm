@@ -16,6 +16,7 @@ end
 
 class Person < Ohm::Model
   attribute :name
+  counter :logins
   index :initial
 
   def initial
@@ -551,25 +552,36 @@ end
 # Sorting lists and sets by model attributes
 setup do
   @event = Event.create(:name => "Ruby Tuesday")
-  @event.attendees.add(Person.create(:name => "D"))
-  @event.attendees.add(Person.create(:name => "C"))
-  @event.attendees.add(Person.create(:name => "B"))
-  @event.attendees.add(Person.create(:name => "A"))
+  {'D' => 4, 'C' => 2, 'B' => 5, 'A' => 3}.each_pair do |name, logins|
+    person = Person.create(:name => name)
+    person.incr :logins, logins
+    @event.attendees.add(person)
+  end
 end
 
 test "sort the model instances by the values provided" do
   people = @event.attendees.sort_by(:name, :order => "ALPHA")
-  assert %w[A B C D] == people.map { |person| person.name }
+  assert %w[A B C D] == people.map(&:name)
 end
 
 test "accept a number in the limit parameter" do
   people = @event.attendees.sort_by(:name, :limit => [0, 2], :order => "ALPHA")
-  assert %w[A B] == people.map { |person| person.name }
+  assert %w[A B] == people.map(&:name)
 end
 
 test "use the start parameter as an offset if the limit is provided" do
   people = @event.attendees.sort_by(:name, :limit => [1, 2], :order => "ALPHA")
-  assert %w[B C] == people.map { |person| person.name }
+  assert %w[B C] == people.map(&:name)
+end
+
+test "use counter attributes for sorting" do
+  people = @event.attendees.sort_by(:logins, :limit => [0, 3], :order => "ALPHA")
+  assert %w[C A D] == people.map(&:name)
+end
+
+test "use counter attributes for sorting with key option" do
+  people = @event.attendees.sort_by(:logins, :get => :logins, :limit => [0, 3], :order => "ALPHA")
+  assert %w[2 3 4] == people
 end
 
 # Collections initialized with a Model parameter
