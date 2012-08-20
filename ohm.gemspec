@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name = "ohm"
-  s.version = "1.1.0"
+  s.version = "1.1.1"
   s.summary = %{Object-hash mapping library for Redis.}
   s.description = %Q{Ohm is a library that allows to store an object in Redis, a persistent key-value database. It includes an extensible list of validations and has very good performance.}
   s.authors = ["Michel Martens", "Damian Janowski", "Cyril David"]
