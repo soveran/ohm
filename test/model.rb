@@ -371,6 +371,14 @@ test "find all" do
   assert all.detect {|e| e.name == "Ruby Tuesday" }
 end
 
+# Fetching
+test "fetch ids" do
+  event1 = Event.create(:name => "A")
+  event2 = Event.create(:name => "B")
+
+  assert_equal [event1, event2], Event.fetch([event1.id, event2.id])
+end
+
 # Sorting
 test "sort all" do
   Person.create :name => "D"

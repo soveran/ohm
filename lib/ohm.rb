@@ -142,7 +142,6 @@ module Ohm
 
   # Wraps the whole pipelining functionality.
   module PipelinedFetch
-  private
     def fetch(ids)
       arr = db.pipelined do
         ids.each { |id| db.hgetall(namespace[id]) }
@@ -812,6 +811,16 @@ module Ohm
       else
         Ohm::MultiSet.new(key, self, Command.new(:sinterstore, *keys))
       end
+    end
+
+    # Retrieve a set of models given an array of IDs.
+    #
+    # Example:
+    #
+    #   User.fetch([1, 2, 3])
+    #
+    def self.fetch(ids)
+      all.fetch(ids)
     end
 
     # Index any method on your model. Once you index a method, you can
