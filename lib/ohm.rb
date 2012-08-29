@@ -140,25 +140,6 @@ module Ohm
     redis.flushdb
   end
 
-  # Wraps the whole pipelining functionality.
-  module PipelinedFetch
-    def fetch(ids)
-      arr = db.pipelined do
-        ids.each { |id| db.hgetall(namespace[id]) }
-      end
-
-      res = []
-
-      return res if arr.nil?
-
-      arr.each_with_index do |atts, idx|
-        res << model.new(Utils.dict(atts).update(:id => ids[idx]))
-      end
-
-      res
-    end
-  end
-
   module Collection
     include Enumerable
 
@@ -178,10 +159,26 @@ module Ohm
     def empty?
       size == 0
     end
+
+    # Wraps the whole pipelining functionality.
+    def fetch(ids)
+      arr = db.pipelined do
+        ids.each { |id| db.hgetall(namespace[id]) }
+      end
+
+      res = []
+
+      return res if arr.nil?
+
+      arr.each_with_index do |atts, idx|
+        res << model.new(Utils.dict(atts).update(:id => ids[idx]))
+      end
+
+      res
+    end
   end
 
   class List
-    include PipelinedFetch
     include Collection
 
     attr :key
@@ -299,7 +296,6 @@ module Ohm
 
   # Defines most of the methods used by `Set` and `MultiSet`.
   class BasicSet
-    include PipelinedFetch
     include Collection
 
     # Allows you to sort by any field in your model.
