@@ -159,23 +159,148 @@ module Ohm
     end
   end
 
-  # Defines most of the methods used by `Set` and `MultiSet`.
   module Collection
-    include PipelinedFetch
     include Enumerable
+
+    def each
+      if block_given?
+        to_a.each { |element| yield element }
+      else
+        Enumerator.new(self, :each)
+      end
+    end
 
     # Fetch the data from Redis in one go.
     def to_a
       fetch(ids)
     end
 
-    def each
-      to_a.each { |e| yield e }
-    end
-
     def empty?
       size == 0
     end
+  end
+
+  class List
+    include PipelinedFetch
+    include Collection
+
+    attr :key
+    attr :namespace
+    attr :model
+
+    def initialize(key, namespace, model)
+      @key = key
+      @namespace = namespace
+      @model = model
+    end
+
+    # Returns the total size of the list using LLEN.
+    def size
+      db.llen(key)
+    end
+    alias :count :size
+
+    # Returns the first element of the list using LINDEX.
+    def first
+      model[db.lindex(key, 0)]
+    end
+
+    # Returns the last element of the list using LINDEX.
+    def last
+      model[db.lindex(key, -1)]
+    end
+
+    # Checks if the model is part of this List.
+    #
+    # An important thing to note is that this method loads all of the
+    # elements of the List since there is no command in Redis that
+    # allows you to actually check the list contents efficiently.
+    #
+    # You may want to avoid doing this if your list has say, 10K entries.
+    def include?(model)
+      ids.include?(model.id.to_s)
+    end
+
+    # Replace all the existing elements of a list with a different
+    # collection of models. This happens atomically in a MULTI-EXEC
+    # block.
+    #
+    # Example:
+    #
+    #   user = User.create
+    #   p1 = Post.create
+    #   user.posts.push(p1)
+    #
+    #   p2, p3 = Post.create, Post.create
+    #   user.posts.replace([p2, p3])
+    #
+    #   user.posts.include?(p1)
+    #   # => false
+    #
+    def replace(models)
+      ids = models.map { |model| model.id }
+
+      model.db.multi do
+        db.del(key)
+        ids.each { |id| db.rpush(key, id) }
+      end
+    end
+
+    # Pushes the model to the _end_ of the list using RPUSH.
+    def push(model)
+      db.rpush(key, model.id)
+    end
+
+    # Pushes the model to the _beginning_ of the list using LPUSH.
+    def unshift(model)
+      db.lpush(key, model.id)
+    end
+
+    # Delete a model from the list.
+    #
+    # Note: If your list contains the model multiple times, this method
+    # will delete all instances of that model in one go.
+    #
+    # Example:
+    #
+    #   class Comment < Ohm::Model
+    #   end
+    #
+    #   class Post < Ohm::Model
+    #     list :comments, Comment
+    #   end
+    #
+    #   p = Post.create
+    #   c = Comment.create
+    #
+    #   p.comments.push(c)
+    #   p.comments.push(c)
+    #
+    #   p.comments.delete(c)
+    #
+    #   p.comments.size == 0
+    #   # => true
+    #
+    def delete(model)
+      # LREM key 0 <id> means remove all elements matching <id>
+      # @see http://redis.io/commands/lrem
+      db.lrem(key, 0, model.id)
+    end
+
+  private
+    def ids
+      db.lrange(key, 0, -1)
+    end
+
+    def db
+      model.db
+    end
+  end
+
+  # Defines most of the methods used by `Set` and `MultiSet`.
+  class BasicSet
+    include PipelinedFetch
+    include Collection
 
     # Allows you to sort by any field in your model.
     #
@@ -249,6 +374,7 @@ module Ohm
     def size
       execute { |key| db.scard(key) }
     end
+    alias :count :size
 
     # Syntactic sugar for `sort_by` or `sort` when you only need the
     # first element.
@@ -305,127 +431,16 @@ module Ohm
     end
   end
 
-  class List < Struct.new(:key, :namespace, :model)
-    include PipelinedFetch
-    include Enumerable
+  class Set < BasicSet
+    attr :key
+    attr :namespace
+    attr :model
 
-    # Returns the total size of the list using LLEN.
-    def size
-      db.llen(key)
+    def initialize(key, namespace, model)
+      @key = key
+      @namespace = namespace
+      @model = model
     end
-
-    # Returns the first element of the list using LINDEX.
-    def first
-      model[db.lindex(key, 0)]
-    end
-
-    # Returns the last element of the list using LINDEX.
-    def last
-      model[db.lindex(key, -1)]
-    end
-
-    # Checks if the model is part of this List.
-    #
-    # An important thing to note is that this method loads all of the
-    # elements of the List since there is no command in Redis that
-    # allows you to actually check the list contents efficiently.
-    #
-    # You may want to avoid doing this if your list has say, 10K entries.
-    def include?(model)
-      ids.include?(model.id.to_s)
-    end
-
-    # Replace all the existing elements of a list with a different
-    # collection of models. This happens atomically in a MULTI-EXEC
-    # block.
-    #
-    # Example:
-    #
-    #   user = User.create
-    #   p1 = Post.create
-    #   user.posts.push(p1)
-    #
-    #   p2, p3 = Post.create, Post.create
-    #   user.posts.replace([p2, p3])
-    #
-    #   user.posts.include?(p1)
-    #   # => false
-    #
-    def replace(models)
-      ids = models.map { |model| model.id }
-
-      model.db.multi do
-        db.del(key)
-        ids.each { |id| db.rpush(key, id) }
-      end
-    end
-
-    # Fetch the data from Redis in one go.
-    def to_a
-      fetch(ids)
-    end
-
-    def each
-      to_a.each { |element| yield element }
-    end
-
-    def empty?
-      size == 0
-    end
-
-    # Pushes the model to the _end_ of the list using RPUSH.
-    def push(model)
-      db.rpush(key, model.id)
-    end
-
-    # Pushes the model to the _beginning_ of the list using LPUSH.
-    def unshift(model)
-      db.lpush(key, model.id)
-    end
-
-    # Delete a model from the list.
-    #
-    # Note: If your list contains the model multiple times, this method
-    # will delete all instances of that model in one go.
-    #
-    # Example:
-    #
-    #   class Comment < Ohm::Model
-    #   end
-    #
-    #   class Post < Ohm::Model
-    #     list :comments, Comment
-    #   end
-    #
-    #   p = Post.create
-    #   c = Comment.create
-    #
-    #   p.comments.push(c)
-    #   p.comments.push(c)
-    #
-    #   p.comments.delete(c)
-    #
-    #   p.comments.size == 0
-    #   # => true
-    #
-    def delete(model)
-      # LREM key 0 <id> means remove all elements matching <id>
-      # @see http://redis.io/commands/lrem
-      db.lrem(key, 0, model.id)
-    end
-
-  private
-    def ids
-      db.lrange(key, 0, -1)
-    end
-
-    def db
-      model.db
-    end
-  end
-
-  class Set < Struct.new(:key, :namespace, :model)
-    include Collection
 
     # Chain new fiters on an existing set.
     #
@@ -547,8 +562,16 @@ module Ohm
   #   User.find(:name => "John", :age => 30).kind_of?(Ohm::MultiSet)
   #   # => true
   #
-  class MultiSet < Struct.new(:namespace, :model, :command)
-    include Collection
+  class MultiSet < BasicSet
+    attr :namespace
+    attr :model
+    attr :command
+
+    def initialize(namespace, model, command)
+      @namespace = namespace
+      @model = model
+      @command = command
+    end
 
     # Chain new fiters on an existing set.
     #
