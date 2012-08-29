@@ -1,4 +1,4 @@
 nest -v 1.1.1
 scrivener -v 0.0.3
-cutest -v 1.1.3
 redis -v 3.0.1
+cutest -v 1.2.0.rc2
