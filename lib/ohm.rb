@@ -1396,7 +1396,7 @@ module Ohm
       @uniques ||= []
     end
 
-    def self.counters 
+    def self.counters
       @counters ||= []
     end
 
