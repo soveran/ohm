@@ -1498,23 +1498,18 @@ module Ohm
       end
     end
 
-    def _delete_uniques(_uniques)
-      _uniques.each do |unique, val|
+    def _delete_uniques(uniques)
+      uniques.each do |unique, val|
         db.hdel(unique, val)
         db.hdel(key[:_uniques], unique)
       end
     end
 
-    def _delete_indices(_indices)
-      _indices.each do |index|
+    def _delete_indices(indices)
+      indices.each do |index|
         db.srem(index, id)
         db.srem(key[:_indices], index)
       end
-      # model.indices.each do |att|
-      #   val = atts[att.to_s]
-
-      #   db.srem(model.key[:indices][att][val], id)
-      # end
     end
 
     def _save_indices(indices)
