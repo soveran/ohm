@@ -1411,10 +1411,10 @@ module Ohm
           "If you want to find by ID, use #{self}[id] instead."
       end
 
-      dict.map { |k, v| toindices(k, v) }.flatten
+      dict.map { |k, v| to_indices(k, v) }.flatten
     end
 
-    def self.toindices(att, val)
+    def self.to_indices(att, val)
       raise IndexNotFound unless indices.include?(att)
 
       if val.kind_of?(Enumerable)
@@ -1514,7 +1514,7 @@ module Ohm
 
     def _save_indices(indices)
       indices.each do |att, val|
-        model.toindices(att, val).each do |index|
+        model.to_indices(att, val).each do |index|
           db.sadd(index, id)
           db.sadd(key[:_indices], index)
         end
