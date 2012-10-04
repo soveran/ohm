@@ -832,6 +832,48 @@ module Ohm
       end
     end
 
+    def self.find(dict)
+      keys_list = []
+      # get all permuatatins of the hash values
+      hash_product(dict).each do |dict|
+        keys_list << filters(dict)
+      end
+      # if just one key-value pair was provided
+      if keys_list.size == 1 and keys_list.first.size == 1
+        Ohm::Set.new(keys_list.first[0], key, self)
+      else
+        # get all redis commands for each keys array
+        commands = keys_list.inject([]) do |commands, keys|
+          commands << Command.new(:sinterstore, *keys)
+        end
+        if commands.size > 1
+          # performs a union of the commands
+          Ohm::MultiSet.new(key, self, Command.new(:sunionstore, *commands))
+        else
+          # if no array as a value was provided
+          Ohm::MultiSet.new(key, self, commands.first)
+        end
+      end
+    end
+
+    def self.hash_product(hsh)
+      # returns a permutation of the elements of the hash values
+      # e.g.
+      # given { :attr0 => c, :attr1 => [a, b], :attr2 => [d, f] }
+      # returns:
+      #   [{ :attr0 => c, :attr1 => a, :attr2 => d },
+      #   { :attr0 => c, :attr1 => a, :attr2 => f },
+      #   { :attr0 => c, :attr1 => b, :attr2 => d },
+      #   { :attr0 => c, :attr1 => b, :attr2 => f }]
+
+      # convert a value to an array if it isn't one already
+      attrs   = hsh.values.map{ |e| e.is_a?(Array) ? e : [e] }
+      keys    = hsh.keys
+      # lets do the product of the values
+      product = attrs[0].product(*attrs[1..-1])
+      product.map{ |p| Hash[keys.zip p] }
+    end
+
     # Retrieve a set of models given an array of IDs.
     #
     # Example:
