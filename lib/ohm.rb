@@ -1493,14 +1493,14 @@ module Ohm
       uniques.each do |att, val|
         unique = model.key[:uniques][att]
 
-        db.hset(unique, val, id)
+        db.hset(unique, val, id) if val
         db.hset(key[:_uniques], unique, val)
       end
     end
 
     def _delete_uniques(uniques)
       uniques.each do |unique, val|
-        db.hdel(unique, val)
+        db.hdel(unique, val) if val
         db.hdel(key[:_uniques], unique)
       end
     end
