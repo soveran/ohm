@@ -12,7 +12,7 @@ class User < Ohm::Model
   end
 
   def provider
-    email[/@(.*?).com/, 1]
+    email[/@(.*?).com/, 1] if email
   end
 end
 
@@ -84,4 +84,17 @@ test "unique virtual attribute" do
   assert_raise Ohm::UniqueIndexViolation do
     User.create(:email => "baz@yahoo.com")
   end
+end
+
+test "nil attributes are ignored" do
+  ex = nil
+
+  begin
+    User.create
+    User.create
+  rescue Exception => e
+    ex = e
+  end
+
+  assert_equal nil, ex
 end
