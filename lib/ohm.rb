@@ -446,9 +446,16 @@ module Ohm
     #   set.find(:age => 30)
     #
     def find(dict)
-      MultiSet.new(
-        namespace, model, Command[:sinterstore, key, *model.filters(dict)]
-      )
+      model.check_params(dict)
+      # get all permuatatins of the hash values
+      dicts = model.hash_product(dict)
+      if dicts.size == 1
+        # do just an intersect if no hash value was an array
+        command = model.intersected(dicts.first, key)
+      else
+        command = model.unioned(dicts.first, key)
+      end
+      MultiSet.new(namespace, model, command)
     end
 
     # Reduce the set using any number of filters.
@@ -577,8 +584,17 @@ module Ohm
     #   set.find(:status => 'pending')
     #
     def find(dict)
+      model.check_params(dict)
+      # get all permuatatins of the hash values
+      dicts = model.hash_product(dict)
+      if dicts.size == 1
+        # do just an intersect if no hash value was an array
+        commands = model.intersected(dicts.first)
+      else
+        commands = model.unioned(dicts.first)
+      end
       MultiSet.new(
-        namespace, model, Command[:sinterstore, command, intersected(dict)]
+        namespace, model, Command[:sinterstore, command, commands]
       )
     end
 
@@ -594,7 +610,7 @@ module Ohm
     #
     def except(dict)
       MultiSet.new(
-        namespace, model, Command[:sdiffstore, command, intersected(dict)]
+        namespace, model, Command[:sdiffstore, command, model.intersected(dict)]
       )
     end
 
@@ -610,17 +626,13 @@ module Ohm
     #
     def union(dict)
       MultiSet.new(
-        namespace, model, Command[:sunionstore, command, intersected(dict)]
+        namespace, model, Command[:sunionstore, command, model.intersected(dict)]
       )
     end
 
   private
     def db
       model.db
-    end
-
-    def intersected(dict)
-      Command[:sinterstore, *model.filters(dict)]
     end
 
     def execute
@@ -823,45 +835,20 @@ module Ohm
     #   # => true
     #
     def self.find(dict)
-      keys_list = []
-      # get all permuatatins of the hash values
-      hash_product(dict).each do |dict|
-        keys_list << filters(dict)
-      end
-      # if just one key-value pair was provided
-      if keys_list.size == 1 and keys_list.first.size == 1
-        Ohm::Set.new(keys_list.first[0], key, self)
+      check_params(dict)
+      # get all permuatations of the hash values
+      dicts = hash_product(dict)
+      if dicts.size == 1
+        # create a Ohm::Set if just one key-value pair was provided
+        if dicts.first.keys.size == 1
+          return Ohm::Set.new(filters(dicts.first).first, key, self)
+        end
+        # do just an intersect if no hash value was an array
+        command = intersected(dicts.first)
       else
-        # get all redis commands for each keys array
-        commands = keys_list.inject([]) do |commands, keys|
-          commands << Command.new(:sinterstore, *keys)
-        end
-        if commands.size > 1
-          # performs a union of the commands
-          Ohm::MultiSet.new(key, self, Command.new(:sunionstore, *commands))
-        else
-          # if no array as a value was provided
-          Ohm::MultiSet.new(key, self, commands.first)
-        end
+        command = unioned(dicts)
       end
-    end
-
-    def self.hash_product(hsh)
-      # returns a permutation of the elements of the hash values
-      # e.g.
-      # given { :attr0 => c, :attr1 => [a, b], :attr2 => [d, f] }
-      # returns:
-      #   [{ :attr0 => c, :attr1 => a, :attr2 => d },
-      #   { :attr0 => c, :attr1 => a, :attr2 => f },
-      #   { :attr0 => c, :attr1 => b, :attr2 => d },
-      #   { :attr0 => c, :attr1 => b, :attr2 => f }]
-
-      # convert a value to an array if it isn't one already
-      attrs   = hsh.values.map{ |e| e.is_a?(Array) ? e : [e] }
-      keys    = hsh.keys
-      # lets do the product of the values
-      product = attrs[0].product(*attrs[1..-1])
-      product.map{ |p| Hash[keys.zip p] }
+      Ohm::MultiSet.new(key, self, command)
     end
 
     # Retrieve a set of models given an array of IDs.
@@ -1436,13 +1423,16 @@ module Ohm
       @collections ||= []
     end
 
-    def self.filters(dict)
+    def self.check_params(dict)
       unless dict.kind_of?(Hash)
         raise ArgumentError,
           "You need to supply a hash with filters. " +
           "If you want to find by ID, use #{self}[id] instead."
       end
+    end
 
+    def self.filters(dict)
+      check_params(dict)
       dict.map { |k, v| to_indices(k, v) }.flatten
     end
 
@@ -1454,6 +1444,37 @@ module Ohm
       else
         [key[:indices][att][val]]
       end
+    end
+
+    # returns a permutation of the elements of the hash values
+    #
+    # e.g.
+    # given { :attr0 => c, :attr1 => [a, b], :attr2 => [d, f] }
+    # returns:
+    #   [{ :attr0 => c, :attr1 => a, :attr2 => d },
+    #   { :attr0 => c, :attr1 => a, :attr2 => f },
+    #   { :attr0 => c, :attr1 => b, :attr2 => d },
+    #   { :attr0 => c, :attr1 => b, :attr2 => f }]
+    #
+    def self.hash_product(hsh)
+      # convert a value to an array if it isn't one already
+      attrs   = hsh.values.map{ |e| e.is_a?(Array) ? e : [e] }
+      keys    = hsh.keys
+      # lets do the product of the values
+      product = attrs[0].product(*attrs[1..-1])
+      product.map{ |p| Hash[keys.zip p] }
+    end
+
+    def self.intersected(dict, key=nil)
+      keys = filters(dict)
+      keys = keys.unshift(key) if key
+      Command[:sinterstore, *keys]
+    end
+
+    def self.unioned(dicts, key=nil)
+      # get redis commands for each dict
+      commands = dicts.map { |dict| intersected(dict, key) }
+      Command[:sunionstore, *commands]
     end
 
     def self.new_id
