@@ -453,7 +453,7 @@ module Ohm
         # do just an intersect if no hash value was an array
         command = model.intersected(dicts.first, key)
       else
-        command = model.unioned(dicts.first, key)
+        command = model.unioned(dicts, key)
       end
       MultiSet.new(namespace, model, command)
     end
@@ -591,7 +591,7 @@ module Ohm
         # do just an intersect if no hash value was an array
         commands = model.intersected(dicts.first)
       else
-        commands = model.unioned(dicts.first)
+        commands = model.unioned(dicts)
       end
       MultiSet.new(
         namespace, model, Command[:sinterstore, command, commands]
