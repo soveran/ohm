@@ -822,6 +822,8 @@ module Ohm
     #   end
     #
     #   u = User.create(name: "John", status: "pending", email: "foo@me.com")
+    #   u2 = User.create(name: "Steven", status: "pending", email: "steven@me.com")
+    #
     #   User.find(provider: "me", name: "John", status: "pending").include?(u)
     #   # => true
     #
@@ -831,7 +833,10 @@ module Ohm
     #   User.find(:tag => "python").include?(u)
     #   # => true
     #
-    #   User.find(:tag => ["ruby", "python"]).include?(u)
+    #   User.find(:tag => [["ruby", "python"]]).include?(u)
+    #   # => true
+    #
+    #   User.find(:name => ["John", "Steven"]).to_a == [u, u2]
     #   # => true
     #
     def self.find(dict)
@@ -840,7 +845,8 @@ module Ohm
       dicts = hash_product(dict)
       if dicts.size == 1
         # create a Ohm::Set if just one key-value pair was provided
-        if dicts.first.keys.size == 1
+        # but not when the value is an array
+        if dicts.first.keys.size == 1 && !dicts.first.values.first.is_a?(Array)
           return Ohm::Set.new(filters(dicts.first).first, key, self)
         end
         # do just an intersect if no hash value was an array

@@ -470,6 +470,10 @@ User.find(:country => "Argentina").except(:status => "suspended")
 
 # Find all users both from Argentina and Uruguay
 User.find(:country => "Argentina").union(:country => "Uruguay")
+
+# Find all users both from Argentina and Uruguay which are activated
+User.find(:country => ["Argentina", "Uruguay"], :status => "activated")
+User.find(:status => "activated").find(:country => ["Argentina", "Uruguay"])
 ```
 
 Note that calling these methods results in new sets being created

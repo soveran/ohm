@@ -16,12 +16,17 @@ setup do
   [u1, u2]
 end
 
-test "findability" do |john, jane|
+test "findability" do |john, jane, jsmith|
   assert_equal 1, User.find(:lname => "Doe", :fname => "John").size
   assert User.find(:lname => "Doe", :fname => "John").include?(john)
 
   assert_equal 1, User.find(:lname => "Doe", :fname => "Jane").size
   assert User.find(:lname => "Doe", :fname => "Jane").include?(jane)
+
+  smith = User.create(:fname => "John", :lname => "Smith", :status => "inactive")
+  assert User.find(:fname => %w(Jane John)).map(&:id) == [john, jane, smith].map(&:id)
+
+  assert User.find(:fname => %w(John Jane), :status => "active").map(&:id) == [john, jane].map(&:id)
 end
 
 test "sets aren't mutable" do |john, jane|
@@ -195,6 +200,28 @@ scope do
     # given two direct keys. Anything more and we're performing badly.
     expected = "SINTERSTORE Post:tmp:[a-f0-9]{64} " +
                "Post:indices:author:matz Post:indices:mood:happy"
+
+    assert(read(io) =~ Regexp.new(expected))
+  end
+
+  test "SINTERSTORE (SINTERSTORE a c) (SINTERSTORE b c)" do |io|
+    Post.find(author: ["matz", "rich"], mood: "happy").to_a
+
+    # For this case we need an intermediate key. This will
+    # contain the intersection of matz + happy and rich + happy.
+    expected = "SINTERSTORE (Post:tmp:[a-f0-9]{64}) " +
+               "Post:indices:author:matz Post:indices:mood:happy"
+    assert(read(io) =~ Regexp.new(expected))
+    tmp_key = $1
+
+    expected = "SINTERSTORE (Post:tmp:[a-f0-9]{64}) " +
+               "Post:indices:author:rich Post:indices:mood:happy"
+    assert(read(io) =~ Regexp.new(expected))
+
+    # The next operation is simply doing a UNION of the previously
+    # generated intermediate keys and the additional single key.
+    expected = "SUNIONSTORE (Post:tmp:[a-f0-9]{64}) " +
+               "#{tmp_key} #{$1}"
 
     assert(read(io) =~ Regexp.new(expected))
   end
