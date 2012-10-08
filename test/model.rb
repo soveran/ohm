@@ -459,9 +459,9 @@ test "finding by one entry in the enumerable" do |entry|
 end
 
 test "finding by multiple entries in the enumerable" do |entry|
-  assert Entry.find(:tag => ["foo", "bar"]).include?(entry)
-  assert Entry.find(:tag => ["bar", "baz"]).include?(entry)
-  assert Entry.find(:tag => ["baz", "oof"]).empty?
+  assert Entry.find(:tag => [["foo", "bar"]]).include?(entry)
+  assert Entry.find(:tag => [["bar", "baz"]]).include?(entry)
+  assert Entry.find(:tag => [["baz", "oof"]]).empty?
 end
 
 # Attributes of type Set
