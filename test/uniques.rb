@@ -85,3 +85,33 @@ test "unique virtual attribute" do
     User.create(:email => "baz@yahoo.com")
   end
 end
+
+test "assert_unique" do |u|
+  class User
+    def assert_unique(att)
+      result = self.class.with(att, send(att))
+      assert((result.nil? || result.eql?(self)), [att, :not_unique])
+    end
+
+    def validate
+      assert_unique :email
+    end
+  end
+
+  # There's one user with email "a@a.com".
+  user = User.new(:email => "a@a.com")
+
+  # A new user with a conflicting attribute.
+  assert_equal true,  user.new?
+  assert_equal false, user.valid?
+  assert_equal [:not_unique], user.errors[:email]
+
+  user.email = "b@b.com"
+  user.save
+  user.email = "a@a.com"
+
+  # An existing user with a conflicting attribute.
+  assert_equal false, user.new?
+  assert_equal false, user.valid?
+  assert_equal [:not_unique], user.errors[:email]
+end
