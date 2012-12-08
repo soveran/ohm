@@ -633,7 +633,7 @@ Ohm is rather small and can be extended in many ways.
 A lot of amazing contributions are available at [Ohm Contrib][contrib]
 make sure to check them if you need to extend Ohm's functionality.
 
-[contrib]: http://cyx.github.com/ohm-contrib/doc/
+[contrib]: http://cyx.github.com/ohm-contrib/
 
 Upgrading
 =========
