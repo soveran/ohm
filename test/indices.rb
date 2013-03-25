@@ -36,6 +36,12 @@ test "be able to find by the given attribute" do
   assert @user1 == User.find(:email => "foo").first
 end
 
+test "raise if the index doesn't exist" do
+  assert_raise Ohm::IndexNotFound do
+    User.find(:address => "foo")
+  end
+end
+
 test "raise an error if the parameter supplied is not a hash" do
   begin
     User.find(1)
