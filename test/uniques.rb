@@ -39,6 +39,14 @@ test "raises when it already exists during save" do
   end
 end
 
+test "raises if the index doesn't exist" do
+  User.create(:email => "b@b.com")
+
+  assert_raise Ohm::IndexNotFound do
+    User.with(:address, "b@b.com")
+  end
+end
+
 test "doesn't raise when saving again and again" do |u|
   ex = nil
 

@@ -780,6 +780,8 @@ module Ohm
     #   # => true
     #
     def self.with(att, val)
+      raise IndexNotFound unless uniques.include?(att)
+
       id = db.hget(key[:uniques][att], val)
       id && self[id]
     end
