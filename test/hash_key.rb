@@ -27,3 +27,7 @@ test "on a reloaded model" do
   tag = Tag[tag.id]
   assert "Ruby" == hash[tag]
 end
+
+test "on attributes class method" do
+  assert [:name] == Tag.attributes
+end

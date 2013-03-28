@@ -1021,6 +1021,8 @@ module Ohm
     #   end
     #
     def self.attribute(name, cast = nil)
+      attributes << name unless attributes.include?(name)
+
       if cast
         define_method(name) do
           cast[@attributes[name]]
@@ -1404,6 +1406,10 @@ module Ohm
 
     def self.collections
       @collections ||= []
+    end
+
+    def self.attributes
+      @attributes ||= []
     end
 
     def self.filters(dict)
