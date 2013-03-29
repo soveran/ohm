@@ -1,3 +1,14 @@
+1.3.0
+
+- Add Model.attributes.
+
+1.2.0
+
+- Enumerable fix.
+- Merge Ohm::PipelinedFetch into Ohm::Collection.
+- Fix Set, MultiSet, and List enumerable behavior.
+- Change dependencies to use latest cutest.
+
 1.1.0
 
 - Compatible with redis-rb 3.
