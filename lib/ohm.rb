@@ -1305,9 +1305,13 @@ module Ohm
         uniques  = nil
         _indices = nil
         indices  = nil
+        existing_indices = nil
+        existing_uniques = nil
 
         t.read do
           _verify_uniques
+          existing_indices = Hash[model.indices.zip(db.hmget(key, *model.indices))] if model.indices.any?
+          existing_uniques = Hash[model.uniques.zip(db.hmget(key, *model.uniques))] if model.uniques.any?
           _uniques = db.hgetall(key[:_uniques])
           _indices = db.smembers(key[:_indices])
           uniques  = _read_index_type(:uniques)
@@ -1316,8 +1320,10 @@ module Ohm
 
         t.write do
           db.sadd(model.key[:all], id)
-          _delete_uniques(_uniques)
+          _delete_indices(existing_indices.map { |key, value| model.to_indices(key, value) }.flatten(1)) if existing_indices
+          _delete_uniques(existing_uniques.map { |key, value| [model.key[:uniques][key], value] }) if existing_uniques
           _delete_indices(_indices)
+          _delete_uniques(_uniques)
           _save
           _save_indices(indices)
           _save_uniques(uniques)
@@ -1337,6 +1343,7 @@ module Ohm
       transaction do |t|
         _uniques = nil
         _indices = nil
+        existing = nil
 
         t.watch(*_unique_keys)
 
@@ -1345,6 +1352,7 @@ module Ohm
         t.watch(key[:_uniques]) if model.uniques.any?
 
         t.read do
+          existing = Hash[model.indices.zip(db.hmget(key, *model.indices))] if model.indices.any?
           _uniques = db.hgetall(key[:_uniques])
           _indices = db.smembers(key[:_indices])
         end
@@ -1352,6 +1360,7 @@ module Ohm
         t.write do
           _delete_uniques(_uniques)
           _delete_indices(_indices)
+          _delete_indices(existing.map { |key, value| model.to_indices(key, value) }.flatten(1)) if existing
           model.collections.each { |e| db.del(key[e]) }
           db.srem(model.key[:all], id)
           db.del(key[:counters])
@@ -1502,7 +1511,7 @@ module Ohm
         unique = model.key[:uniques][att]
 
         db.hset(unique, val, id)
-        db.hset(key[:_uniques], unique, val)
+        db.hset(key[:_uniques], unique, val) unless model.attributes.include?(att)
       end
     end
 
@@ -1524,7 +1533,7 @@ module Ohm
       indices.each do |att, val|
         model.to_indices(att, val).each do |index|
           db.sadd(index, id)
-          db.sadd(key[:_indices], index)
+          db.sadd(key[:_indices], index) unless model.attributes.include?(att)
         end
       end
     end
