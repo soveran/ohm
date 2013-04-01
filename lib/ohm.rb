@@ -148,7 +148,6 @@ module Ohm
         to_a.each { |element| yield element }
       else
         to_enum
-        # Enumerator.new(self, :each)
       end
     end
 
