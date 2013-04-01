@@ -1,4 +1,4 @@
-require "benchmarks/common"
+require_relative "common"
 
 benchmark "Create Events" do
   i = Sequence[:events].succ!

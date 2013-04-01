@@ -1,4 +1,4 @@
-require "benchmarks/common"
+require_relative "common"
 
 1000.times do |i|
   Event.create(:name => "Redis Meetup #{i}", :location => "At my place")

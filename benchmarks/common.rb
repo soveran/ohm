@@ -1,6 +1,5 @@
-require "rubygems"
 require "bench"
-require File.dirname(__FILE__) + "/../lib/ohm"
+require_relative "../lib/ohm"
 
 Ohm.connect(:port => 6379, :db => 15)
 Ohm.flush
