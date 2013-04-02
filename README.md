@@ -31,7 +31,7 @@ These are libraries in other languages that were inspired by Ohm.
 Articles and Presentations
 --------------------------
 
-* [Simplicty](http://files.soveran.com/simplicity)
+* [Simplicity](http://files.soveran.com/simplicity)
 * [How to Redis](http://www.paperplanes.de/2009/10/30/how_to_redis.html)
 * [Redis and Ohm](http://carlopecchia.eu/blog/2010/04/30/redis-and-ohm-part1/)
 * [Ohm (Redis ORM)](http://blog.s21g.com/articles/1717) (Japanese)
