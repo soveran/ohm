@@ -147,7 +147,7 @@ module Ohm
       if block_given?
         to_a.each { |element| yield element }
       else
-        Enumerator.new(self, :each)
+        to_enum
       end
     end
 
