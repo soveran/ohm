@@ -1147,7 +1147,7 @@ module Ohm
       return self
     end
 
-    # Read an attribute remotly from Redis. Useful if you want to get
+    # Read an attribute remotely from Redis. Useful if you want to get
     # the most recent value of the attribute and not rely on locally
     # cached value.
     #
@@ -1310,8 +1310,8 @@ module Ohm
 
         t.read do
           _verify_uniques
-          existing_indices = Hash[model.indices.zip(db.hmget(key, *model.indices))] if model.indices.any?
-          existing_uniques = Hash[model.uniques.zip(db.hmget(key, *model.uniques))] if model.uniques.any?
+          existing_indices = _read_attributes(model.indices) if model.indices.any?
+          existing_uniques = _read_attributes(model.uniques) if model.uniques.any?
           _uniques = db.hgetall(key[:_uniques])
           _indices = db.smembers(key[:_indices])
           uniques  = _read_index_type(:uniques)
@@ -1320,8 +1320,8 @@ module Ohm
 
         t.write do
           db.sadd(model.key[:all], id)
-          _delete_indices(existing_indices.map { |key, value| model.to_indices(key, value) }.flatten(1)) if existing_indices
-          _delete_uniques(existing_uniques.map { |key, value| [model.key[:uniques][key], value] }) if existing_uniques
+          _delete_existing_indices(existing_indices)
+          _delete_existing_uniques(existing_uniques)
           _delete_indices(_indices)
           _delete_uniques(_uniques)
           _save
@@ -1352,7 +1352,7 @@ module Ohm
         t.watch(key[:_uniques]) if model.uniques.any?
 
         t.read do
-          existing = Hash[model.indices.zip(db.hmget(key, *model.indices))] if model.indices.any?
+          existing = _read_attributes(model.indices) if model.indices.any?
           _uniques = db.hgetall(key[:_uniques])
           _indices = db.smembers(key[:_indices])
         end
@@ -1360,7 +1360,7 @@ module Ohm
         t.write do
           _delete_uniques(_uniques)
           _delete_indices(_indices)
-          _delete_indices(existing.map { |key, value| model.to_indices(key, value) }.flatten(1)) if existing
+          _delete_existing_indices(existing)
           model.collections.each { |e| db.del(key[e]) }
           db.srem(model.key[:all], id)
           db.del(key[:counters])
@@ -1507,11 +1507,13 @@ module Ohm
     end
 
     def _save_uniques(uniques)
+      attrs = model.attributes
+
       uniques.each do |att, val|
         unique = model.key[:uniques][att]
 
         db.hset(unique, val, id)
-        db.hset(key[:_uniques], unique, val) unless model.attributes.include?(att)
+        db.hset(key[:_uniques], unique, val) unless attrs.include?(att)
       end
     end
 
@@ -1522,6 +1524,23 @@ module Ohm
       end
     end
 
+    def _delete_existing_indices(existing)
+      return unless existing
+
+      existing = existing.map { |key, value| model.to_indices(key, value) }
+      existing.flatten!(1)
+
+      _delete_indices(existing)
+    end
+
+    def _delete_existing_uniques(existing)
+      return unless existing
+
+      _delete_uniques(existing.map { |key, value|
+        [model.key[:uniques][key], value]
+      })
+    end
+
     def _delete_indices(indices)
       indices.each do |index|
         db.srem(index, id)
@@ -1530,12 +1549,18 @@ module Ohm
     end
 
     def _save_indices(indices)
+      attrs = model.attributes
+
       indices.each do |att, val|
         model.to_indices(att, val).each do |index|
           db.sadd(index, id)
-          db.sadd(key[:_indices], index) unless model.attributes.include?(att)
+          db.sadd(key[:_indices], index) unless attrs.include?(att)
         end
       end
+    end
+
+    def _read_attributes(attrs)
+      Hash[attrs.zip(db.hmget(key, *attrs))]
     end
   end
 end
