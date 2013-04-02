@@ -1,3 +1,10 @@
+1.3.1
+
+- Improve memory consumption when indexing persisted attributes.
+
+  No migration is needed and old indices will be cleaned up as you save
+  instances.
+
 1.3.0
 
 - Add Model.attributes.
