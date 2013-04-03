@@ -1,18 +1,18 @@
 local model      = cmsgpack.unpack(ARGV[1])
-local attributes = cmsgpack.unpack(ARGV[2])
+local attrs = cmsgpack.unpack(ARGV[2])
 local indices    = cmsgpack.unpack(ARGV[3])
 local uniques    = cmsgpack.unpack(ARGV[4])
 
-local function save(model, attributes)
+local function save(model, attrs)
   redis.call("SADD", model.name .. ":all", model.id)
   redis.call("DEL", model.key)
 
-  if math.mod(#attributes, 2) == 1 then
+  if math.mod(#attrs, 2) == 1 then
     error("Wrong number of attribute/value pairs")
   end
 
-  if #attributes > 0 then
-    redis.call("HMSET", model.key, unpack(attributes))
+  if #attrs > 0 then
+    redis.call("HMSET", model.key, unpack(attrs))
   end
 end
 
@@ -79,7 +79,7 @@ if err then
   error("UniqueIndexViolation: " .. duplicates[1])
 end
 
-save(model, attributes)
+save(model, attrs)
 
 remove_index(model)
 index(model, indices)
