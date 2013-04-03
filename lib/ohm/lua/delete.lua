@@ -2,7 +2,7 @@ local model       = cmsgpack.unpack(ARGV[1])
 local uniques     = cmsgpack.unpack(ARGV[2])
 local collections = cmsgpack.unpack(ARGV[3])
 
-local function remove_index(model)
+local function remove_indices(model)
   local memo = model.key .. ":_indices"
   local existing = redis.call("SMEMBERS", memo)
 
@@ -12,7 +12,7 @@ local function remove_index(model)
   end
 end
 
-local function remove_unique(model, uniques)
+local function remove_uniques(model, uniques)
   local memo = model.key .. ":_uniques"
 
   for field, _ in pairs(uniques) do
@@ -43,8 +43,8 @@ local function delete(model)
   redis.call("DEL", unpack(keys))
 end
 
-remove_index(model)
-remove_unique(model, uniques)
+remove_indices(model)
+remove_uniques(model, uniques)
 remove_collections(model, collections)
 delete(model)
 
