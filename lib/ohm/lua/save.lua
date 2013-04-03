@@ -1,5 +1,5 @@
 local model      = cmsgpack.unpack(ARGV[1])
-local attrs = cmsgpack.unpack(ARGV[2])
+local attrs      = cmsgpack.unpack(ARGV[2])
 local indices    = cmsgpack.unpack(ARGV[3])
 local uniques    = cmsgpack.unpack(ARGV[4])
 
