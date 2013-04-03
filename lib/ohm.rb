@@ -1326,35 +1326,21 @@ module Ohm
     # If the model has uniques or indices, they're also cleaned up.
     #
     def delete
-      transaction do |t|
-        _uniques = nil
-        _indices = nil
-        existing = nil
+      uniques = {}
+      model.uniques.each { |field| uniques[field] = send(field) }
 
-        t.watch(*_unique_keys)
+      db.eval(
+        File.read(File.join(LUA_FILES, "delete.lua")), 0,
+        { "name" => model.name,
+          "id" => id,
+          "key" => key
+        }.to_msgpack,
+        uniques.to_msgpack,
+        model.collections.to_msgpack
+      )
 
-        t.watch(key)
-        t.watch(key[:_indices]) if model.indices.any?
-        t.watch(key[:_uniques]) if model.uniques.any?
+      return self
 
-        t.read do
-          existing = _read_attributes(model.indices) if model.indices.any?
-          _uniques = db.hgetall(key[:_uniques])
-          _indices = db.smembers(key[:_indices])
-        end
-
-        t.write do
-          _delete_uniques(_uniques)
-          _delete_indices(_indices)
-          _delete_existing_indices(existing)
-          model.collections.each { |e| db.del(key[e]) }
-          db.srem(model.key[:all], id)
-          db.del(key[:counters])
-          db.del(key)
-        end
-
-        yield t if block_given?
-      end
     end
 
     # Update the model attributes and call save.
