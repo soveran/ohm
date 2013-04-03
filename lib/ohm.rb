@@ -1291,6 +1291,10 @@ module Ohm
 
       _initialize_id if new?
 
+      attrs = attributes.delete_if do |k, v|
+        v.nil?
+      end
+
       begin
         db.eval(
           File.read(File.join(LUA_FILES, "save.lua")), 0,
@@ -1298,7 +1302,7 @@ module Ohm
             "id" => id,
             "key" => key
           }.to_msgpack,
-          attributes.flatten.to_msgpack,
+          attrs.flatten.to_msgpack,
           indices.to_msgpack,
           uniques.to_msgpack
         )
