@@ -27,7 +27,7 @@ local function index(model, indices)
   end
 end
 
-local function remove_index(model)
+local function remove_indices(model)
   local memo = model.key .. ":_indices"
   local existing = redis.call("SMEMBERS", memo)
 
@@ -46,7 +46,7 @@ local function unique(model, uniques)
   end
 end
 
-local function remove_unique(model, uniques)
+local function remove_uniques(model, uniques)
   local memo = model.key .. ":_uniques"
   local existing = redis.call("HGETALL", memo)
 
@@ -81,10 +81,10 @@ end
 
 save(model, attrs)
 
-remove_index(model)
+remove_indices(model)
 index(model, indices)
 
-remove_unique(model, uniques)
+remove_uniques(model, uniques)
 unique(model, uniques)
 
 return model.id
