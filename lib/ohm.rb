@@ -6,8 +6,11 @@ require "securerandom"
 require "scrivener"
 require "ohm/transaction"
 require "ohm/command"
+require "msgpack"
 
 module Ohm
+
+  LUA_FILES = File.expand_path("ohm/lua", File.dirname(__FILE__))
 
   # All of the known errors in Ohm can be traced back to one of these
   # exceptions.
@@ -1272,63 +1275,42 @@ module Ohm
     #   u.kind_of?(User)
     #   # => true
     #
-    def save(&block)
+    def save
       return if not valid?
-      save!(&block)
+      save!
     end
 
     # Saves the model without checking for validity. Refer to
     # `Model#save` for more details.
     def save!
-      t = __save__
-      yield t if block_given?
-      t.commit(db)
+      indices = {}
+      model.indices.each { |field| indices[field] = Array(send(field)) }
 
-      return self
-    end
+      uniques = {}
+      model.uniques.each { |field| uniques[field] = send(field) }
 
-    def __save__
-      Transaction.new do |t|
-        t.watch(*_unique_keys)
+      _initialize_id if new?
 
-        if not new?
-          t.watch(key)
-          t.watch(key[:_indices]) if model.indices.any?
-          t.watch(key[:_uniques]) if model.uniques.any?
-        end
-
-        t.before do
-          _initialize_id if new?
-        end
-
-        _uniques = nil
-        uniques  = nil
-        _indices = nil
-        indices  = nil
-        existing_indices = nil
-        existing_uniques = nil
-
-        t.read do
-          _verify_uniques
-          existing_indices = _read_attributes(model.indices) if model.indices.any?
-          existing_uniques = _read_attributes(model.uniques) if model.uniques.any?
-          _uniques = db.hgetall(key[:_uniques])
-          _indices = db.smembers(key[:_indices])
-          uniques  = _read_index_type(:uniques)
-          indices  = _read_index_type(:indices)
-        end
-
-        t.write do
-          db.sadd(model.key[:all], id)
-          _delete_existing_indices(existing_indices)
-          _delete_existing_uniques(existing_uniques)
-          _delete_indices(_indices)
-          _delete_uniques(_uniques)
-          _save
-          _save_indices(indices)
-          _save_uniques(uniques)
+      begin
+        db.eval(
+          File.read(File.join(LUA_FILES, "save.lua")), 0,
+          { "name" => model.name,
+            "id" => id,
+            "key" => key
+          }.to_msgpack,
+          attributes.to_msgpack,
+          indices.to_msgpack,
+          uniques.to_msgpack
+        )
+      rescue RuntimeError => err
+        if err.message =~ /(UniqueIndexViolation: (.*))/
+          raise UniqueIndexViolation, $1
+        else
+          raise err
         end
       end
+
+      return self
     end
 
     # Delete the model, including all the following keys:

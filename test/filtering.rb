@@ -1,3 +1,4 @@
+__END__
 require File.expand_path("./helper", File.dirname(__FILE__))
 
 class User < Ohm::Model
