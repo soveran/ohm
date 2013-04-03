@@ -9,7 +9,7 @@ require "msgpack"
 
 module Ohm
 
-  LUA_FILES = File.expand_path("ohm/lua", File.dirname(__FILE__))
+  LUA_FILES = File.expand_path("../ohm/lua", __FILE__)
 
   # All of the known errors in Ohm can be traced back to one of these
   # exceptions.
@@ -1417,11 +1417,6 @@ module Ohm
     end
 
     attr_writer :id
-
-    def transaction
-      txn = Transaction.new { |t| yield t }
-      txn.commit(db)
-    end
 
     def model
       self.class
