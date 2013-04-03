@@ -4,7 +4,6 @@ require "nest"
 require "redis"
 require "securerandom"
 require "scrivener"
-require "ohm/transaction"
 require "ohm/command"
 require "msgpack"
 
