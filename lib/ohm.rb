@@ -1298,7 +1298,7 @@ module Ohm
             "id" => id,
             "key" => key
           }.to_msgpack,
-          attributes.to_msgpack,
+          attributes.flatten.to_msgpack,
           indices.to_msgpack,
           uniques.to_msgpack
         )

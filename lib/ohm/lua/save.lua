@@ -7,13 +7,15 @@ local function save(model, attributes)
   redis.call("SADD", model.name .. ":all", model.id)
   redis.call("DEL", model.key)
 
-  -- redis.call("HMSET", model.key, unpack(attributes))
-
-  for k, v in pairs(attributes) do
-    if v ~= "" then
-      redis.call("HSET", model.key, k, v)
-    end
+  if #attributes > 1 and math.mod(#attributes, 2) == 0 then
+    redis.call("HMSET", model.key, unpack(attributes))
   end
+
+  --  for k, v in pairs(attributes) do
+  --    if v ~= "" then
+  --      redis.call("HSET", model.key, k, v)
+  --    end
+  --  end
 end
 
 local function index(model, indices)
