@@ -48,7 +48,6 @@ end
 
 local function remove_uniques(model, uniques)
   local memo = model.key .. ":_uniques"
-  local existing = redis.call("HGETALL", memo)
 
   for field, _ in pairs(uniques) do
     local key = model.name .. ":uniques:" .. field
