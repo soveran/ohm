@@ -13,7 +13,7 @@ test do
 
     Model.create(:hash => "123")
 
-    assert_equal 1, Ohm.redis.scard("Model:all")
+    assert_equal 1, Ohm.redis.call("SCARD", "Model:all")
 
     Thread.new do
       a = Model.find(:hash => "123").first
@@ -24,7 +24,7 @@ test do
 
     b = Model.find(:hash => "123").first
 
-    if Ohm.redis.scard("Model:indices:hash:123") != 1
+    if Ohm.redis.call("SCARD", "Model:indices:hash:123") != 1
       flunk("Failed at iteration %d" % i)
     end
 

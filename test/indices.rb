@@ -59,7 +59,7 @@ end
 test "cleanup the temporary key after use" do
   assert User.find(:email => "foo", :activation_code => "bar").to_a
 
-  assert Ohm.redis.keys("User:temp:*").empty?
+  assert Ohm.redis.call("KEYS", "User:temp:*").empty?
 end
 
 test "allow multiple chained finds" do

@@ -81,7 +81,7 @@ test "counters are cleaned up during deletion" do
   assert_equal 10, e.votes
 
   e.delete
-  assert ! e.key[:counters].exists
+  assert_equal 0, e.key[:counters].exists
 end
 
 test "return the unsaved object if validation fails" do
@@ -113,7 +113,7 @@ test "set" do
   # Deletes when value is nil.
   m.set :name, nil
   m = Meetup[m.id]
-  assert ! m.key.hexists(:name)
+  assert_equal 0, m.key.hexists(:name)
 end
 
 test "assign attributes from the hash" do
@@ -219,8 +219,8 @@ test "forbid assignment of IDs on a new object" do
 end
 
 setup do
-  Ohm.redis.sadd("Event:all", 1)
-  Ohm.redis.hset("Event:1", "name", "Concert")
+  Ohm.redis.call("SADD", "Event:all", 1)
+  Ohm.redis.call("HSET", "Event:1", "name", "Concert")
 end
 
 test "return an instance of Event" do
@@ -230,8 +230,8 @@ test "return an instance of Event" do
 end
 
 setup do
-  Ohm.redis.sadd("User:all", 1)
-  Ohm.redis.hset("User:1", "email", "albert@example.com")
+  Ohm.redis.call("SADD", "User:all", 1)
+  Ohm.redis.call("HSET", "User:1", "email", "albert@example.com")
 end
 
 test "return an instance of User" do
@@ -245,8 +245,8 @@ test "allow to map key to models" do
 end
 
 setup do
-  Ohm.redis.sadd("User:all", 1)
-  Ohm.redis.set("User:1:email", "albert@example.com")
+  Ohm.redis.call("SADD", "User:all", 1)
+  Ohm.redis.call("SET", "User:1:email", "albert@example.com")
 
   @user = User[1]
 end
@@ -329,10 +329,10 @@ test "delete an existing model" do
 
   @model.delete
 
-  assert Ohm.redis.get(ModelToBeDeleted.key[id]).nil?
-  assert Ohm.redis.get(ModelToBeDeleted.key[id][:name]).nil?
-  assert Array.new == Ohm.redis.smembers(ModelToBeDeleted.key[id][:foos])
-  assert Array.new == Ohm.redis.lrange(ModelToBeDeleted.key[id][:bars], 0, -1)
+  assert Ohm.redis.call("GET", ModelToBeDeleted.key[id]).nil?
+  assert Ohm.redis.call("GET", ModelToBeDeleted.key[id][:name]).nil?
+  assert Array.new == Ohm.redis.call("SMEMBERS", ModelToBeDeleted.key[id][:foos])
+  assert Array.new == Ohm.redis.call("LRANGE", ModelToBeDeleted.key[id][:bars], 0, -1)
 
   assert ModelToBeDeleted.all.empty?
 end
@@ -346,15 +346,15 @@ test "no leftover keys" do
     index :name
   end
 
-  assert_equal [], Ohm.redis.keys("*")
+  assert_equal [], Ohm.redis.call("KEYS", "*")
 
   Foo.create(:name => "Bar")
   expected = %w[Foo:1:_indices Foo:1 Foo:all Foo:id Foo:indices:name:Bar]
 
-  assert_equal expected.sort, Ohm.redis.keys("*").sort
+  assert_equal expected.sort, Ohm.redis.call("KEYS", "*").sort
 
   Foo[1].delete
-  assert ["Foo:id"] == Ohm.redis.keys("*")
+  assert ["Foo:id"] == Ohm.redis.call("KEYS", "*")
 end
 
 # Listing
@@ -520,6 +520,8 @@ test "return true if the set includes some member" do
   @event.attendees.add(@person1)
   @event.attendees.add(@person2)
   assert @event.attendees.include?(@person2)
+
+  @event.attendees.include?(@person3)
   assert !@event.attendees.include?(@person3)
 end
 
@@ -702,23 +704,25 @@ end
 
 setup do
   Car.connect(:db => 15)
-  Car.db.flushdb
+  Car.db.call("FLUSHDB")
 end
 
 test "save to the selected database" do
   car = Car.create(:name => "Twingo")
   make = Make.create(:name => "Renault")
 
-  assert ["1"] == Redis.connect.smembers("Make:all")
-  assert [] == Redis.connect.smembers("Car:all")
+  redis = Redic.new
 
-  assert ["1"] == Car.db.smembers("Car:all")
-  assert [] == Car.db.smembers("Make:all")
+  assert ["1"] == redis.call("SMEMBERS", "Make:all")
+  assert [] == redis.call("SMEMBERS", "Car:all")
+
+  assert ["1"] == Car.db.call("SMEMBERS", "Car:all")
+  assert [] == Car.db.call("SMEMBERS", "Make:all")
 
   assert car == Car[1]
   assert make == Make[1]
 
-  Make.db.flushdb
+  Make.db.call("FLUSHDB")
 
   assert car == Car[1]
   assert Make[1].nil?
@@ -740,10 +744,10 @@ test "persist attributes to a hash" do
   event = Event.create(:name => "Redis Meetup")
   event.incr(:votes)
 
-  assert "hash" == Ohm.redis.type("Event:1")
+  assert "hash" == Ohm.redis.call("TYPE", "Event:1")
 
   expected= %w[Event:1 Event:1:counters Event:all Event:id]
-  assert_equal expected, Ohm.redis.keys("Event:*").sort
+  assert_equal expected, Ohm.redis.call("KEYS", "Event:*").sort
 
   assert "Redis Meetup" == Event[1].name
   assert 1 == Event[1].votes
@@ -753,7 +757,7 @@ end
 test "be persisted" do
   SomeNamespace::Foo.create(:name => "foo")
 
-  assert "hash" == Ohm.redis.type("SomeNamespace::Foo:1")
+  assert "hash" == Ohm.redis.call("TYPE", "SomeNamespace::Foo:1")
 
   assert "foo" == SomeNamespace::Foo[1].name
 end

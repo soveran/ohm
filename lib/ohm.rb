@@ -1,10 +1,10 @@
 # encoding: UTF-8
 
-require "nest"
-require "redis"
+require "redic"
 require "securerandom"
 require "scrivener"
 require "ohm/command"
+require "ohm/nest"
 require "msgpack"
 
 module Ohm
@@ -70,14 +70,20 @@ module Ohm
       end
     end
 
-    if Redis::VERSION >= "3.0.0"
-      def self.dict(dict)
-        dict
-      end
-    else
-      def self.dict(arr)
-        Hash[*arr]
-      end
+    def self.dict(arr)
+      Hash[*arr]
+    end
+
+    def self.sort(redis, key, options)
+      args = []
+
+      args.concat(["BY", options[:by]]) if options[:by]
+      args.concat(["GET", options[:get]]) if options[:get]
+      args.concat(["LIMIT"] + options[:limit]) if options[:limit]
+      args.concat(options[:order].split(" ")) if options[:order]
+      args.concat(["STORE", options[:store]]) if options[:store]
+
+      redis.call("SORT", key, *args)
     end
   end
 
@@ -100,7 +106,7 @@ module Ohm
     end
 
     def redis
-      threaded[context] ||= Redis.connect(options)
+      threaded[context] ||= Redic.new(options)
     end
 
     def threaded
@@ -119,7 +125,7 @@ module Ohm
   #   Ohm.connect(:port => 6380, :db => 1, :host => "10.0.1.1")
   #   Ohm.connect(:url => "redis://10.0.1.1:6380/1")
   #
-  # All of the options are simply passed on to `Redis.connect`.
+  # All of the options are simply passed on to `Redic.new`.
   #
   def self.connect(options = {})
     conn.start(options)
@@ -139,7 +145,7 @@ module Ohm
 
   # Wrapper for Ohm.redis.flushdb.
   def self.flush
-    redis.flushdb
+    redis.call("FLUSHDB")
   end
 
   module Collection
@@ -164,9 +170,9 @@ module Ohm
 
     # Wraps the whole pipelining functionality.
     def fetch(ids)
-      arr = db.pipelined do
-        ids.each { |id| db.hgetall(namespace[id]) }
-      end
+      ids.each { |id| db.write("HGETALL", namespace[id]) }
+
+      arr = db.run
 
       res = []
 
@@ -195,18 +201,18 @@ module Ohm
 
     # Returns the total size of the list using LLEN.
     def size
-      db.llen(key)
+      db.call("LLEN", key)
     end
     alias :count :size
 
     # Returns the first element of the list using LINDEX.
     def first
-      model[db.lindex(key, 0)]
+      model[db.call("LINDEX", key, 0)]
     end
 
     # Returns the last element of the list using LINDEX.
     def last
-      model[db.lindex(key, -1)]
+      model[db.call("LINDEX", key, -1)]
     end
 
     # Checks if the model is part of this List.
@@ -239,20 +245,21 @@ module Ohm
     def replace(models)
       ids = models.map { |model| model.id }
 
-      model.db.multi do
-        db.del(key)
-        ids.each { |id| db.rpush(key, id) }
-      end
+      db.write("MULTI")
+      db.write("DEL", key)
+      ids.each { |id| db.write("RPUSH", key, id) }
+      db.write("EXEC")
+      db.run
     end
 
     # Pushes the model to the _end_ of the list using RPUSH.
     def push(model)
-      db.rpush(key, model.id)
+      db.call("RPUSH", key, model.id)
     end
 
     # Pushes the model to the _beginning_ of the list using LPUSH.
     def unshift(model)
-      db.lpush(key, model.id)
+      db.call("LPUSH", key, model.id)
     end
 
     # Delete a model from the list.
@@ -283,12 +290,12 @@ module Ohm
     def delete(model)
       # LREM key 0 <id> means remove all elements matching <id>
       # @see http://redis.io/commands/lrem
-      db.lrem(key, 0, model.id)
+      db.call("LREM", key, 0, model.id)
     end
 
   private
     def ids
-      db.lrange(key, 0, -1)
+      db.call("LRANGE", key, 0, -1)
     end
 
     def db
@@ -346,10 +353,10 @@ module Ohm
     def sort(options = {})
       if options.has_key?(:get)
         options[:get] = to_key(options[:get])
-        return execute { |key| db.sort(key, options) }
+        return execute { |key| Utils.sort(db, key, options) }
       end
 
-      fetch(execute { |key| db.sort(key, options) })
+      fetch(execute { |key| Utils.sort(db, key, options) })
     end
 
     # Check if a model is included in this set.
@@ -370,7 +377,7 @@ module Ohm
 
     # Returns the total size of the set using SCARD.
     def size
-      execute { |key| db.scard(key) }
+      execute { |key| db.call("SCARD", key) }
     end
     alias :count :size
 
@@ -398,7 +405,7 @@ module Ohm
 
     # Grab all the elements of this set using SMEMBERS.
     def ids
-      execute { |key| db.smembers(key) }
+      execute { |key| db.call("SMEMBERS", key) }
     end
 
     # Retrieve a specific element using an ID from this set.
@@ -417,7 +424,7 @@ module Ohm
 
   private
     def exists?(id)
-      execute { |key| db.sismember(key, id) }
+      execute { |key| db.call("SISMEMBER", key, id) == 1 }
     end
 
     def to_key(att)
@@ -502,7 +509,7 @@ module Ohm
     #   user.posts.add(post)
     #
     def add(model)
-      db.sadd(key, model.id)
+      db.call("SADD", key, model.id)
     end
 
     # Remove a model directly from the set.
@@ -515,7 +522,7 @@ module Ohm
     #   user.posts.delete(post)
     #
     def delete(model)
-      db.srem(key, model.id)
+      db.call("SREM", key, model.id)
     end
 
     # Replace all the existing elements of a set with a different
@@ -537,10 +544,11 @@ module Ohm
     def replace(models)
       ids = models.map { |model| model.id }
 
-      key.redis.multi do
-        db.del(key)
-        ids.each { |id| db.sadd(key, id) }
-      end
+      db.write("MULTI")
+      db.write("DEL", key)
+      ids.each { |id| db.write("SADD", key, id) }
+      db.write("EXEC")
+      db.run
     end
   end
 
@@ -712,10 +720,6 @@ module Ohm
       conn.redis
     end
 
-    def self.lua
-      @lua ||= Lua.new(File.join(Dir.pwd, "lua"), db)
-    end
-
     # The namespace for all the keys generated using this model.
     #
     # Example:
@@ -766,7 +770,7 @@ module Ohm
 
     # Check if the ID exists within <Model>:all.
     def self.exists?(id)
-      db.sismember(key[:all], id)
+      db.call("SISMEMBER", key[:all], id) == 1
     end
 
     # Find values in `unique` indices.
@@ -784,7 +788,7 @@ module Ohm
     def self.with(att, val)
       raise IndexNotFound unless uniques.include?(att)
 
-      id = db.hget(key[:uniques][att], val)
+      id = db.call("HGET", key[:uniques][att], val)
       id && self[id]
     end
 
@@ -1067,7 +1071,7 @@ module Ohm
       define_method(name) do
         return 0 if new?
 
-        db.hget(key[:counters], name).to_i
+        db.call("HGET", key[:counters], name).to_i
       end
     end
 
@@ -1145,7 +1149,7 @@ module Ohm
     # Preload all the attributes of this model from Redis. Used
     # internally by `Model::[]`.
     def load!
-      update_attributes(db.hgetall(key)) unless new?
+      update_attributes(Utils.dict(db.call("HGETALL", key))) unless new?
       return self
     end
 
@@ -1166,7 +1170,7 @@ module Ohm
     #                 |    u.get(:name) == "B"
     #
     def get(att)
-      @attributes[att] = db.hget(key, att)
+      @attributes[att] = db.call("HGET", key, att)
     end
 
     # Update an attribute value atomically. The best usecase for this
@@ -1176,7 +1180,12 @@ module Ohm
     # and uniques. Use it wisely. The safe equivalent is `update`.
     #
     def set(att, val)
-      val.to_s.empty? ? db.hdel(key, att) : db.hset(key, att, val)
+      if val.to_s.empty?
+        db.call("HDEL", key, att)
+      else
+        db.call("HSET", key, att, val)
+      end
+
       @attributes[att] = val
     end
 
@@ -1186,7 +1195,7 @@ module Ohm
 
     # Increment a counter atomically. Internally uses HINCRBY.
     def incr(att, count = 1)
-      db.hincrby(key[:counters], att, count)
+      db.call("HINCRBY", key[:counters], att, count)
     end
 
     # Decrement a counter atomically. Internally uses HINCRBY.
@@ -1294,23 +1303,26 @@ module Ohm
         v.nil?
       end
 
-      begin
-        db.eval(
-          File.read(File.join(LUA_FILES, "save.lua")), 0,
-          { "name" => model.name,
-            "id" => id,
-            "key" => key
-          }.to_msgpack,
-          attrs.flatten.to_msgpack,
-          indices.to_msgpack,
-          uniques.to_msgpack
-        )
-      rescue RuntimeError => err
-        if err.message =~ /(UniqueIndexViolation: (.*))/
+      result = db.call("EVAL",
+        File.read(File.join(LUA_FILES, "save.lua")), 0,
+        { "name" => model.name,
+          "id" => id,
+          "key" => key
+        }.to_msgpack,
+        attrs.flatten.to_msgpack,
+        indices.to_msgpack,
+        uniques.to_msgpack
+      )
+
+      case result
+      when Redis::CommandError
+        if result.message =~ /(UniqueIndexViolation: (.*))/
           raise UniqueIndexViolation, $1
         else
-          raise err
+          raise result
         end
+      when Exception
+        raise result
       end
 
       return self
@@ -1328,7 +1340,7 @@ module Ohm
       uniques = {}
       model.uniques.each { |field| uniques[field] = send(field) }
 
-      db.eval(
+      db.call("EVAL",
         File.read(File.join(LUA_FILES, "delete.lua")), 0,
         { "name" => model.name,
           "id" => id,
@@ -1413,7 +1425,7 @@ module Ohm
     end
 
     def self.new_id
-      db.incr(key[:id])
+      db.call("INCR", key[:id])
     end
 
     attr_writer :id

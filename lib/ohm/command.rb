@@ -18,7 +18,7 @@ module Ohm
 
     def call(nest, db)
       newkey(nest) do |key|
-        db.send(@operation, key, *params(nest, db))
+        db.call(@operation, key, *params(nest, db))
       end
     end
 

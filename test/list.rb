@@ -65,5 +65,5 @@ end
 test "deleting main model cleans up the collection" do |p, _, _, _|
   p.delete
 
-  assert ! Ohm.redis.exists(p.key[:comments])
+  assert_equal 0, Ohm.redis.call("EXISTS", p.key[:comments])
 end

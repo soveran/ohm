@@ -22,5 +22,5 @@ $VERBOSE = true
 require "ohm"
 
 prepare do
-  Ohm.redis.flushall
+  Ohm.redis.call("FLUSHALL")
 end

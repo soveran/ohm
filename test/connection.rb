@@ -26,7 +26,7 @@ test "connects lazily" do
   Ohm.connect(:port => 9876)
 
   begin
-    Ohm.redis.get "foo"
+    Ohm.redis.call("GET", "foo")
   rescue => e
     assert_equal Redis::CannotConnectError, e.class
   end
@@ -56,7 +56,7 @@ test "supports connecting by URL" do
   Ohm.connect(:url => "redis://localhost:9876")
 
   begin
-    Ohm.redis.get "foo"
+    Ohm.redis.call("GET", "foo")
   rescue => e
     assert_equal Redis::CannotConnectError, e.class
   end
@@ -69,7 +69,7 @@ end
 test "connection class" do
   conn = Ohm::Connection.new(:foo, :url => "redis://localhost:6379/0")
 
-  assert conn.redis.kind_of?(Redis)
+  assert conn.redis.kind_of?(Redic)
 end
 
 test "issue #46" do
@@ -78,7 +78,7 @@ test "issue #46" do
   end
 
   # We do this since we did prepare.clear above.
-  B.db.flushall
+  B.db.call("FLUSHALL")
 
   b1, b2 = nil, nil
 
