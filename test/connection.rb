@@ -14,7 +14,7 @@ test "connects lazily" do
   begin
     Ohm.redis.call("GET", "foo")
   rescue => e
-    assert_equal Errno::ECONNREFUSED, e.class
+    assert [Errno::ECONNREFUSED, Errno::EINVAL].include?(e.class)
   end
 end
 
@@ -44,7 +44,7 @@ test "supports connecting by URL" do
   begin
     Ohm.redis.call("GET", "foo")
   rescue => e
-    assert_equal Errno::ECONNREFUSED, e.class
+    assert [Errno::EINVAL, Errno::ECONNREFUSED].include?(e.class)
   end
 end
 
