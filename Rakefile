@@ -69,3 +69,11 @@ desc "Deploy documentation"
 task :deploy do
   system "rsync --del -avz doc/* ohm.keyvalue.org:deploys/ohm.keyvalue.org/"
 end
+
+task :sha1 do
+  require "digest/sha1"
+
+  Dir["./lib/ohm/lua/*.lua"].each do |file|
+    puts "%s: %s" % [file, Digest::SHA1.hexdigest(File.read(file))]
+  end
+end
