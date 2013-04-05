@@ -87,63 +87,20 @@ module Ohm
     end
   end
 
-  class Connection
-    attr :url
-
-    def initialize(context = :main, url = nil)
-      @context = context
-      @url = url
-    end
-
-    def reset!
-      threaded[@context] = nil
-    end
-
-    def start(url)
-      @url = url
-      self.reset!
-    end
-
-    def redis
-      if not @url
-        raise RuntimeError,
-          "No configuration defined. Configure via `Ohm.connect(url)`."
-      end
-
-      threaded[@context] ||= Redic.new(@url)
-    end
-
-    def threaded
-      Thread.current[:ohm] ||= {}
-    end
-  end
-
-  def self.conn
-    @conn ||= Connection.new
-  end
-
-  # Stores the connection url for the Redis instance.
-  #
-  # Examples:
-  #
-  #   Ohm.connect("redis://10.0.1.1:6380")
-  #
-  # All of the url are simply passed on to `Redic.new`.
-  #
-  def self.connect(url)
-    conn.start(url)
-  end
-
   # Use this if you want to do quick ad hoc redis commands against the
   # defined Ohm connection.
   #
   # Examples:
   #
-  #   Ohm.redis.keys("User:*")
-  #   Ohm.redis.set("foo", "bar")
+  #   Ohm.redis.call("SET", "foo", "bar")
+  #   Ohm.redis.flush
   #
   def self.redis
-    conn.redis
+    @redis ||= Redic.new
+  end
+
+  def self.redis=(redis)
+    @redis = redis
   end
 
   # Wrapper for Ohm.redis.flushdb.
@@ -173,9 +130,9 @@ module Ohm
 
     # Wraps the whole pipelining functionality.
     def fetch(ids)
-      ids.each { |id| db.write("HGETALL", namespace[id]) }
+      ids.each { |id| redis.write("HGETALL", namespace[id]) }
 
-      arr = db.run
+      arr = redis.run
 
       res = []
 
@@ -204,18 +161,18 @@ module Ohm
 
     # Returns the total size of the list using LLEN.
     def size
-      db.call("LLEN", key)
+      redis.call("LLEN", key)
     end
     alias :count :size
 
     # Returns the first element of the list using LINDEX.
     def first
-      model[db.call("LINDEX", key, 0)]
+      model[redis.call("LINDEX", key, 0)]
     end
 
     # Returns the last element of the list using LINDEX.
     def last
-      model[db.call("LINDEX", key, -1)]
+      model[redis.call("LINDEX", key, -1)]
     end
 
     # Checks if the model is part of this List.
@@ -248,21 +205,21 @@ module Ohm
     def replace(models)
       ids = models.map { |model| model.id }
 
-      db.write("MULTI")
-      db.write("DEL", key)
-      ids.each { |id| db.write("RPUSH", key, id) }
-      db.write("EXEC")
-      db.run
+      redis.write("MULTI")
+      redis.write("DEL", key)
+      ids.each { |id| redis.write("RPUSH", key, id) }
+      redis.write("EXEC")
+      redis.run
     end
 
     # Pushes the model to the _end_ of the list using RPUSH.
     def push(model)
-      db.call("RPUSH", key, model.id)
+      redis.call("RPUSH", key, model.id)
     end
 
     # Pushes the model to the _beginning_ of the list using LPUSH.
     def unshift(model)
-      db.call("LPUSH", key, model.id)
+      redis.call("LPUSH", key, model.id)
     end
 
     # Delete a model from the list.
@@ -293,16 +250,16 @@ module Ohm
     def delete(model)
       # LREM key 0 <id> means remove all elements matching <id>
       # @see http://redis.io/commands/lrem
-      db.call("LREM", key, 0, model.id)
+      redis.call("LREM", key, 0, model.id)
     end
 
   private
     def ids
-      db.call("LRANGE", key, 0, -1)
+      redis.call("LRANGE", key, 0, -1)
     end
 
-    def db
-      model.db
+    def redis
+      model.redis
     end
   end
 
@@ -356,10 +313,10 @@ module Ohm
     def sort(options = {})
       if options.has_key?(:get)
         options[:get] = to_key(options[:get])
-        return execute { |key| Utils.sort(db, key, options) }
+        return execute { |key| Utils.sort(redis, key, options) }
       end
 
-      fetch(execute { |key| Utils.sort(db, key, options) })
+      fetch(execute { |key| Utils.sort(redis, key, options) })
     end
 
     # Check if a model is included in this set.
@@ -380,7 +337,7 @@ module Ohm
 
     # Returns the total size of the set using SCARD.
     def size
-      execute { |key| db.call("SCARD", key) }
+      execute { |key| redis.call("SCARD", key) }
     end
     alias :count :size
 
@@ -408,7 +365,7 @@ module Ohm
 
     # Grab all the elements of this set using SMEMBERS.
     def ids
-      execute { |key| db.call("SMEMBERS", key) }
+      execute { |key| redis.call("SMEMBERS", key) }
     end
 
     # Retrieve a specific element using an ID from this set.
@@ -427,7 +384,7 @@ module Ohm
 
   private
     def exists?(id)
-      execute { |key| db.call("SISMEMBER", key, id) == 1 }
+      execute { |key| redis.call("SISMEMBER", key, id) == 1 }
     end
 
     def to_key(att)
@@ -496,8 +453,8 @@ module Ohm
       yield key
     end
 
-    def db
-      model.db
+    def redis
+      model.redis
     end
   end
 
@@ -512,7 +469,7 @@ module Ohm
     #   user.posts.add(post)
     #
     def add(model)
-      db.call("SADD", key, model.id)
+      redis.call("SADD", key, model.id)
     end
 
     # Remove a model directly from the set.
@@ -525,7 +482,7 @@ module Ohm
     #   user.posts.delete(post)
     #
     def delete(model)
-      db.call("SREM", key, model.id)
+      redis.call("SREM", key, model.id)
     end
 
     # Replace all the existing elements of a set with a different
@@ -547,11 +504,11 @@ module Ohm
     def replace(models)
       ids = models.map { |model| model.id }
 
-      db.write("MULTI")
-      db.write("DEL", key)
-      ids.each { |id| db.write("SADD", key, id) }
-      db.write("EXEC")
-      db.run
+      redis.write("MULTI")
+      redis.write("DEL", key)
+      ids.each { |id| redis.write("SADD", key, id) }
+      redis.write("EXEC")
+      redis.run
     end
   end
 
@@ -628,8 +585,8 @@ module Ohm
     end
 
   private
-    def db
-      model.db
+    def redis
+      model.redis
     end
 
     def intersected(dict)
@@ -638,8 +595,8 @@ module Ohm
 
     def execute
       # namespace[:tmp] is where all the temp keys should be stored in.
-      # db will be where all the commands are executed against.
-      res = command.call(namespace[:tmp], db)
+      # redis will be where all the commands are executed against.
+      res = command.call(namespace[:tmp], redis)
 
       begin
 
@@ -709,17 +666,13 @@ module Ohm
   class Model
     include Scrivener::Validations
 
-    def self.conn
-      @conn ||= Connection.new(name, Ohm.conn.url)
-    end
-
-    def self.connect(url)
+    def self.redis=(redis)
       @key = nil
-      conn.start(url)
+      @redis = redis
     end
 
-    def self.db
-      conn.redis
+    def self.redis
+      @redis ||= Redic.new(Ohm.redis.url)
     end
 
     # The namespace for all the keys generated using this model.
@@ -739,7 +692,7 @@ module Ohm
     #   http://github.com/soveran/nest
     #
     def self.key
-      @key ||= Nest.new(self.name, db)
+      @key ||= Nest.new(self.name, redis)
     end
 
     # Retrieve a record by ID.
@@ -772,7 +725,7 @@ module Ohm
 
     # Check if the ID exists within <Model>:all.
     def self.exists?(id)
-      db.call("SISMEMBER", key[:all], id) == 1
+      redis.call("SISMEMBER", key[:all], id) == 1
     end
 
     # Find values in `unique` indices.
@@ -790,7 +743,7 @@ module Ohm
     def self.with(att, val)
       raise IndexNotFound unless uniques.include?(att)
 
-      id = db.call("HGET", key[:uniques][att], val)
+      id = redis.call("HGET", key[:uniques][att], val)
       id && self[id]
     end
 
@@ -1073,7 +1026,7 @@ module Ohm
       define_method(name) do
         return 0 if new?
 
-        db.call("HGET", key[:counters], name).to_i
+        redis.call("HGET", key[:counters], name).to_i
       end
     end
 
@@ -1151,7 +1104,7 @@ module Ohm
     # Preload all the attributes of this model from Redis. Used
     # internally by `Model::[]`.
     def load!
-      update_attributes(Utils.dict(db.call("HGETALL", key))) unless new?
+      update_attributes(Utils.dict(redis.call("HGETALL", key))) unless new?
       return self
     end
 
@@ -1172,7 +1125,7 @@ module Ohm
     #                 |    u.get(:name) == "B"
     #
     def get(att)
-      @attributes[att] = db.call("HGET", key, att)
+      @attributes[att] = redis.call("HGET", key, att)
     end
 
     # Update an attribute value atomically. The best usecase for this
@@ -1183,9 +1136,9 @@ module Ohm
     #
     def set(att, val)
       if val.to_s.empty?
-        db.call("HDEL", key, att)
+        redis.call("HDEL", key, att)
       else
-        db.call("HSET", key, att, val)
+        redis.call("HSET", key, att, val)
       end
 
       @attributes[att] = val
@@ -1197,7 +1150,7 @@ module Ohm
 
     # Increment a counter atomically. Internally uses HINCRBY.
     def incr(att, count = 1)
-      db.call("HINCRBY", key[:counters], att, count)
+      redis.call("HINCRBY", key[:counters], att, count)
     end
 
     # Decrement a counter atomically. Internally uses HINCRBY.
@@ -1305,7 +1258,7 @@ module Ohm
         v.nil?
       end
 
-      result = db.call("EVAL",
+      result = redis.call("EVAL",
         File.read(File.join(LUA_FILES, "save.lua")), 0,
         { "name" => model.name,
           "id" => id,
@@ -1342,7 +1295,7 @@ module Ohm
       uniques = {}
       model.uniques.each { |field| uniques[field] = send(field) }
 
-      db.call("EVAL",
+      redis.call("EVAL",
         File.read(File.join(LUA_FILES, "delete.lua")), 0,
         { "name" => model.name,
           "id" => id,
@@ -1427,7 +1380,7 @@ module Ohm
     end
 
     def self.new_id
-      db.call("INCR", key[:id])
+      redis.call("INCR", key[:id])
     end
 
     attr_writer :id
@@ -1436,8 +1389,8 @@ module Ohm
       self.class
     end
 
-    def db
-      model.db
+    def redis
+      model.redis
     end
 
     def _initialize_id

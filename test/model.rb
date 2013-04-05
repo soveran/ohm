@@ -703,8 +703,8 @@ class ::Make < Ohm::Model
 end
 
 setup do
-  Car.db.call("SELECT", 15)
-  Car.db.call("FLUSHDB")
+  Car.redis.call("SELECT", 15)
+  Car.redis.call("FLUSHDB")
 end
 
 test "save to the selected database" do
@@ -716,13 +716,13 @@ test "save to the selected database" do
   assert ["1"] == redis.call("SMEMBERS", "Make:all")
   assert [] == redis.call("SMEMBERS", "Car:all")
 
-  assert ["1"] == Car.db.call("SMEMBERS", "Car:all")
-  assert [] == Car.db.call("SMEMBERS", "Make:all")
+  assert ["1"] == Car.redis.call("SMEMBERS", "Car:all")
+  assert [] == Car.redis.call("SMEMBERS", "Make:all")
 
   assert car == Car[1]
   assert make == Make[1]
 
-  Make.db.call("FLUSHDB")
+  Make.redis.call("FLUSHDB")
 
   assert car == Car[1]
   assert Make[1].nil?
@@ -732,10 +732,10 @@ test "allow changing the database" do
   Car.create(:name => "Twingo")
   assert_equal ["1"], Car.all.key.smembers
 
-  Car.connect("redis://127.0.0.1:6379")
+  Car.redis = Redic.new("redis://127.0.0.1:6379")
   assert_equal [], Car.all.key.smembers
 
-  Car.db.call("SELECT", 15)
+  Car.redis.call("SELECT", 15)
   assert ["1"] == Car.all.key.smembers
 end
 
