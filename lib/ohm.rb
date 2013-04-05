@@ -88,25 +88,29 @@ module Ohm
   end
 
   class Connection
-    attr_accessor :context
-    attr_accessor :options
+    attr :url
 
-    def initialize(context = :main, options = {})
+    def initialize(context = :main, url = nil)
       @context = context
-      @options = options
+      @url = url
     end
 
     def reset!
-      threaded[context] = nil
+      threaded[@context] = nil
     end
 
-    def start(options = {})
-      self.options = options
+    def start(url)
+      @url = url
       self.reset!
     end
 
     def redis
-      threaded[context] ||= Redic.new(options)
+      if not @url
+        raise RuntimeError,
+          "No configuration defined. Configure via `Ohm.connect(url)`."
+      end
+
+      threaded[@context] ||= Redic.new(@url)
     end
 
     def threaded
@@ -118,17 +122,16 @@ module Ohm
     @conn ||= Connection.new
   end
 
-  # Stores the connection options for the Redis instance.
+  # Stores the connection url for the Redis instance.
   #
   # Examples:
   #
-  #   Ohm.connect(:port => 6380, :db => 1, :host => "10.0.1.1")
-  #   Ohm.connect(:url => "redis://10.0.1.1:6380/1")
+  #   Ohm.connect("redis://10.0.1.1:6380")
   #
-  # All of the options are simply passed on to `Redic.new`.
+  # All of the url are simply passed on to `Redic.new`.
   #
-  def self.connect(options = {})
-    conn.start(options)
+  def self.connect(url)
+    conn.start(url)
   end
 
   # Use this if you want to do quick ad hoc redis commands against the
@@ -707,13 +710,12 @@ module Ohm
     include Scrivener::Validations
 
     def self.conn
-      @conn ||= Connection.new(name, Ohm.conn.options)
+      @conn ||= Connection.new(name, Ohm.conn.url)
     end
 
-    def self.connect(options)
+    def self.connect(url)
       @key = nil
-      @lua = nil
-      conn.start(options)
+      conn.start(url)
     end
 
     def self.db
@@ -1315,7 +1317,7 @@ module Ohm
       )
 
       case result
-      when Redis::CommandError
+      when RuntimeError
         if result.message =~ /(UniqueIndexViolation: (.*))/
           raise UniqueIndexViolation, $1
         else

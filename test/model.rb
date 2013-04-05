@@ -703,7 +703,7 @@ class ::Make < Ohm::Model
 end
 
 setup do
-  Car.connect(:db => 15)
+  Car.db.call("SELECT", 15)
   Car.db.call("FLUSHDB")
 end
 
@@ -732,10 +732,10 @@ test "allow changing the database" do
   Car.create(:name => "Twingo")
   assert_equal ["1"], Car.all.key.smembers
 
-  Car.connect({})
+  Car.connect("redis://127.0.0.1:6379")
   assert_equal [], Car.all.key.smembers
 
-  Car.connect :db => 15
+  Car.db.call("SELECT", 15)
   assert ["1"] == Car.all.key.smembers
 end
 

@@ -21,6 +21,8 @@ $VERBOSE = true
 
 require "ohm"
 
+Ohm.connect("redis://127.0.0.1:6379")
+
 prepare do
   Ohm.redis.call("FLUSHALL")
 end
