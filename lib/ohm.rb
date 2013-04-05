@@ -41,6 +41,38 @@ module Ohm
   class IndexNotFound < Error; end
   class UniqueIndexViolation < Error; end
 
+  module Lua
+    FILES = File.expand_path("../ohm/lua", __FILE__)
+
+    SAVE   = "cb98c8f3e4c06335192ef4a40351e7f7fd7bdfbc"
+    DELETE = "33280b7f78deb73571f659ccee1df447ada98d37"
+
+    DICT = {
+      SAVE   => File.read(File.join(FILES, "save.lua")),
+      DELETE => File.read(File.join(FILES, "delete.lua"))
+    }
+
+    def self.run(redis, sha1, *args)
+      cached(redis, sha1) do
+        redis.call("SCRIPT", "LOAD", DICT[sha1])
+      end
+
+      redis.call("EVALSHA", sha1, *args)
+    end
+
+    def self.cached(redis, sha1)
+      key = :"#{redis.url.hash}_#{sha1}"
+
+      if not @cache.member?(key)
+        yield
+
+        @cache[key] = true
+      end
+    end
+
+    @cache = {}
+  end
+
   # Instead of monkey patching Kernel or trying to be clever, it's
   # best to confine all the helper methods in a Utils module.
   module Utils
@@ -1215,6 +1247,7 @@ module Ohm
 
       return attrs
     end
+
 
     # Persist the model attributes and update indices and unique
     # indices. The `counter`s and `set`s are not touched during save.
