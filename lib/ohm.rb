@@ -8,8 +8,9 @@ require "ohm/nest"
 require "msgpack"
 
 module Ohm
-
-  LUA_FILES = File.expand_path("../ohm/lua", __FILE__)
+  LUA_CACHE   = Hash.new { |h, k| h[k] = Hash.new }
+  LUA_SAVE    = File.expand_path("../ohm/lua/save.lua",   __FILE__)
+  LUA_DELETE  = File.expand_path("../ohm/lua/delete.lua", __FILE__)
 
   # All of the known errors in Ohm can be traced back to one of these
   # exceptions.
@@ -1258,8 +1259,7 @@ module Ohm
         v.nil?
       end
 
-      result = redis.call("EVAL",
-        File.read(File.join(LUA_FILES, "save.lua")), 0,
+      result = script(LUA_SAVE, 0,
         { "name" => model.name,
           "id" => id,
           "key" => key
@@ -1295,8 +1295,7 @@ module Ohm
       uniques = {}
       model.uniques.each { |field| uniques[field] = send(field) }
 
-      redis.call("EVAL",
-        File.read(File.join(LUA_FILES, "delete.lua")), 0,
+      script(LUA_DELETE, 0,
         { "name" => model.name,
           "id" => id,
           "key" => key
@@ -1306,7 +1305,23 @@ module Ohm
       )
 
       return self
+    end
 
+    # Run lua scripts and cache the sha in order to improve
+    # successive calls.
+    def script(file, *args)
+      cache = LUA_CACHE[redis.url]
+
+      if cache.key?(file)
+        sha = cache[file]
+      else
+        src = File.read(file)
+        sha = redis.call("SCRIPT", "LOAD", src)
+
+        cache[file] = sha
+      end
+
+      redis.call("EVALSHA", sha, *args)
     end
 
     # Update the model attributes and call save.
