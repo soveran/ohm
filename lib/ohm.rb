@@ -2,7 +2,6 @@
 
 require "redic"
 require "securerandom"
-require "scrivener"
 require "ohm/command"
 require "ohm/nest"
 require "msgpack"
@@ -665,8 +664,6 @@ module Ohm
   #   SADD User:1:posts 1
   #
   class Model
-    include Scrivener::Validations
-
     def self.redis=(redis)
       @key = nil
       @redis = redis
@@ -1180,8 +1177,8 @@ module Ohm
       @attributes
     end
 
-    # Export the ID and the errors of the model. The approach of Ohm
-    # is to whitelist public attributes, as opposed to exporting each
+    # Export the ID of the model. The approach of Ohm is to
+    # whitelist public attributes, as opposed to exporting each
     # (possibly sensitive) attribute.
     #
     # Example:
@@ -1211,7 +1208,6 @@ module Ohm
     def to_hash
       attrs = {}
       attrs[:id] = id unless new?
-      attrs[:errors] = errors if errors.any?
 
       return attrs
     end
@@ -1220,34 +1216,17 @@ module Ohm
     # Persist the model attributes and update indices and unique
     # indices. The `counter`s and `set`s are not touched during save.
     #
-    # If the model is not valid, nil is returned. Otherwise, the
-    # persisted model is returned.
-    #
     # Example:
     #
     #   class User < Ohm::Model
     #     attribute :name
-    #
-    #     def validate
-    #       assert_present :name
-    #     end
     #   end
-    #
-    #   User.new(:name => nil).save
-    #   # => nil
     #
     #   u = User.new(:name => "John").save
     #   u.kind_of?(User)
     #   # => true
     #
     def save
-      return if not valid?
-      save!
-    end
-
-    # Saves the model without checking for validity. Refer to
-    # `Model#save` for more details.
-    def save!
       indices = {}
       model.indices.each { |field| indices[field] = Array(send(field)) }
 

@@ -84,15 +84,6 @@ test "counters are cleaned up during deletion" do
   assert_equal 0, e.key[:counters].exists
 end
 
-test "return the unsaved object if validation fails" do
-  assert Person.create(:name => nil).kind_of?(Person)
-end
-
-test "return false if the validation fails" do
-  event = Meetup.create(:name => "Ruby Tuesday")
-  assert !event.update(:name => nil)
-end
-
 test "get" do
   m = Meetup.create(:name => "Foo")
   m.name = "Bar"
