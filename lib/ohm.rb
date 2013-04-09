@@ -130,19 +130,19 @@ module Ohm
 
     # Wraps the whole pipelining functionality.
     def fetch(ids)
-      ids.each { |id| redis.write("HGETALL", namespace[id]) }
-
-      arr = redis.run
-
-      res = []
-
-      return res if arr.nil?
-
-      arr.each_with_index do |atts, idx|
-        res << model.new(Utils.dict(atts).update(:id => ids[idx]))
+      ids.each do |id|
+        redis.write("HGETALL", namespace[id])
       end
 
-      res
+      data = redis.run
+
+      return [] if data.nil?
+
+      [].tap do |result|
+        data.each_with_index do |atts, idx|
+          result << model.new(Utils.dict(atts).update(:id => ids[idx]))
+        end
+      end
     end
   end
 
