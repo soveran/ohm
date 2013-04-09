@@ -93,7 +93,7 @@ module Ohm
   # Examples:
   #
   #   Ohm.redis.call("SET", "foo", "bar")
-  #   Ohm.redis.flush
+  #   Ohm.redis.call("FLUSH")
   #
   def self.redis
     @redis ||= Redic.new
@@ -103,7 +103,7 @@ module Ohm
     @redis = redis
   end
 
-  # Wrapper for Ohm.redis.flushdb.
+  # Wrapper for Ohm.redis.call("FLUSHDB").
   def self.flush
     redis.call("FLUSHDB")
   end
