@@ -596,14 +596,14 @@ module Ohm
     def execute
       # namespace[:tmp] is where all the temp keys should be stored in.
       # redis will be where all the commands are executed against.
-      res = command.call(namespace[:tmp], redis)
+      response = command.call(namespace[:tmp], redis)
 
       begin
 
         # At this point, we have the final aggregated set, which we yield
         # to the caller. the caller can do all the normal set operations,
         # i.e. SCARD, SMEMBERS, etc.
-        yield res
+        yield response
 
       ensure
 
