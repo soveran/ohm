@@ -1239,7 +1239,7 @@ module Ohm
         v.nil?
       end
 
-      script(LUA_SAVE, 0,
+      response = script(LUA_SAVE, 0,
         { "name" => model.name,
           "id" => id,
           "key" => key
@@ -1249,13 +1249,15 @@ module Ohm
         uniques.to_msgpack
       )
 
-      return self
-    rescue RuntimeError => err
-      if err.message =~ /(UniqueIndexViolation: (\w+))/
-        raise UniqueIndexViolation, $1
-      else
-        raise err
+      if response.is_a?(RuntimeError)
+        if response.message =~ /(UniqueIndexViolation: (\w+))/
+          raise UniqueIndexViolation, $1
+        else
+          raise response
+        end
       end
+
+      return self
     end
 
     # Delete the model, including all the following keys:
