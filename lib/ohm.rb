@@ -1345,7 +1345,8 @@ module Ohm
       transaction do |t|
         _uniques = nil
         _indices = nil
-        existing = nil
+        existing_indices = nil
+        existing_uniques = nil
 
         t.watch(*_unique_keys)
 
@@ -1354,7 +1355,8 @@ module Ohm
         t.watch(key[:_uniques]) if model.uniques.any?
 
         t.read do
-          existing = _read_attributes(model.indices) if model.indices.any?
+          existing_indices = _read_attributes(model.indices) if model.indices.any?
+          existing_uniques = _read_attributes(model.uniques) if model.uniques.any?
           _uniques = db.hgetall(key[:_uniques])
           _indices = db.smembers(key[:_indices])
         end
@@ -1362,7 +1364,8 @@ module Ohm
         t.write do
           _delete_uniques(_uniques)
           _delete_indices(_indices)
-          _delete_existing_indices(existing)
+          _delete_existing_uniques(existing_uniques)
+          _delete_existing_indices(existing_indices)
           model.collections.each { |e| db.del(key[e]) }
           db.srem(model.key[:all], id)
           db.del(key[:counters])
