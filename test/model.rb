@@ -81,7 +81,7 @@ test "counters are cleaned up during deletion" do
   assert_equal 10, e.votes
 
   e.delete
-  assert_equal 0, e.key[:counters].exists
+  assert_equal 0, Event.redis.call("EXISTS", e.key[:counters])
 end
 
 test "get" do
@@ -104,7 +104,7 @@ test "set" do
   # Deletes when value is nil.
   m.set :name, nil
   m = Meetup[m.id]
-  assert_equal 0, m.key.hexists(:name)
+  assert_equal 0, Meetup.redis.call("HEXISTS", m.key, :name)
 end
 
 test "assign attributes from the hash" do
@@ -409,9 +409,12 @@ end
 
 test "work on lists" do
   post = Post.create :body => "Hello world!"
-  post.related.key.rpush(Post.create(:body => "C").id)
-  post.related.key.rpush(Post.create(:body => "B").id)
-  post.related.key.rpush(Post.create(:body => "A").id)
+
+  redis = Post.redis
+
+  redis.call("RPUSH", post.related.key, Post.create(:body => "C").id)
+  redis.call("RPUSH", post.related.key, Post.create(:body => "B").id)
+  redis.call("RPUSH", post.related.key, Post.create(:body => "A").id)
 
   res = post.related.sort_by(:body, :order => "ALPHA ASC").map { |r| r.body }
   assert_equal ["A", "B", "C"], res
@@ -500,10 +503,10 @@ test "remove an element if sent delete" do
   @event.attendees.add(@person2)
   @event.attendees.add(@person3)
 
-  assert_equal ["1", "2", "3"], @event.attendees.key.sort
+  assert_equal ["1", "2", "3"], Event.redis.call("SORT", @event.attendees.key)
 
-  @event.attendees.key.srem(@person2.id)
-  assert_equal ["1", "3"], Event[@event.id].attendees.key.sort
+  Event.redis.call("SREM", @event.attendees.key, @person2.id)
+  assert_equal ["1", "3"], Event.redis.call("SORT", Event[@event.id].attendees.key)
 end
 
 test "return true if the set includes some member" do
@@ -535,7 +538,8 @@ end
 test "empty the set" do
   @event.save
   @event.attendees.add(@person1)
-  @event.attendees.key.del
+
+  Event.redis.call("DEL", @event.attendees.key)
 
   assert @event.attendees.empty?
 end
@@ -603,7 +607,7 @@ test "remove an object from the set" do
   post = @user.posts.first
   assert @user.posts.include?(post)
 
-  @user.posts.key.srem(post.id)
+  User.redis.call("SREM", @user.posts.key, post.id)
   assert !@user.posts.include?(post)
 end
 
@@ -611,7 +615,7 @@ test "remove an object id from the set" do
   post = @user.posts.first
   assert @user.posts.include?(post)
 
-  @user.posts.key.srem(post.id)
+  User.redis.call("SREM", @user.posts.key, post.id)
   assert !@user.posts.include?(post)
 end
 
@@ -721,13 +725,13 @@ end
 
 test "allow changing the database" do
   Car.create(:name => "Twingo")
-  assert_equal ["1"], Car.all.key.smembers
+  assert_equal ["1"], Car.redis.call("SMEMBERS", Car.all.key)
 
   Car.redis = Redic.new("redis://127.0.0.1:6379")
-  assert_equal [], Car.all.key.smembers
+  assert_equal [], Car.redis.call("SMEMBERS", Car.all.key)
 
   Car.redis.call("SELECT", 15)
-  assert ["1"] == Car.all.key.smembers
+  assert_equal ["1"], Car.redis.call("SMEMBERS", Car.all.key)
 end
 
 # Persistence

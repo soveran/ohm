@@ -16,14 +16,17 @@ module Ohm
       @keys = []
     end
 
-    def call(nest, db)
-      newkey(nest) do |key|
-        db.call(@operation, key, *params(nest, db))
+    def call(nido, redis)
+      newkey(nido, redis) do |key|
+        redis.call(@operation, key, *params(nido, redis))
       end
     end
 
     def clean
-      keys.each { |key| key.del }
+      keys.each do |key, redis|
+        redis.call("DEL", key)
+      end
+
       subcommands.each { |cmd| cmd.clean }
     end
 
@@ -32,15 +35,16 @@ module Ohm
       args.select { |arg| arg.respond_to?(:call) }
     end
 
-    def params(nest, db)
-      args.map { |arg| arg.respond_to?(:call) ? arg.call(nest, db) : arg }
+    def params(nido, redis)
+      args.map { |arg| arg.respond_to?(:call) ? arg.call(nido, redis) : arg }
     end
 
-    def newkey(nest)
-      key = nest[SecureRandom.hex(32)]
-      keys << key
+    def newkey(nido, redis)
+      key = nido[SecureRandom.hex(32)]
+      keys << [key, redis]
 
-      yield  key
+      yield key
+
       return key
     end
   end

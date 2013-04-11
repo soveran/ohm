@@ -1,10 +1,10 @@
 # encoding: UTF-8
 
+require "msgpack"
+require "nido"
 require "redic"
 require "securerandom"
 require "ohm/command"
-require "ohm/nest"
-require "msgpack"
 
 module Ohm
   LUA_CACHE   = Hash.new { |h, k| h[k] = Hash.new }
@@ -683,14 +683,14 @@ module Ohm
     #   User.key.kind_of?(String)
     #   # => true
     #
-    #   User.key.kind_of?(Nest)
+    #   User.key.kind_of?(Nido)
     #   # => true
     #
-    # To find out more about Nest, see:
-    #   http://github.com/soveran/nest
+    # To find out more about Nido, see:
+    #   http://github.com/soveran/nido
     #
     def self.key
-      @key ||= Nest.new(self.name, redis)
+      @key ||= Nido.new(self.name)
     end
 
     # Retrieve a record by ID.
