@@ -472,6 +472,8 @@ module Ohm
       redis.call("SADD", key, model.id)
     end
 
+    alias_method :<<, :add
+
     # Remove a model directly from the set.
     #
     # Example:
