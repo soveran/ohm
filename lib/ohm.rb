@@ -113,7 +113,9 @@ module Ohm
 
     def each
       if block_given?
-        to_a.each { |element| yield element }
+        ids.each_slice(1000) do |slice|
+          fetch(slice).each { |e| yield(e) }
+        end
       else
         to_enum
       end
