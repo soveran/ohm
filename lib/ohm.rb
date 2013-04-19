@@ -787,7 +787,7 @@ module Ohm
       raise IndexNotFound unless uniques.include?(att)
 
       id = db.hget(key[:uniques][att], val)
-      id && self[id]
+      new(:id => id).load! if id
     end
 
     # Find values in indexed fields.
