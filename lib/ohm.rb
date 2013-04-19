@@ -669,7 +669,6 @@ module Ohm
   #
   class Model
     def self.redis=(redis)
-      @key = nil
       @redis = redis
     end
 
