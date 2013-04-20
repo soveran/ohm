@@ -64,7 +64,7 @@ test "removes the previous index when changing" do
   u.update(:email => "d@d.com")
 
   assert_equal nil, User.with(:email, "c@c.com")
-  assert_equal nil, User.redis.call("HGET", User.key[:unique][:email], "c@c.com")
+  assert_equal nil, User.redis.call("HGET", User.key[:uniques][:email], "c@c.com")
   assert_equal u, User.with(:email, "d@d.com")
 end
 
@@ -72,7 +72,7 @@ test "removes the previous index when deleting" do |u|
   u.delete
 
   assert_equal nil, User.with(:email, "a@a.com")
-  assert_equal nil, User.redis.call("HGET", User.key[:unique][:email], "a@a.com")
+  assert_equal nil, User.redis.call("HGET", User.key[:uniques][:email], "a@a.com")
 end
 
 test "unique virtual attribute" do
