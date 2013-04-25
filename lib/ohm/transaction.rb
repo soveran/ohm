@@ -38,7 +38,7 @@ module Ohm
   #   t1.append(t2)
   #   t1.commit(redis)
   #
-  # @see http://redis.io/topic/transactions Transactions in Redis.
+  # @see http://redis.io/topics/transactions Transactions in Redis.
   class Transaction
     class Store
       class EntryAlreadyExistsError < RuntimeError
