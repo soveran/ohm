@@ -21,7 +21,7 @@ require "ohm"
 #     end
 #
 class User < Ohm::Model
-  collection :orders, Order
+  collection :orders, :Order
 end
 
 # The product for our purposes will only contain a name.
@@ -41,8 +41,8 @@ class Order < Ohm::Model
   attribute :state
   index :state
 
-  reference :user, User
-  reference :product, Product
+  reference :user, :User
+  reference :product, :Product
 end
 
 ##### Testing what we have so far.
@@ -58,15 +58,26 @@ prepare { Ohm.flush }
 setup do
   @user = User.create
 
-  @ipod = Product.create(:name => "iPod")
-  @ipad = Product.create(:name => "iPad")
+  @ipod = Product.create(name: "iPod")
+  @ipad = Product.create(name: "iPad")
 
-  @pending =    Order.create(:user => @user, :state => "pending",
-                             :product => @ipod)
-  @authorized = Order.create(:user => @user, :state => "authorized",
-                             :product => @ipad)
-  @captured =   Order.create(:user => @user, :state => "captured",
-                             :product => @ipad)
+  @pending = Order.create(
+    user: @user,
+    state: "pending",
+    product: @ipod
+  )
+
+  @authorized = Order.create(
+    user: @user,
+    state: "authorized",
+    product:  @ipad
+  )
+
+  @captured = Order.create(
+    user: @user,
+    state: "captured",
+    product:  @ipad
+  )
 end
 
 # Now let's try and grab all pending orders, and also pending
@@ -74,31 +85,23 @@ end
 test "finding pending orders" do
   assert @user.orders.find(state: "pending").include?(@pending)
 
-  assert @user.orders.find(:state => "pending",
-                           :product_id => @ipod.id).include?(@pending)
+  assert @user.orders.find(state: "pending",
+                           product_id: @ipod.id).include?(@pending)
 
-  assert @user.orders.find(:state => "pending",
-                           :product_id => @ipad.id).empty?
+  assert @user.orders.find(state: "pending", product_id: @ipad.id).empty?
 end
 
-# Now we try and find captured and authorized orders. The tricky part
-# is trying to find an order that is either *captured* or *authorized*,
-# since `Ohm` as of this writing doesn't support unions in its
-# finder syntax.
+# Now we try and find captured and authorized orders.
+# Since now `Ohm` supports unions in its finder syntax,
+# it's really easy to do so.
 test "finding authorized and/or captured orders" do
-  assert @user.orders.find(:state => "authorized").include?(@authorized)
-  assert @user.orders.find(:state => "captured").include?(@captured)
+  assert @user.orders.find(state: "authorized").include?(@authorized)
+  assert @user.orders.find(state: "captured").include?(@captured)
 
-  assert @user.orders.find(:state => ["authorized", "captured"]).empty?
+  auth_or_capt =  @user.orders.find(state: "authorized").union(state: "captured")
 
-  auth_or_capt = @user.orders.key.volatile[:auth_or_capt]
-  auth_or_capt.sunionstore(
-    @user.orders.find(:state => "authorized").key,
-    @user.orders.find(:state => "captured").key
-  )
-
-  assert auth_or_capt.smembers.include?(@authorized.id)
-  assert auth_or_capt.smembers.include?(@captured.id)
+  assert auth_or_capt.include?(@authorized)
+  assert auth_or_capt.include?(@captured)
 end
 
 #### Creating shortcuts
@@ -106,11 +109,11 @@ end
 # You can of course define methods to make that code more readable.
 class User < Ohm::Model
   def authorized_orders
-    orders.find(:state => "authorized")
+    orders.find(state: "authorized")
   end
 
   def captured_orders
-    orders.find(:state => "captured")
+    orders.find(state: "captured")
   end
 end
 
@@ -125,29 +128,33 @@ end
 
 #### Chaining Kung-Fu
 
-# The `Ohm::Model::Set` takes a *Redis* key and a *class monad*
-# for its arguments.
+# The `Ohm::Set` takes a *Redis* key, a *namespace* and
+# an *Ohm model* for its arguments.
 #
-# We can simply subclass it and define the monad to always be an
-# `Order` so we don't have to manually set it everytime.
-class UserOrders < Ohm::Model::Set
+# We can simply subclass it and define the arguments
+# so we don't have to manually set them everytime.
+class UserOrders < Ohm::Set
+  attr :model
+
   def initialize(key)
-    super key, Ohm::Model::Wrapper.wrap(Order)
+    @model = Order
+
+    super(key, key, @model)
   end
 
   # Here is the crux of the chaining pattern. Instead of
-  # just doing a straight up `find(:state => "pending")`, we return
+  # just doing a straight up `find(state: "pending")`, we return
   # `UserOrders` again.
   def pending
-    self.class.new(model.index_key_for(:state, "pending"))
+    self.class.new(model.key[:indices][:state]["pending"])
   end
 
   def authorized
-    self.class.new(model.index_key_for(:state, "authorized"))
+    self.class.new(model.key[:indices][:state]["authorized"])
   end
 
   def captured
-    self.class.new(model.index_key_for(:state, "captured"))
+    self.class.new(model.key[:indices][:state]["captured"])
   end
 
   # Now we wrap the implementation of doing an `SUNIONSTORE` and also
@@ -156,27 +163,24 @@ class UserOrders < Ohm::Model::Set
   # NOTE: `volatile` just returns the key prepended with a `~:`, so in
   # this case it would be `~:Order:accepted`.
   def accepted
-    model.key.volatile[:accepted].sunionstore(
-      authorized.key, captured.key
-    )
-
-    self.class.new(model.key.volatile[:accepted])
+    Ohm::MultiSet.new(key, @model, Ohm::Command[:sunionstore, authorized.key, captured.key])
   end
 end
 
 # Now let's re-open the `User` class and add a customized `orders` method.
 class User < Ohm::Model
   def orders
-    UserOrders.new(Order.index_key_for(:user_id, id))
+    UserOrders.new(Order.key[:indices][:user_id][id])
   end
 end
 
 # Ok! Let's put all of that chaining code to good use.
 test "finding pending orders using a chainable style" do
   assert @user.orders.pending.include?(@pending)
-  assert @user.orders.pending.find(:product_id => @ipod.id).include?(@pending)
 
-  assert @user.orders.pending.find(:product_id => @ipad.id).empty?
+  assert @user.orders.pending.find(product_id: @ipod.id).include?(@pending)
+
+  assert @user.orders.pending.find(product_id: @ipad.id).empty?
 end
 
 test "finding authorized and/or captured orders using a chainable style" do
@@ -188,8 +192,8 @@ test "finding authorized and/or captured orders using a chainable style" do
 
   accepted = @user.orders.accepted
 
-  assert accepted.find(:product_id => @ipad.id).include?(@authorized)
-  assert accepted.find(:product_id => @ipad.id).include?(@captured)
+  assert accepted.find(product_id: @ipad.id).include?(@authorized)
+  assert accepted.find(product_id: @ipad.id).include?(@captured)
 end
 
 #### Conclusion
