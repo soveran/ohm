@@ -6,6 +6,7 @@ require "ostruct"
 
 class Post < Ohm::Model
   attribute :body
+  attribute :published
   set :related, Post
 end
 
@@ -56,6 +57,19 @@ class Invoice < Ohm::Model
   def _initialize_id
     @id = "_custom_id"
   end
+end
+
+test "booleans" do
+  post = Post.new(body: true, published: false)
+
+  post.save
+
+  assert_equal true, post.body
+  assert_equal false, post.published
+
+  post = Post[post.id]
+  assert_equal "1", post.body
+  assert_equal "0", post.published
 end
 
 test "customized ID" do
@@ -490,7 +504,6 @@ test "delete elements" do
   assert_equal 1, @event.attendees.size
 end
 
-
 test "not be available if the model is new" do
   assert_raise Ohm::MissingID do
     @event.attendees
@@ -781,142 +794,4 @@ test "poster-example for overriding writers" do
 
   a = Advertiser.new(:email => " FOO@BAR.COM ")
   assert_equal "foo@bar.com", a.email
-end
-
-__END__
-
-These are the vestigial tests for future reference
-
-def monitor
-  log = []
-
-  monitor = Thread.new do
-    Redis.connect.monitor do |line|
-      break if line =~ /ping/
-      log << line
-    end
-  end
-
-  sleep 0.01
-
-  log.clear.tap do
-    yield
-    Ohm.redis.ping
-    monitor.join
-  end
-end
-
-test "load attributes lazily" do |id|
-  event = Event[id]
-
-  log = monitor { event.name }
-
-  assert !log.empty?
-
-  log = monitor { event.name }
-
-  assert log.empty?
-end
-
-test "allow slicing the list" do
-  post1 = Post.create
-  post2 = Post.create
-  post3 = Post.create
-
-  @post.related << post1
-  @post.related << post2
-  @post.related << post3
-
-  assert post1 == @post.related[0]
-  assert post2 == @post.related[1]
-  assert post3 == @post.related[-1]
-
-  assert nil == @post.related[3]
-
-  assert [post2, post3] == @post.related[1, 2]
-  assert [post2, post3] == @post.related[1, -1]
-
-  assert [] == @post.related[4, 5]
-
-  assert [post2, post3] == @post.related[1..2]
-  assert [post2, post3] == @post.related[1..5]
-
-  assert [] == @post.related[4..5]
-end
-
-# Applying arbitrary transformations
-require "date"
-
-class MyActiveRecordModel
-  def self.find(id)
-    return new if id.to_i == 1
-  end
-
-  def id
-    1
-  end
-
-  def ==(other)
-    id == other.id
-  end
-end
-
-class ::Calendar < Ohm::Model
-  list :holidays, lambda { |v| Date.parse(v) }
-  list :subscribers, lambda { |id| MyActiveRecordModel.find(id) }
-  list :appointments, :Appointment
-
-  set :events, lambda { |id| MyActiveRecordModel.find(id) }
-end
-
-class ::Appointment < Ohm::Model
-  attribute :text
-  reference :subscriber, lambda { |id| MyActiveRecordModel.find(id) }
-end
-
-setup do
-  @calendar = Calendar.create
-
-  @calendar.holidays.key.rpush "2009-05-25"
-  @calendar.holidays.key.rpush "2009-07-09"
-
-  @calendar.subscribers << MyActiveRecordModel.find(1)
-
-  @calendar.events << MyActiveRecordModel.find(1)
-end
-
-test "apply a transformation" do
-  assert [Date.new(2009, 5, 25), Date.new(2009, 7, 9)] == @calendar.holidays.all
-
-  assert [1] == @calendar.subscribers.all.map { |model| model.id }
-  assert [MyActiveRecordModel.find(1)] == @calendar.subscribers.all
-end
-
-test "doing an each on lists" do
-  arr = []
-  @calendar.subscribers.each do |sub|
-    arr << sub
-  end
-
-  assert [MyActiveRecordModel.find(1)] == arr
-end
-
-test "doing an each on sets" do
-  arr = []
-  @calendar.events.each do |sub|
-    arr << sub
-  end
-
-  assert [MyActiveRecordModel.find(1)] == arr
-end
-
-test "allow lambdas in references" do
-  appointment = Appointment.create(:subscriber => MyActiveRecordModel.find(1))
-  assert MyActiveRecordModel.find(1) == appointment.subscriber
-end
-
-test "work with models too" do
-  @calendar.appointments.add(Appointment.create(:text => "Meet with Bertrand"))
-
-  assert [Appointment[1]] == Calendar[1].appointments.sort
 end
