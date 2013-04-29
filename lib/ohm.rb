@@ -133,10 +133,10 @@ module Ohm
     # Wraps the whole pipelining functionality.
     def fetch(ids)
       ids.each do |id|
-        redis.write("HGETALL", namespace[id])
+        redis.queue("HGETALL", namespace[id])
       end
 
-      data = redis.run
+      data = redis.commit
 
       return [] if data.nil?
 
@@ -207,11 +207,11 @@ module Ohm
     def replace(models)
       ids = models.map { |model| model.id }
 
-      redis.write("MULTI")
-      redis.write("DEL", key)
-      ids.each { |id| redis.write("RPUSH", key, id) }
-      redis.write("EXEC")
-      redis.run
+      redis.queue("MULTI")
+      redis.queue("DEL", key)
+      ids.each { |id| redis.queue("RPUSH", key, id) }
+      redis.queue("EXEC")
+      redis.commit
     end
 
     # Pushes the model to the _end_ of the list using RPUSH.
@@ -508,11 +508,11 @@ module Ohm
     def replace(models)
       ids = models.map { |model| model.id }
 
-      redis.write("MULTI")
-      redis.write("DEL", key)
-      ids.each { |id| redis.write("SADD", key, id) }
-      redis.write("EXEC")
-      redis.run
+      redis.queue("MULTI")
+      redis.queue("DEL", key)
+      ids.each { |id| redis.queue("SADD", key, id) }
+      redis.queue("EXEC")
+      redis.commit
     end
   end
 
