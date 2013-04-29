@@ -68,8 +68,9 @@ test "booleans" do
   assert_equal false, post.published
 
   post = Post[post.id]
+
   assert_equal "1", post.body
-  assert_equal "0", post.published
+  assert_equal nil, post.published
 end
 
 test "customized ID" do

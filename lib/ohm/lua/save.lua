@@ -81,7 +81,12 @@ end
 local function convertBooleans(list)
   for index, value in ipairs(list) do
     if type(value) == "boolean" then
-      list[index] = value and 1 or 0
+      if value then
+        list[index] = 1
+      else
+        list[index] = nil
+        list[index - 1] = nil
+      end
     end
   end
 end
