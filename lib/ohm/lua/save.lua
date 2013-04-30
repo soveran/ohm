@@ -78,21 +78,6 @@ if err then
   error("UniqueIndexViolation: " .. duplicates[1])
 end
 
-local function convertBooleans(list)
-  for index, value in ipairs(list) do
-    if type(value) == "boolean" then
-      if value then
-        list[index] = 1
-      else
-        list[index] = nil
-        list[index - 1] = nil
-      end
-    end
-  end
-end
-
-convertBooleans(attrs)
-
 save(model, attrs)
 
 remove_indices(model)
