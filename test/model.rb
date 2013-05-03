@@ -69,7 +69,7 @@ test "booleans" do
 
   post = Post[post.id]
 
-  assert_equal "1", post.body
+  assert_equal "true", post.body
   assert_equal nil, post.published
 end
 

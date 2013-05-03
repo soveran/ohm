@@ -937,6 +937,8 @@ module Ohm
       reader = :"#{name}_id"
       writer = :"#{name}_id="
 
+      attributes << reader unless attributes.include?(reader)
+
       index reader
 
       define_method(reader) do
@@ -1243,16 +1245,12 @@ module Ohm
 
       _initialize_id if new?
 
-      attrs = attributes.delete_if do |k, v|
-        v.nil?
-      end
-
       response = script(LUA_SAVE, 0,
         { "name" => model.name,
           "id" => id,
           "key" => key
         }.to_msgpack,
-        attrs.flatten.to_msgpack,
+        _sanitized_attributes.to_msgpack,
         indices.to_msgpack,
         uniques.to_msgpack
       )
@@ -1395,6 +1393,20 @@ module Ohm
 
     def _initialize_id
       @id = model.new_id.to_s
+    end
+
+    def _sanitized_attributes
+      result = []
+
+      model.attributes.each do |field|
+        val = send(field)
+
+        if val
+          result.push(field, val.to_s)
+        end
+      end
+
+      return result
     end
   end
 end
