@@ -1,6 +1,6 @@
 local model       = cmsgpack.unpack(ARGV[1])
 local uniques     = cmsgpack.unpack(ARGV[2])
-local collections = cmsgpack.unpack(ARGV[3])
+local tracked     = cmsgpack.unpack(ARGV[3])
 
 local function remove_indices(model)
   local memo = model.key .. ":_indices"
@@ -23,9 +23,9 @@ local function remove_uniques(model, uniques)
   end
 end
 
-local function remove_collections(model, collections)
-  for _, collection in ipairs(collections) do
-    local key = model.key .. ":" .. collection
+local function remove_tracked(model, tracked)
+  for _, tracked_key in ipairs(tracked) do
+    local key = model.key .. ":" .. tracked_key
 
     redis.call("DEL", key)
   end
@@ -45,7 +45,7 @@ end
 
 remove_indices(model)
 remove_uniques(model, uniques)
-remove_collections(model, collections)
+remove_tracked(model, tracked)
 delete(model)
 
 return model.id

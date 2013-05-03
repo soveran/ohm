@@ -838,7 +838,7 @@ module Ohm
     # to do it, you'll receive an Ohm::MissingID error.
     #
     def self.set(name, model)
-      collections << name unless collections.include?(name)
+      track(name)
 
       define_method name do
         model = Utils.const(self.class, model)
@@ -868,7 +868,7 @@ module Ohm
     # to do it, you'll receive an Ohm::MissingID error.
     #
     def self.list(name, model)
-      collections << name unless collections.include?(name)
+      track(name)
 
       define_method name do
         model = Utils.const(self.class, model)
@@ -1029,6 +1029,11 @@ module Ohm
 
         redis.call("HGET", key[:counters], name).to_i
       end
+    end
+
+    # Keep track of `key[name]` and remove when deleting the object.
+    def self.track(name)
+      tracked << name unless tracked.include?(name)
     end
 
     # An Ohm::Set wrapper for Model.key[:all].
@@ -1281,7 +1286,7 @@ module Ohm
           "key" => key
         }.to_msgpack,
         uniques.to_msgpack,
-        model.collections.to_msgpack
+        model.tracked.to_msgpack
       )
 
       return self
@@ -1346,8 +1351,8 @@ module Ohm
       @counters ||= []
     end
 
-    def self.collections
-      @collections ||= []
+    def self.tracked
+      @tracked ||= []
     end
 
     def self.attributes

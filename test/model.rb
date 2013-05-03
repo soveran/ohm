@@ -350,6 +350,7 @@ test "no leftover keys" do
   class ::Foo < Ohm::Model
     attribute :name
     index :name
+    track :notes
   end
 
   assert_equal [], Ohm.redis.call("KEYS", "*")
@@ -360,6 +361,18 @@ test "no leftover keys" do
   assert_equal expected.sort, Ohm.redis.call("KEYS", "*").sort
 
   Foo[1].delete
+  assert ["Foo:id"] == Ohm.redis.call("KEYS", "*")
+
+  Foo.create(:name => "Baz")
+
+  Ohm.redis.call("SET", Foo[2].key[:notes], "something")
+
+  expected = %w[Foo:2:_indices Foo:2 Foo:all Foo:id
+    Foo:indices:name:Baz Foo:2:notes]
+
+  assert_equal expected.sort, Ohm.redis.call("KEYS", "*").sort
+
+  Foo[2].delete
   assert ["Foo:id"] == Ohm.redis.call("KEYS", "*")
 end
 
