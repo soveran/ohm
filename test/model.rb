@@ -42,6 +42,10 @@ module SomeNamespace
   class Foo < Ohm::Model
     attribute :name
   end
+
+  class Bar < Ohm::Model
+    reference :foo, 'SomeNamespace::Foo'
+  end
 end
 
 class Meetup < Ohm::Model
@@ -779,9 +783,12 @@ end
 test "be persisted" do
   SomeNamespace::Foo.create(:name => "foo")
 
+  SomeNamespace::Bar.create(:foo  => SomeNamespace::Foo[1])
+
   assert "hash" == Ohm.redis.call("TYPE", "SomeNamespace::Foo:1")
 
   assert "foo" == SomeNamespace::Foo[1].name
+  assert "foo" == SomeNamespace::Bar[1].foo.name
 end
 
 test "typecast attributes" do

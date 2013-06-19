@@ -65,7 +65,8 @@ module Ohm
     #
     def self.const(context, name)
       case name
-      when Symbol then context.const_get(name)
+      when Symbol, String
+        context.const_get(name)
       else name
       end
     end
