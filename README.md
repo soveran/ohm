@@ -443,8 +443,7 @@ lookups.
 In the `Event` example, the index on the name attribute will
 allow for searches like `Event.find(:name => "some value")`.
 
-Note that the {Ohm::Model::Validations#assert_unique assert_unique}
-validation and the methods {Ohm::Model::Set#find find} and
+Note that the methods {Ohm::Model::Set#find find} and
 {Ohm::Model::Set#except except} need a corresponding index in order to work.
 
 ### Finding records
