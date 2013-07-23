@@ -52,6 +52,10 @@ If you don't have Ohm, try this:
 
     $ [sudo] gem install ohm
 
+If you are using rails, add this line to your application's Gemfile:
+
+    gem 'ohm'
+
 Or you can grab the code from [http://github.com/soveran/ohm][ohm].
 
 Now, in an irb session you can test the Redis adapter directly:
