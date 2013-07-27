@@ -143,6 +143,26 @@ module Ohm
   module Collection
     include Enumerable
 
+    def select(*atts)
+      return Enumerator.new(self, :select, *atts) unless block_given?
+      return super if atts.empty?
+
+      ids = key.sort(by: '#', get: ['#'] + atts.map { |att| "#{model.key}:*->#{att}" })
+        .select { |values| yield(*values.slice(1..-1)) }
+        .map { |values| values[0] }
+      fetch ids
+    end
+
+    def reject(*atts)
+      return Enumerator.new(self, :select, *atts) unless block_given?
+      return super if atts.empty?
+
+      ids = key.sort(by: '#', get: ['#'] + atts.map { |att| "#{model.key}:*->#{att}" })
+        .reject { |values| yield(*values.slice(1..-1)) }
+        .map { |values| values[0] }
+      fetch ids
+    end
+
     def each
       if block_given?
         ids.each_slice(1000) do |slice|
