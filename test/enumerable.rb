@@ -47,7 +47,7 @@ scope do
 
   test "reject using given attribute" do |john, jane|
     assert_equal 2, Contact.all.count
-    assert_equal [john], Contact.all.select(:name) { |name| name == 'John Doe' }
+    assert_equal [jane], Contact.all.reject(:name) { |name| name == 'John Doe' }
   end
 end
 
