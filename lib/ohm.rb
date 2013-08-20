@@ -143,23 +143,23 @@ module Ohm
   module Collection
     include Enumerable
 
-    def select(*atts)
-      return Enumerator.new(self, :select, *atts) unless block_given?
-      return super if atts.empty?
+    def select_using(*atts)
+      return Enumerator.new(self, :select_using, *atts) unless block_given?
 
       ids = key.sort(by: '#', get: ['#'] + atts.map { |att| "#{model.key}:*->#{att}" })
         .select { |values| yield(*values.slice(1..-1)) }
         .map { |values| values[0] }
+
       fetch ids
     end
 
-    def reject(*atts)
-      return Enumerator.new(self, :select, *atts) unless block_given?
-      return super if atts.empty?
+    def reject_using(*atts)
+      return Enumerator.new(self, :reject_using, *atts) unless block_given?
 
       ids = key.sort(by: '#', get: ['#'] + atts.map { |att| "#{model.key}:*->#{att}" })
         .reject { |values| yield(*values.slice(1..-1)) }
         .map { |values| values[0] }
+
       fetch ids
     end
 
