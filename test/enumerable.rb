@@ -34,6 +34,21 @@ scope do
     assert_equal 2, Contact.all.count
     assert_equal [john], Contact.all.select { |c| c.id == john.id }
   end
+
+  test "reject" do |john, jane|
+    assert_equal 2, Contact.all.count
+    assert_equal [jane], Contact.all.reject { |c| c.id == john.id }
+  end
+
+  test "select using given attributes" do |john, jane|
+    assert_equal 2, Contact.all.count
+    assert_equal [john], Contact.all.select_using(:name) { |name| name == 'John Doe' }
+  end
+
+  test "reject using given attributes" do |john, jane|
+    assert_equal 2, Contact.all.count
+    assert_equal [jane], Contact.all.reject_using(:name) { |name| name == 'John Doe' }
+  end
 end
 
 scope do
