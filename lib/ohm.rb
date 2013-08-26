@@ -1025,6 +1025,11 @@ module Ohm
     #   end
     #
     def self.attribute(name, cast = nil)
+      if self.method_defined?(name)
+        raise ArgumentError,
+          "'#{name}' is an instance method of #{self} and can't be used as an attribute name"
+      end
+
       attributes << name unless attributes.include?(name)
 
       if cast
