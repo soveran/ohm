@@ -1,7 +1,38 @@
-local model      = cmsgpack.unpack(ARGV[1])
-local attrs      = cmsgpack.unpack(ARGV[2])
-local indices    = cmsgpack.unpack(ARGV[3])
-local uniques    = cmsgpack.unpack(ARGV[4])
+-- This script receives four parameters, all encoded with
+-- MessagePack. The decoded values are used for saving a model
+-- instance in Redis, creating or updating a hash as needed and
+-- updating zero or more sets (indices) and zero or more hashes
+-- (unique indices).
+--
+-- # model
+--
+-- Table with three attributes:
+--    id (model instance id)
+--    key (hash where the attributes will be saved)
+--    name (model name)
+--
+-- # attrs
+--
+-- Array with attribute/value pairs.
+--
+-- # indices
+--
+-- Fields and values to be indexed. Each key in the indices
+-- table is mapped to an array of values. One index is created
+-- for each field/value pair.
+--
+-- # uniques
+--
+-- Fields and values to be indexed as unique. Unlike indices,
+-- values are not enumerable. If a field/value pair is not unique
+-- (i.e., if there was already a hash entry for that field and
+-- value), an error is returned with the UniqueIndexViolation
+-- message and the field that triggered the error.
+--
+local model   = cmsgpack.unpack(ARGV[1])
+local attrs   = cmsgpack.unpack(ARGV[2])
+local indices = cmsgpack.unpack(ARGV[3])
+local uniques = cmsgpack.unpack(ARGV[4])
 
 local function save(model, attrs)
   redis.call("SADD", model.name .. ":all", model.id)
