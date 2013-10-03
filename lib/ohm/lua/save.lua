@@ -77,12 +77,10 @@ local function unique(model, uniques)
   end
 end
 
-local function remove_uniques(model, uniques)
+local function remove_uniques(model)
   local memo = model.key .. ":_uniques"
 
-  for field, _ in pairs(uniques) do
-    local key = model.name .. ":uniques:" .. field
-
+  for _, key in pairs(redis.call("HKEYS", memo)) do
     redis.call("HDEL", key, redis.call("HGET", memo, key))
     redis.call("HDEL", memo, key)
   end

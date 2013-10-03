@@ -12,7 +12,7 @@ class User < Ohm::Model
   end
 
   def provider
-    email[/@(.*?).com/, 1]
+    email.to_s[/@(.*?).com/, 1]
   end
 end
 
@@ -66,6 +66,11 @@ test "removes the previous index when changing" do
   assert_equal nil, User.with(:email, "c@c.com")
   assert_equal nil, User.redis.call("HGET", User.key[:uniques][:email], "c@c.com")
   assert_equal u, User.with(:email, "d@d.com")
+
+  u.update(:email => nil)
+
+  assert_equal nil, User.with(:email, "d@d.com")
+  assert_equal nil, User.redis.call("HGET", User.key[:uniques][:email], "d@d.com")
 end
 
 test "removes the previous index when deleting" do |u|
