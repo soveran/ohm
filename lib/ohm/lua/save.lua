@@ -6,10 +6,11 @@
 --
 -- # model
 --
--- Table with three attributes:
---    id (model instance id)
---    key (hash where the attributes will be saved)
+-- Table with one or two attributes:
 --    name (model name)
+--    id (model instance id, optional)
+--
+-- If the id is not provided, it is treated as a new record.
 --
 -- # attrs
 --
