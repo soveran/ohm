@@ -1244,13 +1244,16 @@ module Ohm
       uniques = {}
       model.uniques.each { |field| uniques[field] = send(field) }
 
-      _initialize_id if new?
+      features = {
+        "name" => model.name
+      }
+
+      if defined?(@id)
+        features["id"] = @id
+      end
 
       response = script(LUA_SAVE, 0,
-        { "name" => model.name,
-          "id" => id,
-          "key" => key
-        }.to_msgpack,
+        features.to_msgpack,
         _sanitized_attributes.to_msgpack,
         indices.to_msgpack,
         uniques.to_msgpack
@@ -1263,6 +1266,8 @@ module Ohm
           raise response
         end
       end
+
+      @id = response
 
       return self
     end
@@ -1378,10 +1383,6 @@ module Ohm
       end
     end
 
-    def self.new_id
-      redis.call("INCR", key[:id])
-    end
-
     attr_writer :id
 
     def model
@@ -1390,10 +1391,6 @@ module Ohm
 
     def redis
       model.redis
-    end
-
-    def _initialize_id
-      @id = model.new_id.to_s
     end
 
     def _sanitized_attributes

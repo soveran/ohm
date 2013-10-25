@@ -35,6 +35,12 @@ local indices = cmsgpack.unpack(ARGV[3])
 local uniques = cmsgpack.unpack(ARGV[4])
 
 local function save(model, attrs)
+  if model.id == nil then
+    model.id = redis.call("INCR", model.name .. ":id")
+  end
+
+  model.key = model.name .. ":" .. model.id
+
   redis.call("SADD", model.name .. ":all", model.id)
   redis.call("DEL", model.key)
 

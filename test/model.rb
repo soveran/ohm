@@ -57,12 +57,6 @@ class Meetup < Ohm::Model
   end
 end
 
-class Invoice < Ohm::Model
-  def _initialize_id
-    @id = "_custom_id"
-  end
-end
-
 test "booleans" do
   post = Post.new(body: true, published: false)
 
@@ -75,15 +69,6 @@ test "booleans" do
 
   assert_equal "true", post.body
   assert_equal nil, post.published
-end
-
-test "customized ID" do
-  inv = Invoice.create
-  assert_equal "_custom_id", inv.id
-
-  i = Invoice.create(:id => "_diff_id")
-  assert_equal "_diff_id", i.id
-  assert_equal i, Invoice["_diff_id"]
 end
 
 test "empty model is ok" do
@@ -135,8 +120,8 @@ test "assign an ID and save the object" do
   event1 = Event.create(:name => "Ruby Tuesday")
   event2 = Event.create(:name => "Ruby Meetup")
 
-  assert "1" == event1.id
-  assert "2" == event2.id
+  assert 1 == event1.id
+  assert 2 == event2.id
 end
 
 test "updates attributes" do
@@ -286,8 +271,8 @@ test "assign a new id to the event" do
   assert !event1.new?
   assert !event2.new?
 
-  assert "1" == event1.id
-  assert "2" == event2.id
+  assert 1 == event1.id
+  assert 2 == event2.id
 end
 
 # Saving a model

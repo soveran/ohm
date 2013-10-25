@@ -33,12 +33,12 @@ end
 
 test "export a hash with the its id" do
   person = Venue.create(:name => "John Doe")
-  assert Hash[:id => '1'] == person.to_hash
+  assert_equal Hash[:id => 1], person.to_hash
 end
 
 test "return the merged attributes" do
   programmer = Programmer.create(:language => "Ruby")
-  expected_hash = { :id => '1', :language => 'Ruby' }
+  expected_hash = { :id => 1, :language => 'Ruby' }
 
   assert expected_hash == programmer.to_hash
 end
@@ -47,7 +47,7 @@ test "just be the to_hash of a model" do
   json = JSON.parse(Programmer.create(:language => "Ruby").to_json)
 
   assert ["id", "language"] == json.keys.sort
-  assert "1" == json["id"]
+  assert 1 == json["id"]
   assert "Ruby" == json["language"]
 end
 
