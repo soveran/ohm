@@ -774,7 +774,7 @@ test "be persisted" do
 
   assert "foo" == SomeNamespace::Foo[1].name
   assert "foo" == SomeNamespace::Bar[1].foo.name
-end
+end if RUBY_VERSION >= "2.0.0"
 
 test "typecast attributes" do
   class Option < Ohm::Model
