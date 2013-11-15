@@ -52,6 +52,27 @@ test "provides a separate connection for each thread" do
   assert conn1 != conn2
 end
 
+test "Use same connection for threads when passing an object" do
+  client = Redis.new(:url => "redis://localhost:6379/0")
+  Ohm.connect(client)
+  assert Ohm.redis == Ohm.redis
+
+  conn1, conn2 = nil
+
+  threads = []
+
+  threads << Thread.new do
+    conn1 = Ohm.redis
+  end
+
+  threads << Thread.new do
+    conn2 = Ohm.redis
+  end
+
+  threads.each { |t| t.join }
+  assert_equal conn1, conn2
+end
+
 test "supports connecting by URL" do
   Ohm.connect(:url => "redis://localhost:9876")
 
@@ -86,6 +107,12 @@ test "issue #46" do
   Thread.new { b2 = B.create }.join
 
   assert_equal [b1, b2], B.all.sort.to_a
+end
+
+test "accepts and uses object as redis client" do
+  client = Redis.new(:url => "redis://localhost:6379/0")
+  conn = Ohm::Connection.new(:foo, client)
+  assert_equal client, conn.redis
 end
 
 test "model can define its own connection" do

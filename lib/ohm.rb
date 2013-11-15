@@ -98,7 +98,11 @@ module Ohm
     end
 
     def redis
-      threaded[context] ||= Redis.connect(options)
+      if options.kind_of? Hash
+        threaded[context] ||= Redis.connect(options)
+      else
+        options
+      end
     end
 
     def threaded
