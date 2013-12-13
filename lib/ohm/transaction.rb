@@ -107,7 +107,7 @@ module Ohm
         store = Store.new
 
         if phase[:watch].any?
-          db.watch(*phase[:watch])
+          db.watch(phase[:watch])
         end
 
         run(phase[:read], store)
