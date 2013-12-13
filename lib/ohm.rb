@@ -149,7 +149,7 @@ module Ohm
           fetch(slice).each { |e| yield(e) }
         end
       else
-        Enumerator.new(self, :each)
+        to_enum
       end
     end
 
