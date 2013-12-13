@@ -64,6 +64,7 @@ test "#except" do |john, jane|
   res = User.all.except(:status => "inactive")
 
   assert_equal 2, res.size
+  assert res.include?(john)
   assert res.include?(jane)
 end
 
