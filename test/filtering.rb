@@ -68,6 +68,20 @@ test "#except" do |john, jane|
   assert res.include?(jane)
 end
 
+test "#except unions keys when passing an array" do |john, jane|
+  expected = User.create(:fname => "Jean", :status => "inactive")
+
+  res = User.find(:status => "inactive").except(:fname => [john.fname, jane.fname])
+
+  assert_equal 1, res.size
+  assert res.include?(expected)
+
+  res = User.all.except(:fname => [john.fname, jane.fname])
+
+  assert_equal 1, res.size
+  assert res.include?(expected)
+end
+
 test "indices bug related to a nil attribute" do |john, jane|
   # First we create a record with a nil attribute
   out = User.create(:status => nil, :lname => "Doe")
