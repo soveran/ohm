@@ -14,11 +14,4 @@ module Ohm
       to_a.to_json(*args)
     end
   end
-
-  class List
-    # Sugar for to_a.to_json for lists.
-    def to_json(*args)
-      to_a.to_json(*args)
-    end
-  end
 end
