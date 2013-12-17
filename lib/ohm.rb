@@ -166,7 +166,6 @@ module Ohm
     def size
       redis.call("LLEN", key)
     end
-    alias :count :size
 
     # Returns the first element of the list using LINDEX.
     def first
@@ -342,7 +341,6 @@ module Ohm
     def size
       execute { |key| redis.call("SCARD", key) }
     end
-    alias :count :size
 
     # Syntactic sugar for `sort_by` or `sort` when you only need the
     # first element.
