@@ -31,6 +31,10 @@
         reference :foo, "SomeNamespace::Foo"
       end
 
+- Nest dependency has been removed. Now, Ohm uses Nido
+	(https://github.com/soveran/nido) to generate the keys that hold
+	the data.
+
 - Scrivener dependency has been removed.
 
 - Ohm no longer supports model validations and favors filter validation
