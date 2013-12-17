@@ -1,5 +1,23 @@
 (unreleased)
 
+- Change Ohm::MultiSet#except to union keys instead of intersect them
+  when passing an array.
+
+      class User < Ohm::Model
+        attribute :name
+      end
+
+      john = User.create(:name => "John")
+      jane = User.create(:name => "Jane")
+
+      res = User.all.except(:name => [john.name, jane.name])
+
+      # before
+      res.size # => 2
+
+      # now
+      res.size # => 0
+
 - Ohm::Model#reference accepts strings as model references. For example:
 
       class Bar < Ohm::Model
