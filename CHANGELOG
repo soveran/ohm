@@ -24,6 +24,12 @@
         reference :foo, 'SomeNamespace::Foo'
       end
 
+- Scrivener dependency has been removed.
+
+- Ohm no longer supports model validations and favors filter validation
+	on the boundary layer. Check Scrivener project
+	(https://github.com/soveran/scrivener) for more information.
+
 - Ohm::Model#transaction has been removed.
 
 - Ohm::Transaction has been removed.
