@@ -1,3 +1,7 @@
+(unreleased)
+
+- Remove `Ohm::Transaction`.
+
 1.3.2
 
 - Fetching a batch of objects is now done in batches of 1000 objects at
