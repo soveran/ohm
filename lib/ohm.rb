@@ -1157,6 +1157,21 @@ module Ohm
       @attributes[att] = val
     end
 
+    # Returns +true+ if the model is not persisted. Otherwise, returns +false+.
+    #
+    # Example:
+    #
+    #   class User < Ohm::Model
+    #     attribute :name
+    #   end
+    #
+    #   u = User.new(:name => "John")
+    #   u.new?
+    #   # => true
+    #
+    #   u.save
+    #   u.new?
+    #   # => false
     def new?
       !defined?(@id)
     end
