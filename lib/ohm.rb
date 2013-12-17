@@ -394,7 +394,7 @@ module Ohm
     #   end
     #
     #   class User < Ohm::Model
-    #     set :posts, "Post"
+    #     set :posts, :Post
     #   end
     #
     #   user = User.create

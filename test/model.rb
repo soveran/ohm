@@ -7,12 +7,12 @@ require "ostruct"
 class Post < Ohm::Model
   attribute :body
   attribute :published
-  set :related, Post
+  set :related, :Post
 end
 
 class User < Ohm::Model
   attribute :email
-  set :posts, Post
+  set :posts, :Post
 end
 
 class Person < Ohm::Model
@@ -28,7 +28,7 @@ end
 class Event < Ohm::Model
   attribute :name
   counter :votes
-  set :attendees, Person
+  set :attendees, :Person
 
   attribute :slug
 
@@ -307,8 +307,8 @@ end
 test "delete an existing model" do
   class ModelToBeDeleted < Ohm::Model
     attribute :name
-    set :foos, Post
-    set :bars, Post
+    set :foos, :Post
+    set :bars, :Post
   end
 
   @model = ModelToBeDeleted.create(:name => "Lorem")
