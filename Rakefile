@@ -1,5 +1,3 @@
-require "rake/testtask"
-
 REDIS_DIR = File.expand_path(File.join("..", "test"), __FILE__)
 REDIS_CNF = File.join(REDIS_DIR, "test.conf")
 REDIS_PID = File.join(REDIS_DIR, "db", "redis.pid")
