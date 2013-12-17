@@ -682,7 +682,7 @@ module Ohm
       @redis ||= Redic.new(Ohm.redis.url)
     end
 
-    # The namespace for all the keys generated using this model.
+    # Returns the namespace for all the keys generated using this model.
     #
     # Example:
     #
@@ -1054,21 +1054,8 @@ module Ohm
       new(atts).save
     end
 
-    # Manipulate the Redis hash of attributes directly.
-    #
-    # Example:
-    #
-    #   class User < Ohm::Model
-    #     attribute :name
-    #   end
-    #
-    #   u = User.create(:name => "John")
-    #   u.key.hget(:name)
-    #   # => John
-    #
-    # For more details see
-    #   http://github.com/soveran/nest
-    #
+    # Returns the namespace for the keys generated using this model.
+    # Check `Ohm::Model.key` documentation for more details.
     def key
       model.key[id]
     end
