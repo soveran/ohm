@@ -1188,6 +1188,20 @@ module Ohm
     end
     alias :eql? :==
 
+    # Returns a hash of the attributes with their names as keys
+    # and the values of the attributes as values. It doesn't
+    # include the ID of the model.
+    #
+    # Example:
+    #
+    #   class User < Ohm::Model
+    #     attribute :name
+    #   end
+    #
+    #   u = User.create(:name => "John")
+    #   u.attributes
+    #   # => { :name => "John" }
+    #
     def attributes
       @attributes
     end
