@@ -1,5 +1,9 @@
 (unreleased)
 
+- Include Ohm::BasicSet#exists? in the public API. This makes possible
+	to check if an id is included in a set. Check Ohm::BasicSet#exists?
+	documentation for more details.
+
 - Change Ohm::MultiSet#except to union keys instead of intersect them
   when passing an array.
 
@@ -21,7 +25,7 @@
 - Ohm::Model#reference accepts strings as model references. For example:
 
       class Bar < Ohm::Model
-        reference :foo, 'SomeNamespace::Foo'
+        reference :foo, "SomeNamespace::Foo"
       end
 
 - Scrivener dependency has been removed.
