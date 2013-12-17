@@ -51,10 +51,6 @@ end
 class Meetup < Ohm::Model
   attribute :name
   attribute :location
-
-  def validate
-    assert_present :name
-  end
 end
 
 test "booleans" do

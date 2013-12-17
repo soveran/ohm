@@ -8,18 +8,10 @@ require "ohm/json"
 class Venue < Ohm::Model
   attribute :name
   list :programmers, :Programmer
-
-  def validate
-    assert_present :name
-  end
 end
 
 class Programmer < Ohm::Model
   attribute :language
-
-  def validate
-    assert_present :language
-  end
 
   def to_hash
     super.merge(:language => language)

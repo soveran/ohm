@@ -7,8 +7,7 @@ Description
 -----------
 
 Ohm is a library for storing objects in [Redis][redis], a persistent key-value
-database. It includes an extensible list of validations and has very good
-performance.
+database. It has very good performance.
 
 Community
 ---------
@@ -16,7 +15,6 @@ Community
 Join the mailing list: [http://groups.google.com/group/ohm-ruby](http://groups.google.com/group/ohm-ruby)
 
 Meet us on IRC: [#ohm](irc://chat.freenode.net/#ohm) on [freenode.net](http://freenode.net/)
-
 
 Related projects
 ----------------
@@ -131,10 +129,6 @@ class Event < Ohm::Model
   counter :votes
 
   index :name
-
-  def validate
-    assert_present :name
-  end
 end
 
 class Venue < Ohm::Model
@@ -170,7 +164,7 @@ Event.all
 ```
 
 This example shows some basic features, like attribute declarations and
-validations. Keep reading to find out what you can do with models.
+querying. Keep reading to find out what you can do with models.
 
 Attribute types
 ---------------
@@ -223,26 +217,15 @@ Persistence strategy
 --------------------
 
 The attributes declared with `attribute` are only persisted after
-calling `save`. If the object is in an invalid state, no value is sent
-to Redis (see the section on **Validations** below).
+calling `save`.
 
 Operations on attributes of type `list`, `set` and `counter` are
 possible only after the object is created (when it has an assigned
 `id`). Any operation on these kinds of attributes is performed
-immediately, without running the object validations. This design yields
-better performance than running the validations on each operation or
-buffering the operations and waiting for a call to `save`.
+immediately. This design yields better performance than buffering
+the operations and waiting for a call to `save`.
 
 For most use cases, this pattern doesn't represent a problem.
-If you need to check for validity before operating on lists, sets or
-counters, you can use this pattern:
-
-```ruby
-if event.valid?
-  event.comments.add(Comment.create(:body => "Great event!"))
-end
-```
-
 If you are saving the object, this will suffice:
 
 ```ruby
@@ -497,131 +480,6 @@ u == User.with(:email, "foo@bar.com")
 
 User.create(email: "foo@bar.com")
 # => raises Ohm::UniqueIndexViolation
-```
-
-Validations
------------
-
-Before every save, the `validate` method is called by Ohm. In the method
-definition you can use assertions that will determine if the attributes
-are valid. Nesting assertions is a good practice, and you are also
-encouraged to create your own assertions. You can trigger validations at
-any point by calling `valid?` on a model instance.
-
-Assertions
------------
-
-Ohm ships with some basic assertions. Check Ohm::Validations to see
-the method definitions.
-
-### assert
-
-The `assert` method is used by all the other assertions. It pushes the
-second parameter to the list of errors if the first parameter evaluates
-to false.
-
-```ruby
-def assert(value, error)
-  value or errors.push(error) && false
-end
-```
-
-### assert_present
-
-Checks that the given field is not nil or empty. The error code for this
-assertion is `:not_present`.
-
-```ruby
-assert_present :name
-```
-
-### assert_format
-
-Checks that the given field matches the provided format. The error code
-for this assertion is :format.
-
-```ruby
-assert_format :username, /^\w+$/
-```
-
-### assert_numeric
-
-Checks that the given field holds a number as a Fixnum or as a string
-representation. The error code for this assertion is :not_numeric.
-
-```ruby
-assert_numeric :votes
-```
-
-### assert_url
-
-Provides a pretty general URL regular expression match. An important
-point to make is that this assumes that the URL should start with
-`http://` or `https://`. The error code for this assertion is
-`:not_url`.
-
-### assert_email
-
-In this current day and age, almost all web applications need to
-validate an email address. This pretty much matches 99% of the emails
-out there. The error code for this assertion is `:not_email`.
-
-### assert_member
-
-Checks that a given field is contained within a set of values (i.e.
-like an `ENUM`).
-
-``` ruby
-def validate
-  assert_member :state, %w{pending paid delivered}
-end
-```
-
-The error code for this assertion is `:not_valid`
-
-### assert_length
-
-Checks that a given field's length falls under a specified range.
-
-``` ruby
-def validate
-  assert_length :username, 3..20
-end
-```
-
-The error code for this assertion is `:not_in_range`.
-
-### assert_decimal
-
-Checks that a given field looks like a number in the human sense
-of the word. Valid numbers are: 0.1, .1, 1, 1.1, 3.14159, etc.
-
-The error code for this assertion is `:not_decimal`.
-
-Errors
-------
-
-When an assertion fails, the error report is added to the errors array.
-Each error report contains two elements: the field where the assertion
-was issued and the error code.
-
-### Validation example
-
-Given the following example:
-
-```ruby
-def validate
-  assert_present :foo
-  assert_numeric :bar
-  assert_format :baz, /^\d{2}$/
-end
-```
-
-If all the assertions fail, the following errors will be present:
-
-```ruby
-obj.errors
-# => { foo: [:not_present], bar: [:not_numeric], baz: [:format] }
 ```
 
 Ohm Extensions
