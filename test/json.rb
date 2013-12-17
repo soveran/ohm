@@ -1,6 +1,5 @@
 require_relative 'helper'
 
-require "json"
 require "ohm/json"
 
 class Venue < Ohm::Model
