@@ -41,6 +41,11 @@
 	on the boundary layer. Check Scrivener project
 	(https://github.com/soveran/scrivener) for more information.
 
+- Redis dependency has been removed. Now, Ohm uses Redic
+	(https://github.com/amakawa/redic), a lightweight Redis client.
+	Redic uses the hiredis gem for the connection and for parsing
+	the replies. Check Redic's README for more details.
+
 - Ohm::Model#transaction has been removed.
 
 - Ohm::Transaction has been removed.
