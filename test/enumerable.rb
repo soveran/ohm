@@ -12,14 +12,14 @@ scope do
     [john, jane]
   end
 
-  test "Set#count doesn't do each" do
+  test "Set#size doesn't do each" do
     set = Contact.all
 
     def set.each
       raise "Failed"
     end
 
-    assert_equal 2, set.count
+    assert_equal 2, set.size
   end
 
   test "Set#each as an Enumerator" do |john, jane|
@@ -67,13 +67,13 @@ scope do
     end
   end
 
-  test "List#count doesn't do each" do |post, c1, c2|
+  test "List#size doesn't do each" do |post, c1, c2|
     list = post.comments
 
     def list.each
       raise "Failed"
     end
 
-    assert_equal 2, list.count
+    assert_equal 2, list.size
   end
 end
