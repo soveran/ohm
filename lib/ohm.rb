@@ -57,10 +57,11 @@ module Ohm
     #   end
     #
     #   Instead of relying on some clever `const_missing` hack, we can
-    #   simply use a Symbol.
+    #   simply use a symbol or a string.
     #
     #   class Comment < Ohm::Model
     #     reference :user, :User
+    #     reference :post, "Post"
     #   end
     #
     def self.const(context, name)
