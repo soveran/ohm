@@ -386,11 +386,29 @@ module Ohm
       model[id] if exists?(id)
     end
 
-  private
+    # Returns +true+ if +id+ is included in the set. Otherwise, returns +false+.
+    #
+    # Example:
+    #
+    #   class Post < Ohm::Model
+    #   end
+    #
+    #   class User < Ohm::Model
+    #     set :posts, "Post"
+    #   end
+    #
+    #   user = User.create
+    #   post = Post.create
+    #   user.posts.add(post)
+    #
+    #   user.posts.exists?('nonexistent') # => false
+    #   user.posts.exists?(post.id)       # => true
+    #
     def exists?(id)
       execute { |key| redis.call("SISMEMBER", key, id) == 1 }
     end
 
+  private
     def to_key(att)
       if model.counters.include?(att)
         namespace["*:counters->%s" % att]
