@@ -340,7 +340,11 @@ module Ohm
 
     # Returns the total size of the set using SCARD.
     def size
-      execute { |key| redis.call("SCARD", key) }
+      if block_given?
+        to_a.count { |*args| yield(*args) }
+      else
+        execute { |key| redis.call("SCARD", key) }
+      end
     end
     alias :count :size
 

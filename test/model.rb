@@ -801,3 +801,10 @@ test "poster-example for overriding writers" do
   a = Advertiser.new(:email => " FOO@BAR.COM ")
   assert_equal "foo@bar.com", a.email
 end
+
+test "#count respects blocks" do
+  Post.create(:published => true)
+  Post.create(:published => false)
+
+  assert_equal 1, Post.all.count(&:published)
+end
