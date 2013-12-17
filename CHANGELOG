@@ -1,6 +1,13 @@
 (unreleased)
 
+- Ohm::Model#reference accepts strings as model references. For example:
+
+      class Bar < Ohm::Model
+        reference :foo, 'SomeNamespace::Foo'
+      end
+
 - Ohm::Model#transaction has been removed.
+
 - Ohm::Transaction has been removed.
 
 1.3.2
