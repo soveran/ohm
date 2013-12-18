@@ -79,7 +79,7 @@ Ohm.redis.call "GET", "Foo"
 # => "Bar"
 ```
 
-Ohm defaults to a Redic's connection to "redis://127.0.0.1:6379". The
+Ohm defaults to a Redic connection to "redis://127.0.0.1:6379". The
 example above could be rewritten as:
 
 ```ruby
@@ -91,7 +91,7 @@ Ohm.redis.call "GET", "Foo"
 # => "Bar"
 ```
 
-All Ohm models inherits the same connection settings from `Ohm.redis`.
+All Ohm models inherit the same connection settings from `Ohm.redis`.
 For cases where certain models need to connect to different databases,
 they simple have to override that, i.e.
 
@@ -153,8 +153,8 @@ Event[2]
 # => nil
 
 # Finding all the events
-Event.all
-# => [#<Event @values={:id=>1, :name=>"Ohm Worldwide Conference 2031"}>]
+Event.all.to_a
+# => [<Event:1 name='Ohm Worldwide Conference 2031'>]
 ```
 
 This example shows some basic features, like attribute declarations and
