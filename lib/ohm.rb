@@ -1041,7 +1041,7 @@ module Ohm
     #   u = User.create
     #   u.incr :points
     #
-    #   Ohm.redis.hget "User:1:counters", "points"
+    #   u.points
     #   # => 1
     #
     # Note: You can't use counters until you save the model. If you
