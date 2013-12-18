@@ -56,61 +56,55 @@ Now, in an irb session you can test the Redis adapter directly:
 
     >> require "ohm"
     => true
-    >> Ohm.connect
-    => []
-    >> Ohm.redis.set "Foo", "Bar"
+    >> Ohm.redis.call "SET", "Foo", "Bar"
     => "OK"
-    >> Ohm.redis.get "Foo"
+    >> Ohm.redis.call "GET", "Foo"
     => "Bar"
 
-## Connecting to the Redis database
+## Connecting to a Redis database
 
-There are a couple of different strategies for connecting to your Redis
-database. The first is to explicitly set the `:host`, `:port`, `:db` and
-`:timeout` options. You can also set only a few of them, and let the other
-options fall back to the default.
+Ohm uses a lightweight Redis client called [Redic][redic]. To connect
+to a Redis database, you will need to set an instance of `Redic`, with
+an URL of the form `redis://:<passwd>@<host>:<port>/<db>`, through the
+`Ohm.redis=` method, e.g.
 
-The other noteworthy style of connecting is by just doing `Ohm.connect` and
-set the environment variable `REDIS_URL`.
+```ruby
+require "ohm"
 
-Here are the options for {Ohm.connect} in detail:
+Ohm.redis = Redic.new("redis://127.0.0.1:6379")
 
-### :url (recommended)
+Ohm.redis.call "SET", "Foo", "Bar"
 
-A Redis URL of the form `redis://:<passwd>@<host>:<port>/<db>`.
-Note that if you specify a URL and one of the other options at
-the same time, the other options will take precedence. Also, if
-you try and do `Ohm.connect` without any arguments, it will check
-if `ENV["REDIS_URL"]` is set, and will use it as the argument for
-`:url`.
+Ohm.redis.call "GET", "Foo"
+# => "Bar"
+```
 
-### :host
+Ohm defaults to a Redic's connection to "redis://127.0.0.1:6379". The
+example above could be rewritten as:
 
-Host where the Redis server is running, defaults to `"127.0.0.1"`.
+```ruby
+require "ohm"
 
-### :port
+Ohm.redis.call "SET", "Foo", "Bar"
 
-Port number, defaults to `6379`.
+Ohm.redis.call "GET", "Foo"
+# => "Bar"
+```
 
-### :db
+All Ohm models inherits the same connection settings from `Ohm.redis`.
+For cases where certain models need to connect to different databases,
+they simple have to override that, i.e.
 
-Database number, defaults to `0`.
+```ruby
+require "ohm"
 
-### :password
+Ohm.redis = Redic.new(ENV["REDIS_URL1"])
 
-It is the secret that will be sent to the Redis server. Use it if the server
-configuration requires it. Defaults to `nil`.
+class User < Ohm::Model
+end
 
-### :timeout
-
-Database timeout in seconds, defaults to `0`.
-
-### :thread_safe
-
-Initializes the client with a monitor. It has a small performance penalty, and
-it's off by default. For thread safety, it is recommended to use a different
-instance per thread. I you have no choice, then pass `:thread_safe => true`
-when connecting.
+User.redis = Redic.new(ENV["REDIS_URL2"])
+```
 
 Models
 ------
@@ -230,7 +224,7 @@ If you are saving the object, this will suffice:
 
 ```ruby
 if event.save
-  event.comments.add(Comment.create(:body => "Wonderful event!"))
+  event.comments.add(Comment.create(body: "Wonderful event!"))
 end
 ```
 
@@ -250,7 +244,7 @@ You can add instances of `Person` to the set of attendees with the
 `add` method:
 
 ```ruby
-event.attendees.add(Person.create(:name => "Albert"))
+event.attendees.add(Person.create(name: "Albert"))
 
 # And now...
 event.attendees.each do |person|
@@ -300,7 +294,7 @@ and it's within the current model you are sorting.
 
 ```ruby
 Post.all.sort_by(:title)     # SORT Post:all BY Post:*->title
-Post.all.sort(:by => :title) # SORT Post:all BY title
+Post.all.sort(by: :title) # SORT Post:all BY title
 ```
 
 __Tip:__ Unless you absolutely know what you're doing, use `sort`
@@ -315,10 +309,10 @@ the `:by` option, using {Ohm::Model::Collection#sort sort} and
 that `sort_by` does much of the hand-coding for you.
 
 ```ruby
-Post.all.sort_by(:title, :get => :title)
+Post.all.sort_by(:title, get: :title)
 # SORT Post:all BY Post:*->title GET Post:*->title
 
-Post.all.sort(:by => :title, :get => :title)
+Post.all.sort(by: :title, get: :title)
 # SORT Post:all BY title GET title
 ```
 
@@ -343,7 +337,7 @@ end
 
 After this, every time you refer to `post.comments` you will be talking
 about instances of the model `Comment`. If you want to get a list of IDs
-you can use `post.comments.key.smembers`.
+you can use `post.comments.ids`.
 
 ### References explained
 
@@ -374,7 +368,7 @@ The net effect here is we can conveniently set and retrieve `Post` objects,
 and also search comments using the `post_id` index.
 
 ```ruby
-Comment.find(:post_id => 1)
+Comment.find(post_id: 1)
 ```
 
 ### Collections explained
@@ -392,7 +386,7 @@ class Post < Ohm::Model
   attribute :body
 
   def comments
-    Comment.find(:post_id => self.id)
+    Comment.find(post_id: self.id)
   end
 end
 ```
@@ -424,7 +418,7 @@ any index declared, Ohm maintains different sets of objects IDs for quick
 lookups.
 
 In the `Event` example, the index on the name attribute will
-allow for searches like `Event.find(:name => "some value")`.
+allow for searches like `Event.find(name: "some value")`.
 
 Note that the methods {Ohm::Model::Set#find find} and
 {Ohm::Model::Set#except except} need a corresponding index in order to work.
@@ -435,23 +429,23 @@ You can find a collection of records with the `find` method:
 
 ```ruby
 # This returns a collection of users with the username "Albert"
-User.find(:username => "Albert")
+User.find(username: "Albert")
 ```
 
 ### Filtering results
 
 ```ruby
 # Find all users from Argentina
-User.find(:country => "Argentina")
+User.find(country: "Argentina")
 
 # Find all activated users from Argentina
-User.find(:country => "Argentina", :status => "activated")
+User.find(country: "Argentina", status: "activated")
 
 # Find all users from Argentina, except those with a suspended account.
-User.find(:country => "Argentina").except(:status => "suspended")
+User.find(country: "Argentina").except(status: "suspended")
 
 # Find all users both from Argentina and Uruguay
-User.find(:country => "Argentina").union(:country => "Uruguay")
+User.find(country: "Argentina").union(country: "Uruguay")
 ```
 
 Note that calling these methods results in new sets being created
@@ -495,10 +489,10 @@ make sure to check them if you need to extend Ohm's functionality.
 Upgrading
 =========
 
-The changes in Ohm 1 break the compatibility with previous versions.
-We will do our best to provide a script to ease the pain of upgrading.
-In the meantime, it's recommended that you use the new version only
-for new projects.
+Ohm 2 breaks the compatibility with previous versions. If you're upgrading an
+existing application, it's nice to have a good test coverage before going in.
+To know about fixes and changes, please refer to the CHANGELOG file.
 
 [redis]: http://redis.io
 [ohm]: http://github.com/soveran/ohm
+[redic]: https://github.com/amakawa/redic
