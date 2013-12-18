@@ -56,8 +56,8 @@ module Ohm
     #     reference :user, User # NameError undefined constant User.
     #   end
     #
-    #   Instead of relying on some clever `const_missing` hack, we can
-    #   simply use a symbol or a string.
+    #   # Instead of relying on some clever `const_missing` hack, we can
+    #   # simply use a symbol or a string.
     #
     #   class Comment < Ohm::Model
     #     reference :user, :User
