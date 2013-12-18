@@ -1,3 +1,63 @@
+(unreleased)
+
+- Include Ohm::BasicSet#exists? in the public API. This makes possible
+	to check if an id is included in a set. Check Ohm::BasicSet#exists?
+	documentation for more details.
+
+- Change Ohm::MultiSet#except to union keys instead of intersect them
+  when passing an array.
+
+      class User < Ohm::Model
+        attribute :name
+      end
+
+      john = User.create(:name => "John")
+      jane = User.create(:name => "Jane")
+
+      res = User.all.except(:name => [john.name, jane.name])
+
+      # before
+      res.size # => 2
+
+      # now
+      res.size # => 0
+
+- Move ID generation to Lua. With this change, it's no longer possible
+	to generate custom ids. All ids are autoincremented.
+
+- Ohm::Model#reference accepts strings as model references. For example:
+
+      class Bar < Ohm::Model
+        reference :foo, "SomeNamespace::Foo"
+      end
+
+- Nest dependency has been removed. Now, Ohm uses Nido
+	(https://github.com/soveran/nido) to generate the keys that hold
+	the data.
+
+- Scrivener dependency has been removed.
+
+- Ohm no longer supports model validations and favors filter validation
+	on the boundary layer. Check Scrivener project
+	(https://github.com/soveran/scrivener) for more information.
+
+- Redis dependency has been removed. Now, Ohm uses Redic
+	(https://github.com/amakawa/redic), a lightweight Redis client.
+	Redic uses the hiredis gem for the connection and for parsing
+	the replies. Check Redic's README for more details.
+
+- Ohm::Model#transaction has been removed.
+
+- Ohm::Transaction has been removed.
+
+1.3.2
+
+- Fetching a batch of objects is now done in batches of 1000 objects at
+  a time. If you are iterating over large collections, this change should
+  provide a significant performance boost both in used memory and total
+  execution time.
+- MutableSet#<< is now an alias for #add.
+
 1.3.1
 
 - Improve memory consumption when indexing persisted attributes.
