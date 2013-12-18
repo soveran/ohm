@@ -1,8 +1,5 @@
-# encoding: UTF-8
+require_relative 'helper'
 
-require File.expand_path("./helper", File.dirname(__FILE__))
-
-require "json"
 require "ohm/json"
 
 class Venue < Ohm::Model
@@ -13,50 +10,54 @@ end
 class Programmer < Ohm::Model
   attribute :language
 
+  index :language
+
   def to_hash
-    super.merge(:language => language)
+    super.merge(language: language)
   end
 end
 
-test "export an empty hash via to_hash" do
-  person = Venue.new
-  assert Hash.new == person.to_hash
+test "exports model.to_hash to json" do
+  assert_equal Hash.new, JSON.parse(Venue.new.to_json)
+
+  venue = Venue.create(name: "foo")
+  json  = JSON.parse(venue.to_json)
+  assert_equal venue.id, json["id"]
+  assert_equal nil, json["name"]
+
+  programmer = Programmer.create(language: "Ruby")
+  json = JSON.parse(programmer.to_json)
+
+  assert_equal programmer.id, json["id"]
+  assert_equal programmer.language, json["language"]
 end
 
-test "export a hash with the its id" do
-  person = Venue.create(:name => "John Doe")
-  assert_equal Hash[:id => 1], person.to_hash
-end
+test "exports a set to json" do
+  Programmer.create(language: "Ruby")
+  Programmer.create(language: "Python")
 
-test "return the merged attributes" do
-  programmer = Programmer.create(:language => "Ruby")
-  expected_hash = { :id => 1, :language => 'Ruby' }
+  expected = [{ id: "1", language: "Ruby" }, { id: "2", language: "Python"}].to_json
 
-  assert expected_hash == programmer.to_hash
-end
-
-test "just be the to_hash of a model" do
-  json = JSON.parse(Programmer.create(:language => "Ruby").to_json)
-
-  assert ["id", "language"] == json.keys.sort
-  assert 1 == json["id"]
-  assert "Ruby" == json["language"]
-end
-
-test "export an array of records to json" do
-  Programmer.create(:language => "Ruby")
-  Programmer.create(:language => "Python")
-
-  expected = [{ :id => "1", :language => "Ruby" }, { :id => "2", :language => "Python"}].to_json
   assert_equal expected, Programmer.all.to_json
 end
 
-test "export an array of lists to json" do
-  venue = Venue.create(:name => "Foo")
+test "exports a multiset to json" do
+  Programmer.create(language: "Ruby")
+  Programmer.create(language: "Python")
 
-  venue.programmers.push(Programmer.create(:language => "Ruby"))
-  venue.programmers.push(Programmer.create(:language => "Python"))
+  expected = [{ id: "1", language: "Ruby" }, { id: "2", language: "Python"}].to_json
+  result   = Programmer.find(language: "Ruby").union(language: "Python").to_json
 
-  expected = [{ :id => "1", :language => "Ruby" }, { :id => "2", :language => "Python"}].to_json
+  assert_equal expected, result
+end
+
+test "exports a list to json" do
+  venue = Venue.create(name: "Foo")
+
+  venue.programmers.push(Programmer.create(language: "Ruby"))
+  venue.programmers.push(Programmer.create(language: "Python"))
+
+  expected = [{ id: "1", language: "Ruby" }, { id: "2", language: "Python"}].to_json
+
   assert_equal expected, venue.programmers.to_json
 end
