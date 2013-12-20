@@ -703,6 +703,8 @@ end
 # Models connected to different databases
 class ::Car < Ohm::Model
   attribute :name
+
+  self.redis = Redic.new
 end
 
 class ::Make < Ohm::Model
@@ -711,7 +713,6 @@ end
 
 setup do
   Car.redis.call("SELECT", 15)
-  Car.redis.call("FLUSHDB")
 end
 
 test "save to the selected database" do

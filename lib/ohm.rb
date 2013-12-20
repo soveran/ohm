@@ -695,7 +695,7 @@ module Ohm
     end
 
     def self.redis
-      @redis ||= Redic.new(Ohm.redis.url)
+      @redis || Ohm.redis
     end
 
     # Returns the namespace for all the keys generated using this model.
