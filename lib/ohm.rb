@@ -695,7 +695,7 @@ module Ohm
     end
 
     def self.redis
-      @redis || Ohm.redis
+      defined?(@redis) ? @redis : Ohm.redis
     end
 
     # Returns the namespace for all the keys generated using this model.
