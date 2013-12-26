@@ -1,7 +1,3 @@
-# encoding: UTF-8
-
-$LOAD_PATH.unshift(File.expand_path(File.dirname(__FILE__) + "/../lib"))
-
 begin
   require "ruby-debug"
 rescue LoadError
@@ -18,7 +14,7 @@ end unless defined?(silence_warnings)
 
 $VERBOSE = true
 
-require "ohm"
+require_relative "../lib/ohm"
 
 Ohm.redis = Redic.new("redis://127.0.0.1:6379")
 
