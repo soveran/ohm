@@ -1,6 +1,5 @@
 require_relative 'helper'
-
-require "ohm/json"
+require_relative "../lib/ohm/json"
 
 class Venue < Ohm::Model
   attribute :name

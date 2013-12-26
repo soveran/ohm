@@ -4,7 +4,7 @@ require "msgpack"
 require "nido"
 require "redic"
 require "securerandom"
-require "ohm/command"
+require_relative "ohm/command"
 
 module Ohm
   LUA_CACHE   = Hash.new { |h, k| h[k] = Hash.new }
