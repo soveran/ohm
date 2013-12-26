@@ -12,10 +12,10 @@
         attribute :name
       end
 
-      john = User.create(:name => "John")
-      jane = User.create(:name => "Jane")
+      john = User.create(name: "John")
+      jane = User.create(name: "Jane")
 
-      res = User.all.except(:name => [john.name, jane.name])
+      res = User.all.except(name: [john.name, jane.name])
 
       # before
       res.size # => 2
@@ -26,7 +26,7 @@
 - Move ID generation to Lua. With this change, it's no longer possible
   to generate custom ids. All ids are autoincremented.
 
-- `Ohm::Model#reference` accepts strings as model references. For example:
+- `Ohm::Model#reference` accepts strings as model references.
 
       class Bar < Ohm::Model
         reference :foo, "SomeNamespace::Foo"
@@ -45,6 +45,8 @@
   more details.
 
 - `Ohm::Model#transaction` and `Ohm::Transaction` have been removed.
+
+- Ruby 1.8 support has been removed.
 
 [nido]: https://github.com/soveran/nido
 [scrivener]: https://github.com/soveran/scrivener
