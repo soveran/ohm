@@ -46,6 +46,26 @@
   to generate custom ids. All ids are autoincremented.
 
 
+- Add `Ohm::Model.track` method to allow track of custom keys. This key
+  is removed when the model is deleted.
+
+  Example:
+
+      class Foo < Ohm::Model
+        track :notes
+      end
+
+      foo = Foo.create
+
+      Foo.redis.call("SET", foo.key[:notes], "something")
+      Foo.redis.call("KEYS", "*").include?("Foo:1:notes")
+      # => true
+
+      foo.delete
+      Foo.redis.call("KEYS", "*").include?("Foo:1:notes")
+      # => false
+
+
 - `Ohm::Model#reference` accepts strings as model references.
 
   Example:
