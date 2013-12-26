@@ -5,6 +5,21 @@
   to check if an id is included in a set. Check `Ohm::BasicSet#exists?`
   documentation for more details.
 
+  Example:
+
+      class Post < Ohm::Model
+      end
+
+      class User < Ohm::Model
+        set :posts, :Post
+      end
+
+      user = User.create
+      user.posts.add(post = Post.create)
+
+      user.posts.exists?(post.id)       # => true
+      user.posts.exists?('nonexistent') # => false
+
 - Change `Ohm::MultiSet#except` to union keys instead of intersect them
   when passing an array.
 
@@ -45,12 +60,22 @@
   validations and favors filter validation on the boundary layer. Check
   [scrivener][scrivener] project for more information.
 
-- `redis` dependency has been removed. Now, Ohm uses [redic][redic],
+- `redis` dependency has been removed. Ohm 2 uses [redic][redic],
   a lightweight Redis client. Redic uses the `hiredis` gem for the
-  connection and for parsing the replies. Check Redic README for
-  more details.
+  connection and for parsing the replies. Now, it defaults to a
+  Redic connection to "redis://127.0.0.1:6379". To change it, you
+  will need to provide an instance of `Redic` through the `Ohm.redis=`
+  helper.
+
+  Example:
+
+      Ohm.redis = Redic.new("redis://:<passwd>@<host>:<port>/<db>")
+
+  Check Redic README for more details.
 
 - `Ohm::Model#transaction` and `Ohm::Transaction` have been removed.
+
+- Move `save` and `delete` operations to Lua scripts.
 
 - Ruby 1.8 support has been removed.
 
