@@ -20,6 +20,7 @@
       user.posts.exists?(post.id)       # => true
       user.posts.exists?('nonexistent') # => false
 
+
 - Change `Ohm::MultiSet#except` to union keys instead of intersect them
   when passing an array.
 
@@ -40,8 +41,10 @@
       # now
       res.size # => 0
 
+
 - Move ID generation to Lua. With this change, it's no longer possible
   to generate custom ids. All ids are autoincremented.
+
 
 - `Ohm::Model#reference` accepts strings as model references.
 
@@ -53,12 +56,33 @@
 
       Bar.create().foo.class # => SomeNamespace::Foo
 
+
+- `Ohm::Model#save` don't save values for attributes set to false.
+
+  Example:
+
+      class Post < Ohm::Model
+        attribute :published
+      end
+
+      post = Post.create(published: false)
+      post = Post[post.id]
+
+      # before
+      post.published # => "0"
+
+      # now
+      post.published # => nil
+
+
 - `nest` dependency has been removed. Now, Ohm uses [nido][nido]
   to generate the keys that hold the data.
+
 
 - `scrivener` dependency has been removed. Ohm no longer supports model
   validations and favors filter validation on the boundary layer. Check
   [scrivener][scrivener] project for more information.
+
 
 - `redis` dependency has been removed. Ohm 2 uses [redic][redic],
   a lightweight Redis client. Redic uses the `hiredis` gem for the
@@ -73,9 +97,12 @@
 
   Check Redic README for more details.
 
+
 - `Ohm::Model#transaction` and `Ohm::Transaction` have been removed.
 
+
 - Move `save` and `delete` operations to Lua scripts.
+
 
 - Ruby 1.8 support has been removed.
 
