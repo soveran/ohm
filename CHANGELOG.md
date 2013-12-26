@@ -1,10 +1,11 @@
 (unreleased)
+------------
 
-- Include Ohm::BasicSet#exists? in the public API. This makes possible
-	to check if an id is included in a set. Check Ohm::BasicSet#exists?
-	documentation for more details.
+- Include `Ohm::BasicSet#exists?` in the public API. This makes possible
+  to check if an id is included in a set. Check `Ohm::BasicSet#exists?`
+  documentation for more details.
 
-- Change Ohm::MultiSet#except to union keys instead of intersect them
+- Change `Ohm::MultiSet#except` to union keys instead of intersect them
   when passing an array.
 
       class User < Ohm::Model
@@ -23,34 +24,34 @@
       res.size # => 0
 
 - Move ID generation to Lua. With this change, it's no longer possible
-	to generate custom ids. All ids are autoincremented.
+  to generate custom ids. All ids are autoincremented.
 
-- Ohm::Model#reference accepts strings as model references. For example:
+- `Ohm::Model#reference` accepts strings as model references. For example:
 
       class Bar < Ohm::Model
         reference :foo, "SomeNamespace::Foo"
       end
 
-- Nest dependency has been removed. Now, Ohm uses Nido
-	(https://github.com/soveran/nido) to generate the keys that hold
-	the data.
+- `nest` dependency has been removed. Now, Ohm uses [nido][nido]
+  to generate the keys that hold the data.
 
-- Scrivener dependency has been removed.
+- `scrivener` dependency has been removed. Ohm no longer supports model
+  validations and favors filter validation on the boundary layer. Check
+  [scrivener][scrivener] project for more information.
 
-- Ohm no longer supports model validations and favors filter validation
-	on the boundary layer. Check Scrivener project
-	(https://github.com/soveran/scrivener) for more information.
+- `redis` dependency has been removed. Now, Ohm uses [redic][redic],
+  a lightweight Redis client. Redic uses the `hiredis` gem for the
+  connection and for parsing the replies. Check Redic README for
+  more details.
 
-- Redis dependency has been removed. Now, Ohm uses Redic
-	(https://github.com/amakawa/redic), a lightweight Redis client.
-	Redic uses the hiredis gem for the connection and for parsing
-	the replies. Check Redic's README for more details.
+- `Ohm::Model#transaction` and `Ohm::Transaction` have been removed.
 
-- Ohm::Model#transaction has been removed.
-
-- Ohm::Transaction has been removed.
+[nido]: https://github.com/soveran/nido
+[scrivener]: https://github.com/soveran/scrivener
+[redic]: https://github.com/amakawa/redic
 
 1.3.2
+-----
 
 - Fetching a batch of objects is now done in batches of 1000 objects at
   a time. If you are iterating over large collections, this change should
@@ -59,6 +60,7 @@
 - MutableSet#<< is now an alias for #add.
 
 1.3.1
+-----
 
 - Improve memory consumption when indexing persisted attributes.
 
@@ -66,10 +68,12 @@
   instances.
 
 1.3.0
+-----
 
 - Add Model.attributes.
 
 1.2.0
+-----
 
 - Enumerable fix.
 - Merge Ohm::PipelinedFetch into Ohm::Collection.
@@ -77,10 +81,12 @@
 - Change dependencies to use latest cutest.
 
 1.1.0
+-----
 
 - Compatible with redis-rb 3.
 
 1.0.0
+-----
 
 - Fetching a batch of objects is now done through one pipeline, effectively
   reducing the IO to just 2 operations (one for SMEMBERS / LRANGE, one for
