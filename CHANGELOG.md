@@ -8,6 +8,8 @@
 - Change `Ohm::MultiSet#except` to union keys instead of intersect them
   when passing an array.
 
+  Example:
+
       class User < Ohm::Model
         attribute :name
       end
@@ -28,9 +30,13 @@
 
 - `Ohm::Model#reference` accepts strings as model references.
 
+  Example:
+
       class Bar < Ohm::Model
         reference :foo, "SomeNamespace::Foo"
       end
+
+      Bar.create().foo.class # => SomeNamespace::Foo
 
 - `nest` dependency has been removed. Now, Ohm uses [nido][nido]
   to generate the keys that hold the data.
