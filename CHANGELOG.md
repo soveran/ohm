@@ -57,6 +57,26 @@
       Bar.create().foo.class # => SomeNamespace::Foo
 
 
+- `Ohm::Model#save` sanitizes attributes before sending to Lua.
+  This complies with the original spec in Ohm v1 where a `to_s`
+  is done on each value.
+
+  Example:
+
+      class Post < Ohm::Model
+        attribute :published
+      end
+
+      post = Post.create(published: true)
+      post = Post[post.id]
+
+      # before
+      post.published # => "1"
+
+      # now
+      post.published # => "true"
+
+
 - `Ohm::Model#save` don't save values for attributes set to false.
 
   Example:
