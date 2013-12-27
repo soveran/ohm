@@ -1,9 +1,10 @@
-# encoding: UTF-8
+require_relative 'helper'
 
-require File.expand_path("./helper", File.dirname(__FILE__))
+test "model inherits Ohm.redis connection by default" do
+  class C < Ohm::Model
+  end
 
-unless defined?(Redic::CannotConnectError)
-  Redic::CannotConnectError = Errno::ECONNREFUSED
+  assert_equal C.redis.url, Ohm.redis.url
 end
 
 test "model can define its own connection" do
@@ -12,11 +13,4 @@ test "model can define its own connection" do
   end
 
   assert B.redis.url != Ohm.redis.url
-end
-
-test "model inherits Ohm.redis connection by default" do
-  class C < Ohm::Model
-  end
-
-  assert_equal C.redis.url, Ohm.redis.url
 end
