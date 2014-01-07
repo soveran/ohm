@@ -16,7 +16,7 @@
       post.comments.push(Comment.create)
 
       post.comments.ids
-      # => [1, 2, 3]
+      # => ["1", "2", "3"]
 
 - Include `Ohm::BasicSet#exists?` in the public API. This makes possible
   to check if an id is included in a set. Check `Ohm::BasicSet#exists?`
@@ -35,7 +35,7 @@
       user.posts.add(post = Post.create)
 
       user.posts.exists?(post.id)       # => true
-      user.posts.exists?('nonexistent') # => false
+      user.posts.exists?("nonexistent") # => false
 
 
 - Change `Ohm::MultiSet#except` to union keys instead of intersect them
