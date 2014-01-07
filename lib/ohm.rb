@@ -270,9 +270,8 @@ module Ohm
   class BasicSet
     include Collection
 
-    # Allows you to sort by any field in your model.
-    #
-    # Example:
+    # Allows you to sort by any attribute in the hash, this doesn't include
+    # the +id+. If you want to sort by ID, use #sort.
     #
     #   class User < Ohm::Model
     #     attribute :name
