@@ -386,7 +386,27 @@ module Ohm
       end
     end
 
-    # Grab all the elements of this set using SMEMBERS.
+    # Returns an array with all the ID's of the set.
+    #
+    #   class Post < Ohm::Model
+    #   end
+    #
+    #   class User < Ohm::Model
+    #     attribute :name
+    #     index :name
+    #
+    #     set :posts, :Post
+    #   end
+    #
+    #   User.create(name: "John")
+    #   User.create(name: "Jane")
+    #
+    #   User.all.ids
+    #   # => [1, 2]
+    #
+    #   User.find(name: "John").union(name: "Jane").ids
+    #   # => [1, 2]
+    #
     def ids
       execute { |key| redis.call("SMEMBERS", key) }.map(&:to_i)
     end
