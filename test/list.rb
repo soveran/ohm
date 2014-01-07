@@ -68,6 +68,6 @@ test "deleting main model cleans up the collection" do |p, _, _, _|
   assert_equal 0, Ohm.redis.call("EXISTS", p.key[:comments])
 end
 
-test "converts ids of resulting records to integers " do |post, *comments|
-  assert_equal comments.map(&:id), post.comments.map(&:id)
+test "#ids returns an array with the ids" do |post, *comments|
+  assert_equal comments.map(&:id), post.comments.ids
 end

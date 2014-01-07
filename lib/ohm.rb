@@ -256,10 +256,31 @@ module Ohm
       redis.call("LREM", key, 0, model.id)
     end
 
-  private
+    # Returns an array with all the ID's of the list.
+    #
+    #   class Comment < Ohm::Model
+    #   end
+    #
+    #   class Post < Ohm::Model
+    #     list :comments, :Comment
+    #   end
+    #
+    #   post = Post.create
+    #   post.comments.push(Comment.create)
+    #   post.comments.push(Comment.create)
+    #   post.comments.push(Comment.create)
+    #
+    #   post.comments.map(&:id)
+    #   # => [1, 2, 3]
+    #
+    #   post.comments.ids
+    #   # => [1, 2, 3]
+    #
     def ids
       redis.call("LRANGE", key, 0, -1).map(&:to_i)
     end
+
+  private
 
     def redis
       model.redis
