@@ -236,7 +236,7 @@ module Ohm
     #   end
     #
     #   class Post < Ohm::Model
-    #     list :comments, Comment
+    #     list :comments, :Comment
     #   end
     #
     #   p = Post.create
@@ -724,6 +724,7 @@ module Ohm
     # Example:
     #
     #   class User < Ohm::Model
+    #   end
     #
     #   User.key == "User"
     #   User.key.kind_of?(String)
