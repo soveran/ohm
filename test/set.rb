@@ -23,15 +23,15 @@ test "#exists? returns true if the given id is included in the set" do
   assert user.posts.exists?(post.id)
 end
 
-test "converts ids of resulting records to integers " do
+test "#ids returns an array with the ids" do
   user_ids = [
-    user1 = User.create(name: "John"),
-    user2 = User.create(name: "Jane")
+    User.create(name: "John"),
+    User.create(name: "Jane")
   ].map(&:id)
 
-  assert_equal user_ids, User.all.map(&:id)
+  assert_equal user_ids, User.all.ids
 
-  result = User.find(name: user1.name).union(name: user2.name)
+  result = User.find(name: "John").union(name: "Jane")
 
-  assert_equal user_ids, result.map(&:id)
+  assert_equal user_ids, result.ids
 end
