@@ -144,7 +144,7 @@ module Ohm
 
       [].tap do |result|
         data.each_with_index do |atts, idx|
-          result << model.new(Utils.dict(atts).update(:id => ids[idx]))
+          result << model.new(Utils.dict(atts).update(id: ids[idx]))
         end
       end
     end
@@ -186,7 +186,7 @@ module Ohm
     #
     # You may want to avoid doing this if your list has say, 10K entries.
     def include?(model)
-      ids.include?(model.id.to_s)
+      ids.include?(model.id)
     end
 
     # Replace all the existing elements of a list with a different
@@ -236,7 +236,7 @@ module Ohm
     #   end
     #
     #   class Post < Ohm::Model
-    #     list :comments, Comment
+    #     list :comments, :Comment
     #   end
     #
     #   p = Post.create
@@ -256,10 +256,31 @@ module Ohm
       redis.call("LREM", key, 0, model.id)
     end
 
-  private
+    # Returns an array with all the ID's of the list.
+    #
+    #   class Comment < Ohm::Model
+    #   end
+    #
+    #   class Post < Ohm::Model
+    #     list :comments, :Comment
+    #   end
+    #
+    #   post = Post.create
+    #   post.comments.push(Comment.create)
+    #   post.comments.push(Comment.create)
+    #   post.comments.push(Comment.create)
+    #
+    #   post.comments.map(&:id)
+    #   # => [1, 2, 3]
+    #
+    #   post.comments.ids
+    #   # => [1, 2, 3]
+    #
     def ids
-      redis.call("LRANGE", key, 0, -1)
+      redis.call("LRANGE", key, 0, -1).map(&:to_i)
     end
+
+  private
 
     def redis
       model.redis
@@ -364,9 +385,29 @@ module Ohm
       end
     end
 
-    # Grab all the elements of this set using SMEMBERS.
+    # Returns an array with all the ID's of the set.
+    #
+    #   class Post < Ohm::Model
+    #   end
+    #
+    #   class User < Ohm::Model
+    #     attribute :name
+    #     index :name
+    #
+    #     set :posts, :Post
+    #   end
+    #
+    #   User.create(name: "John")
+    #   User.create(name: "Jane")
+    #
+    #   User.all.ids
+    #   # => [1, 2]
+    #
+    #   User.find(name: "John").union(name: "Jane").ids
+    #   # => [1, 2]
+    #
     def ids
-      execute { |key| redis.call("SMEMBERS", key) }
+      execute { |key| redis.call("SMEMBERS", key) }.map(&:to_i)
     end
 
     # Retrieve a specific element using an ID from this set.
@@ -702,6 +743,7 @@ module Ohm
     # Example:
     #
     #   class User < Ohm::Model
+    #   end
     #
     #   User.key == "User"
     #   User.key.kind_of?(String)

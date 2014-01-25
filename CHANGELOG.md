@@ -1,5 +1,45 @@
-(unreleased)
-------------
+- `Ohm::BasicSet#ids`, `Ohm::Set#ids`, `Ohm::MultiSet#ids` and `Ohm::List#ids`
+  methods return an array of integers instead of an array of strings. This change
+  makes `id` to be always an `integer`, even if a record is initialized by a
+  `set` or a `list`.
+
+  Example:
+
+      class Post < Ohm::Model
+      end
+
+      Post.create.id # => 1
+      Post.create.id # => 2
+
+      # before
+
+      Post.all.map(&:id)
+      # => ["1", "2"]
+
+      # now
+
+      Post.all.map(&:id)
+      # => [1, 2]
+
+- Include `Ohm::List#ids` in the public API. It returns an array with all
+  the ID's of the list.
+
+  Example:
+
+      class Comment < Ohm::Model
+      end
+
+      class Post < Ohm::Model
+        list :comments, :Comment
+      end
+
+      post = Post.create
+      post.comments.push(Comment.create)
+      post.comments.push(Comment.create)
+      post.comments.push(Comment.create)
+
+      post.comments.ids
+      # => [1, 2, 3]
 
 - Include `Ohm::BasicSet#exists?` in the public API. This makes possible
   to check if an id is included in a set. Check `Ohm::BasicSet#exists?`
@@ -18,7 +58,7 @@
       user.posts.add(post = Post.create)
 
       user.posts.exists?(post.id)       # => true
-      user.posts.exists?('nonexistent') # => false
+      user.posts.exists?("nonexistent") # => false
 
 
 - Change `Ohm::MultiSet#except` to union keys instead of intersect them
