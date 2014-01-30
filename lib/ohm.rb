@@ -1478,11 +1478,15 @@ module Ohm
         val = send(field)
 
         if val
-          result.push(field, val.to_s)
+          val = val.to_s
+
+          if !val.empty?
+            result.push(field, val)
+          end
         end
       end
 
-      return result
+      result
     end
   end
 end
