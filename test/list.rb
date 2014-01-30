@@ -67,3 +67,7 @@ test "deleting main model cleans up the collection" do |p, _, _, _|
 
   assert_equal 0, Ohm.redis.call("EXISTS", p.key[:comments])
 end
+
+test "#ids returns an array with the ids" do |post, *comments|
+  assert_equal comments.map { |c| c.id.to_s }, post.comments.ids
+end

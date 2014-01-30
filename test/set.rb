@@ -4,6 +4,10 @@ class Post < Ohm::Model
 end
 
 class User < Ohm::Model
+  attribute :name
+
+  index :name
+
   set :posts, :Post
 end
 
@@ -17,4 +21,17 @@ test '#exists? returns true if the given id is included in the set' do
   user.posts.add(post)
 
   assert user.posts.exists?(post.id)
+end
+
+test "#ids returns an array with the ids" do
+  user_ids = [
+    User.create(name: "John").id.to_s,
+    User.create(name: "Jane").id.to_s
+  ]
+
+  assert_equal user_ids, User.all.ids
+
+  result = User.find(name: "John").union(name: "Jane")
+
+  assert_equal user_ids, result.ids
 end
