@@ -1,3 +1,17 @@
+- If an attribute is set to an empty string, Ohm won't delete the attribute.
+
+  Example:
+
+      # Before
+      event = Meetup.create(location: "")
+      Meetup[event.id].location
+      # => nil
+
+      # Now
+      event = Meetup.create(location: "")
+      Meetup[event.id].location
+      # => ""
+
 - Include `Ohm::List#ids` in the public API. It returns an array with all
   the ID's of the list.
 
