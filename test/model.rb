@@ -110,11 +110,11 @@ test "assign attributes from the hash" do
 end
 
 test "assign an ID and save the object" do
-  event1 = Event.create(:name => "Ruby Tuesday")
-  event2 = Event.create(:name => "Ruby Meetup")
+  event1 = Event.create(name: "Ruby Tuesday")
+  event2 = Event.create(name: "Ruby Meetup")
 
-  assert 1 == event1.id
-  assert 2 == event2.id
+  assert_equal "1", event1.id
+  assert_equal "2", event2.id
 end
 
 test "updates attributes" do
@@ -256,8 +256,8 @@ test "assign a new id to the event" do
   assert !event1.new?
   assert !event2.new?
 
-  assert 1 == event1.id
-  assert 2 == event2.id
+  assert_equal "1", event1.id
+  assert_equal "2", event2.id
 end
 
 # Saving a model

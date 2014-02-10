@@ -25,8 +25,8 @@ end
 
 test "#ids returns an array with the ids" do
   user_ids = [
-    User.create(name: "John").id.to_s,
-    User.create(name: "Jane").id.to_s
+    User.create(name: "John").id,
+    User.create(name: "Jane").id
   ]
 
   assert_equal user_ids, User.all.ids

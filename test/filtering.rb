@@ -165,7 +165,7 @@ scope do
 
     assert_equal 1, res.size
     assert res.map(&:mood).include?("sad")
-    assert res.map(&:book_id).include?(book2.id.to_s)
+    assert res.map(&:book_id).include?(book2.id)
   end
 
   test "@myobie usecase" do |book1, book2|
