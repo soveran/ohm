@@ -32,7 +32,7 @@ scope do
 
   test "select" do |john, jane|
     assert_equal 2, Contact.all.count
-    assert_equal [john], Contact.all.select { |c| c.id.to_s == john.id.to_s }
+    assert_equal [john], Contact.all.select { |c| c.id == john.id }
   end
 end
 

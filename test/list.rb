@@ -69,5 +69,5 @@ test "deleting main model cleans up the collection" do |p, _, _, _|
 end
 
 test "#ids returns an array with the ids" do |post, *comments|
-  assert_equal comments.map { |c| c.id.to_s }, post.comments.ids
+  assert_equal comments.map(&:id), post.comments.ids
 end

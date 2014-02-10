@@ -1,3 +1,24 @@
+- When a record is created, `#id` returns a string instead of a integer.
+  This ensures ID is string everywhere:
+
+  Example:
+
+      ## Before
+
+      Meetup.create(name: "Ruby").id
+      # => 1
+
+      Meetup.find(name: "Ruby").id
+      # => "1"
+
+      ## Now
+
+      Meetup.create.id
+      # => "1"
+
+      Meetup.find(name: "Ruby").id
+      # => "1"
+
 - If an attribute is set to an empty string, Ohm won't delete the attribute.
 
   Example:

@@ -186,7 +186,7 @@ module Ohm
     #
     # You may want to avoid doing this if your list has say, 10K entries.
     def include?(model)
-      ids.include?(model.id.to_s)
+      ids.include?(model.id)
     end
 
     # Replace all the existing elements of a list with a different
