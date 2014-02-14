@@ -37,7 +37,7 @@ local uniques = cmsgpack.unpack(ARGV[4])
 
 local function save(model, attrs)
   if model.id == nil then
-    model.id = tostring(redis.call("INCR", model.name .. ":id"))
+    model.id = redis.call("INCR", model.name .. ":id")
   end
 
   model.key = model.name .. ":" .. model.id
@@ -122,4 +122,4 @@ index(model, indices)
 remove_uniques(model, uniques)
 unique(model, uniques)
 
-return model.id
+return tostring(model.id)
