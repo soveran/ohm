@@ -134,11 +134,15 @@ module Ohm
 
     # Wraps the whole pipelining functionality.
     def fetch(ids)
-      ids.each do |id|
-        redis.queue("HGETALL", namespace[id])
-      end
+      data = nil
 
-      data = redis.commit
+      model.mutex.synchronize do
+        ids.each do |id|
+          redis.queue("HGETALL", namespace[id])
+        end
+
+        data = redis.commit
+      end
 
       return [] if data.nil?
 
@@ -206,13 +210,15 @@ module Ohm
     #   # => false
     #
     def replace(models)
-      ids = models.map { |model| model.id }
+      ids = models.map(&:id)
 
-      redis.queue("MULTI")
-      redis.queue("DEL", key)
-      ids.each { |id| redis.queue("RPUSH", key, id) }
-      redis.queue("EXEC")
-      redis.commit
+      model.mutex.synchronize do
+        redis.queue("MULTI")
+        redis.queue("DEL", key)
+        ids.each { |id| redis.queue("RPUSH", key, id) }
+        redis.queue("EXEC")
+        redis.commit
+      end
     end
 
     # Pushes the model to the _end_ of the list using RPUSH.
@@ -564,13 +570,15 @@ module Ohm
     #   # => false
     #
     def replace(models)
-      ids = models.map { |model| model.id }
+      ids = models.map(&:id)
 
-      redis.queue("MULTI")
-      redis.queue("DEL", key)
-      ids.each { |id| redis.queue("SADD", key, id) }
-      redis.queue("EXEC")
-      redis.commit
+      model.mutex.synchronize do
+        redis.queue("MULTI")
+        redis.queue("DEL", key)
+        ids.each { |id| redis.queue("SADD", key, id) }
+        redis.queue("EXEC")
+        redis.commit
+      end
     end
   end
 
@@ -736,6 +744,10 @@ module Ohm
 
     def self.redis
       defined?(@redis) ? @redis : Ohm.redis
+    end
+
+    def self.mutex
+      @mutex ||= Mutex.new
     end
 
     # Returns the namespace for all the keys generated using this model.
