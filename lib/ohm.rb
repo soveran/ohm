@@ -136,7 +136,7 @@ module Ohm
     def fetch(ids)
       data = nil
 
-      model.mutex.synchronize do
+      model.synchronize do
         ids.each do |id|
           redis.queue("HGETALL", namespace[id])
         end
@@ -212,7 +212,7 @@ module Ohm
     def replace(models)
       ids = models.map(&:id)
 
-      model.mutex.synchronize do
+      model.synchronize do
         redis.queue("MULTI")
         redis.queue("DEL", key)
         ids.each { |id| redis.queue("RPUSH", key, id) }
@@ -572,7 +572,7 @@ module Ohm
     def replace(models)
       ids = models.map(&:id)
 
-      model.mutex.synchronize do
+      model.synchronize do
         redis.queue("MULTI")
         redis.queue("DEL", key)
         ids.each { |id| redis.queue("SADD", key, id) }
@@ -748,6 +748,10 @@ module Ohm
 
     def self.mutex
       @mutex ||= Mutex.new
+    end
+
+    def self.synchronize(&block)
+      mutex.synchronize(&block)
     end
 
     # Returns the namespace for all the keys generated using this model.
