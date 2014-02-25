@@ -1,3 +1,26 @@
+- Lists now respond to range.
+
+  Example:
+
+      class Comment < Ohm::Model
+      end
+
+      class Post < Ohm::Model
+        list :comments, :Comment
+      end
+
+      c1 = Comment.create
+      c2 = Comment.create
+      c3 = Comment.create
+
+      post = Post.create
+      post.comments.push(c1)
+      post.comments.push(c2)
+      post.comments.push(c3)
+
+      post.comments.range(0, 1) == [c1, c2]
+      # => true
+
 - When a record is created, `#id` returns a string instead of a integer.
   This ensures ID is string everywhere:
 
