@@ -72,18 +72,11 @@ test "#ids returns an array with the ids" do |post, *comments|
   assert_equal comments.map(&:id), post.comments.ids
 end
 
-test "range" do |p,c1,c2,c3|
-  
+test "range" do |p, c1, c2, c3|
   assert_equal 3, p.comments.range(0, 100).size
-
-  assert_equal [c1,c2,c3], p.comments.range(0, 2)
-  
-  assert_equal [c2,c3], p.comments.range(1, 2)
-  
-  assert_equal [c1,c2,c3], p.comments.range(0, -1)
-  
-  assert_equal [c1,c2], p.comments.range(0, -2)
-
-  assert_equal [c2,c3], p.comments.range(1, -1)
-
+  assert_equal [c1, c2, c3], p.comments.range(0, 2)
+  assert_equal [c2, c3], p.comments.range(1, 2)
+  assert_equal [c1, c2, c3], p.comments.range(0, -1)
+  assert_equal [c1, c2], p.comments.range(0, -2)
+  assert_equal [c2, c3], p.comments.range(1, -1)
 end
