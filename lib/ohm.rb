@@ -182,6 +182,29 @@ module Ohm
       model[redis.call("LINDEX", key, -1)]
     end
 
+    # Returns an array of elements from the list using LRANGE.
+    # #range receives 2 integers, start and stop
+    #
+    # Example:
+    # 
+    #   class Comment < Ohm::Model
+    #   end
+    #
+    #   class Post < Ohm::Model
+    #     list :comments, :Comment
+    #   end
+    #
+    #   post = Post.create
+    #   post.comments.push(Comment.create)
+    #   post.comments.push(Comment.create)
+    #   post.comments.push(Comment.create)
+    #
+    #   post.comments.range(0,2)
+    #   # => ["1", "2"]
+    def range(start, stop)
+      fetch(redis.call("LRANGE", key, start, stop))
+    end
+
     # Checks if the model is part of this List.
     #
     # An important thing to note is that this method loads all of the
