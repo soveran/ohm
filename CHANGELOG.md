@@ -219,7 +219,7 @@
 - Move `save` and `delete` operations to Lua scripts.
 
 
-- Ruby 1.8 support has been removed.
+- Support for Ruby 1.8 and 1.9 has been removed.
 
 [nido]: https://github.com/soveran/nido
 [scrivener]: https://github.com/soveran/scrivener
