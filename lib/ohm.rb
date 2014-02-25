@@ -186,7 +186,7 @@ module Ohm
     # #range receives 2 integers, start and stop
     #
     # Example:
-    # 
+    #
     #   class Comment < Ohm::Model
     #   end
     #
