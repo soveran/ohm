@@ -194,13 +194,18 @@ module Ohm
     #     list :comments, :Comment
     #   end
     #
-    #   post = Post.create
-    #   post.comments.push(Comment.create)
-    #   post.comments.push(Comment.create)
-    #   post.comments.push(Comment.create)
+    #   c1 = Comment.create
+    #   c2 = Comment.create
+    #   c3 = Comment.create
     #
-    #   post.comments.range(0,2)
-    #   # => ["1", "2"]
+    #   post = Post.create
+    #
+    #   post.comments.push(c1)
+    #   post.comments.push(c2)
+    #   post.comments.push(c3)
+    #
+    #   [c1, c2] == post.comments.range(0, 1)
+    #   # => true
     def range(start, stop)
       fetch(redis.call("LRANGE", key, start, stop))
     end
