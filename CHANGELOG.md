@@ -32,21 +32,13 @@
 
   ```ruby
 
-  ## Before
+  # Before
+  Meetup.create(name: "Ruby").id # => 1
+  Meetup.with(:name, "Ruby").id  # => "1"
 
-  Meetup.create(name: "Ruby").id
-  # => 1
-
-  Meetup.find(name: "Ruby").id
-  # => "1"
-
-  ## Now
-
-  Meetup.create.id
-  # => "1"
-
-  Meetup.find(name: "Ruby").id
-  # => "1"
+  # Now
+  Meetup.create(name: "Ruby").id # => "1"
+  Meetup.with(:name, "Ruby").id  # => "1"
   ```
 
 - If an attribute is set to an empty string, Ohm won't delete it.
@@ -54,17 +46,13 @@
   Example:
 
   ```ruby
-  ## Before
-
+  # Before
   event = Meetup.create(location: "")
-  Meetup[event.id].location
-  # => nil
+  Meetup[event.id].location # => nil
 
-  ## Now
-
+  # Now
   event = Meetup.create(location: "")
-  Meetup[event.id].location
-  # => ""
+  Meetup[event.id].location # => ""
   ```
 
 - Include `Ohm::List#ids` in the public API. It returns an array with all
