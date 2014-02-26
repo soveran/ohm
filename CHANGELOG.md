@@ -287,7 +287,7 @@
 
 - Use Symbols for constants instead of relying on Ohm::Model.const_missing.
 
-- #sort / #sort_by now uses `limit` as it's used in redis-rb, e.g. you
+- `#sort` / `#sort_by` now uses `limit` as it's used in redis-rb, e.g. you
   have to pass in an array like so: sort(limit: [0, 1]).
 
 - Set / List have been trimmed to contain only the minimum number
