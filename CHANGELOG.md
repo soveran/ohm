@@ -1,3 +1,6 @@
+2.0.0.rc2
+---------
+
 - Lists now respond to range.
 
   Example:
