@@ -26,7 +26,7 @@
   ```
 
 - When a record is created, `#id` returns a string instead of an integer.
-  This ensures ID is string everywhere:
+  This ensures IDs are strings everywhere:
 
   Example:
 
