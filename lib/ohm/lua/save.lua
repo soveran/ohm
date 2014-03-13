@@ -36,82 +36,82 @@ local indices = cmsgpack.unpack(ARGV[3])
 local uniques = cmsgpack.unpack(ARGV[4])
 
 local function save(model, attrs)
-  if model.id == nil then
-    model.id = redis.call("INCR", model.name .. ":id")
-  end
+	if model.id == nil then
+		model.id = redis.call("INCR", model.name .. ":id")
+	end
 
-  model.key = model.name .. ":" .. model.id
+	model.key = model.name .. ":" .. model.id
 
-  redis.call("SADD", model.name .. ":all", model.id)
-  redis.call("DEL", model.key)
+	redis.call("SADD", model.name .. ":all", model.id)
+	redis.call("DEL", model.key)
 
-  if math.mod(#attrs, 2) == 1 then
-    error("Wrong number of attribute/value pairs")
-  end
+	if math.mod(#attrs, 2) == 1 then
+		error("Wrong number of attribute/value pairs")
+	end
 
-  if #attrs > 0 then
-    redis.call("HMSET", model.key, unpack(attrs))
-  end
+	if #attrs > 0 then
+		redis.call("HMSET", model.key, unpack(attrs))
+	end
 end
 
 local function index(model, indices)
-  for field, enum in pairs(indices) do
-    for _, val in ipairs(enum) do
-      local key = model.name .. ":indices:" .. field .. ":" .. tostring(val)
+	for field, enum in pairs(indices) do
+		for _, val in ipairs(enum) do
+			local key = model.name .. ":indices:" .. field .. ":" .. tostring(val)
 
-      redis.call("SADD", model.key .. ":_indices", key)
-      redis.call("SADD", key, model.id)
-    end
-  end
+			redis.call("SADD", model.key .. ":_indices", key)
+			redis.call("SADD", key, model.id)
+		end
+	end
 end
 
 local function remove_indices(model)
-  local memo = model.key .. ":_indices"
-  local existing = redis.call("SMEMBERS", memo)
+	local memo = model.key .. ":_indices"
+	local existing = redis.call("SMEMBERS", memo)
 
-  for _, key in ipairs(existing) do
-    redis.call("SREM", key, model.id)
-    redis.call("SREM", memo, key)
-  end
+	for _, key in ipairs(existing) do
+		redis.call("SREM", key, model.id)
+		redis.call("SREM", memo, key)
+	end
 end
 
 local function unique(model, uniques)
-  for field, value in pairs(uniques) do
-    local key = model.name .. ":uniques:" .. field
+	for field, value in pairs(uniques) do
+		local key = model.name .. ":uniques:" .. field
 
-    redis.call("HSET", model.key .. ":_uniques", key, value)
-    redis.call("HSET", key, value, model.id)
-  end
+		redis.call("HSET", model.key .. ":_uniques", key, value)
+		redis.call("HSET", key, value, model.id)
+	end
 end
 
 local function remove_uniques(model)
-  local memo = model.key .. ":_uniques"
+	local memo = model.key .. ":_uniques"
 
-  for _, key in pairs(redis.call("HKEYS", memo)) do
-    redis.call("HDEL", key, redis.call("HGET", memo, key))
-    redis.call("HDEL", memo, key)
-  end
+	for _, key in pairs(redis.call("HKEYS", memo)) do
+		redis.call("HDEL", key, redis.call("HGET", memo, key))
+		redis.call("HDEL", memo, key)
+	end
 end
 
 local function verify(model, uniques)
-  local duplicates = {}
+	local duplicates = {}
 
-  for field, value in pairs(uniques) do
-    local key = model.name .. ":uniques:" .. field
-    local id = redis.call("HGET", key, tostring(value))
+	for field, value in pairs(uniques) do
+		local key = model.name .. ":uniques:" .. field
+		local id = redis.call("HGET", key, tostring(value))
 
-    if id and id ~= tostring(model.id) then
-      duplicates[#duplicates + 1] = field
-    end
-  end
+		if id and id ~= tostring(model.id) then
+			duplicates[#duplicates + 1] = field
+		end
+	end
 
-  return duplicates, #duplicates ~= 0
+	return duplicates, #duplicates ~= 0
 end
 
 local duplicates, err = verify(model, uniques)
 
 if err then
-  error("UniqueIndexViolation: " .. duplicates[1])
+	error("UniqueIndexViolation: " .. duplicates[1])
 end
 
 save(model, attrs)
