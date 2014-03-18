@@ -48,7 +48,7 @@ with the sources if you want to change some settings.
 
 If you don't have Ohm, try this:
 
-    $ [sudo] gem install ohm -v 2.0.0.rc2
+    $ [sudo] gem install ohm
 
 Or you can grab the code from [http://github.com/soveran/ohm][ohm].
 

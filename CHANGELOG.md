@@ -1,4 +1,4 @@
-## 2.0.0.rc2
+## 2.0.0
 
 - Lists now respond to range.
 
