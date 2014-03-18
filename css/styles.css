@@ -1,0 +1,51 @@
+html {
+  height: 100%;
+}
+
+body {
+  color: #333;
+  background-color: #fafaff;
+  font-family: "Mate", "Georgia", serif;
+  font-size: 16px;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+header, section {
+  width: 960px;
+  padding-top: 30px;
+  margin: auto;
+  text-align: center;
+}
+
+header h1 {
+  font-family: "Patua One", "Trebuchet MS", sans-serif;
+  font-weight: 300;
+  font-size: 50px;
+  margin: 60px 0 0 0;
+}
+
+header p {
+  font-size: 30px;
+}
+
+section p {
+  width: 600px;
+  margin: auto;
+  padding: 10px 0;
+  border-top: 1px solid white;
+  border-bottom: 1px solid white;
+}
+
+section p code {
+  font-family: "Ubuntu Mono", monospace;
+  font-size: 90%;
+  padding: 2px 4px;
+  color: #c33;
+}
+
+section a {
+  text-decoration: none;
+  color: olive;
+}
