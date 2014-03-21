@@ -611,7 +611,7 @@ module Ohm
   end
 
   # Anytime you filter a set with more than one requirement, you
-  # internally use a `MultiSet`. `MutiSet` is a bit slower than just
+  # internally use a `MultiSet`. `MultiSet` is a bit slower than just
   # a `Set` because it has to `SINTERSTORE` all the keys prior to
   # retrieving the members, size, etc.
   #
