@@ -1074,22 +1074,35 @@ module Ohm
     # persisted attributes. All attributes are stored on the Redis
     # hash.
     #
-    # Example:
     #   class User < Ohm::Model
     #     attribute :name
     #   end
     #
-    #   # It's the same as:
+    #   user = User.new(name: "John")
+    #   user.name
+    #   # => "John"
+    #
+    #   user.name = "Jane"
+    #   user.name
+    #   # => "Jane"
+    #
+    # A +lambda+ can be passed as a second parameter to add
+    # typecasting support to the attribute.
     #
     #   class User < Ohm::Model
-    #     def name
-    #       @attributes[:name]
-    #     end
-    #
-    #     def name=(name)
-    #       @attributes[:name] = name
-    #     end
+    #     attribute :age, ->(x) { x.to_i }
     #   end
+    #
+    #   user = User.new(age: 100)
+    #
+    #   user.age
+    #   # => 100
+    #
+    #   user.age.kind_of?(Integer)
+    #   # => true
+    #
+    # Check http://rubydoc.info/github/cyx/ohm-contrib#Ohm__DataTypes
+    # to see more examples about the typecasting feature.
     #
     def self.attribute(name, cast = nil)
       attributes << name unless attributes.include?(name)
