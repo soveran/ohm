@@ -974,7 +974,7 @@ module Ohm
     # Note: You can't use the list until you save the model. If you try
     # to do it, you'll receive an Ohm::MissingID error.
     #
-    def self.list(name, model)
+    def self.list(name, model, limit)
       track(name)
 
       define_method name do
