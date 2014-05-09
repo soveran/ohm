@@ -25,6 +25,7 @@ These are libraries in other languages that were inspired by Ohm.
 * [Lohm](https://github.com/slact/lua-ohm) for Lua, created by slact
 * [Nohm](https://github.com/maritz/nohm) for Node.js, created by maritz
 * [Redisco](https://github.com/iamteem/redisco) for Python, created by iamteem
+* [redis3m](https://github.com/luca3m/redis3m) for C++, created by luca3m
 
 Articles and Presentations
 --------------------------
