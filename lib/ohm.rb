@@ -169,7 +169,7 @@ module Ohm
       end
 
     rescue => e
-      raise DetailedError.new(e, ids: ids, namespace: namespace, class: self.class.name)
+      raise DetailedError.new(e, ids: ids, namespace: namespace, class: self.class.name, data: data)
     end
   end
 
