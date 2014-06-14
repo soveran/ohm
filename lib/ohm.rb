@@ -39,6 +39,22 @@ module Ohm
   class MissingID < Error; end
   class IndexNotFound < Error; end
   class UniqueIndexViolation < Error; end
+  class DetailedError < RuntimeError
+    attr_reader :data
+    attr_reader :nested_exception
+
+    def initialize(nested_exception, data)
+      @nested_exception = nested_exception
+      @data = data
+    end
+
+    def message
+      [
+        "Nested: [#{nested_exception.message}]",
+        "Data: ================\n#{data.inspect}\n==================="
+      ].join("\n")
+    end
+  end
 
   # Instead of monkey patching Kernel or trying to be clever, it's
   # best to confine all the helper methods in a Utils module.
@@ -151,6 +167,9 @@ module Ohm
           result << model.new(Utils.dict(atts).update(:id => ids[idx]))
         end
       end
+
+    rescue => e
+      raise DetailedError.new(e, ids: ids, namespace: namespace, class: self.class.name)
     end
   end
 
