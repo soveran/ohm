@@ -775,7 +775,7 @@ module Ohm
     end
 
     def self.mutex
-      @mutex ||= Mutex.new
+      @@mutex ||= Mutex.new
     end
 
     def self.synchronize(&block)
