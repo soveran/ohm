@@ -1402,7 +1402,7 @@ module Ohm
         end
       end
 
-      @id = response
+      @id = response.to_s
 
       return self
     end
