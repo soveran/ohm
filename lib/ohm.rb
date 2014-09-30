@@ -67,7 +67,12 @@ module Ohm
     def self.const(context, name)
       case name
       when Symbol, String
-        context.const_get(name)
+        name = name.to_s.split('::')
+        while chunk = name.shift
+          next if chunk.empty?
+          context = context.const_get(chunk)
+        end
+        context
       else name
       end
     end
