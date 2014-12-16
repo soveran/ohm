@@ -165,11 +165,17 @@ querying. Keep reading to find out what you can do with models.
 Attribute types
 ---------------
 
-Ohm::Model provides four attribute types: {Ohm::Model.attribute
-attribute}, {Ohm::Model.set set}, {Ohm::Model.list list}
-and {Ohm::Model.counter counter}; and two meta types:
-{Ohm::Model.reference reference} and {Ohm::Model.collection
-collection}.
+Ohm::Model provides 4 attribute types: 
+
+* {Ohm::Model.attribute attribute}, 
+* {Ohm::Model.set set}
+* {Ohm::Model.list list}
+* {Ohm::Model.counter counter}
+
+and 2 meta types:
+
+* {Ohm::Model.reference reference}
+* {Ohm::Model.collection collection}.
 
 ### attribute
 
