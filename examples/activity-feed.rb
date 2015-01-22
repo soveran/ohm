@@ -29,18 +29,18 @@ class User < Ohm::Model
   # Because a `User` literally has a `list` of activities, using a Redis
   # `list` to model the activities would be a good choice. We default to
   # getting the first 100 activities, and use
-  # [lrange](http://code.google.com/p/redis/wiki/LrangeCommand) directly.
+  # [lrange](http://redis.io/commands/lrange) directly.
   def activities(start = 0, limit = 100)
-    key[:activities].lrange(start, start + limit)
+    redis.call 'LRANGE', key[:activities], start, start + limit
   end
 
   # Broadcasting a message to all the `followers` of a user would simply
   # be prepending the message for each if his `followers`. We also use
   # the Redis command
-  # [lpush](http://code.google.com/p/redis/wiki/RpushCommand) directly.
+  # [lpush](http://redis.io/commands/lpush) directly.
   def broadcast(str)
     followers.each do |user|
-      user.key[:activities].lpush(str)
+      redis.call 'LPUSH', user.key[:activities], str
     end
   end
 
@@ -81,8 +81,8 @@ end
 test "jane following john" do |john, jane|
   jane.follow(john)
 
-  assert [john] == jane.following.to_a
-  assert [jane] == john.followers.to_a
+  assert_equal [john], jane.following.to_a
+  assert_equal [jane], john.followers.to_a
 end
 
 # Broadcasting a message should simply notify all the followers of the
@@ -125,17 +125,12 @@ class User
   # We define a constant where we set the maximum number of activity entries.
   MAX = 10
 
-  # Using `MAX` as the reference, we check if the number of activities exceeds
-  # `MAX`, and use
-  # [ltrim](http://code.google.com/p/redis/wiki/LtrimCommand) to truncate
-  # the activities.
+  # Using `MAX` as the reference, we truncate the activities feed using
+  # [ltrim](http://redis.io/commands/ltrim).
   def broadcast(str)
     followers.each do |user|
-      user.key[:activities].lpush(str)
-
-      if user.key[:activities].llen > MAX
-        user.key[:activities].ltrim(0, MAX - 1)
-      end
+      redis.call 'LPUSH', user.key[:activities], str
+      redis.call 'LTRIM', user.key[:activities], 0, MAX - 1
     end
   end
 end
@@ -158,5 +153,5 @@ end
 #
 # As a final note, keep in mind that the Ohm solution would still need
 # sharding for large datasets, but that would be again trivial to implement
-# using [redis-rb](http://github.com/ezmobius/redis-rb)'s distributed support
+# using [redis-rb](http://github.com/redis/redis-rb)'s distributed support
 # and sharding it against the *user_id*.
