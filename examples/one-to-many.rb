@@ -29,11 +29,11 @@ require "ohm"
 
 # We define both a `Video` and `Audio` model, with a `list` of *comments*.
 class Video < Ohm::Model
-  list :comments, Comment
+  list :comments, :Comment
 end
 
 class Audio < Ohm::Model
-  list :comments, Comment
+  list :comments, :Comment
 end
 
 # The `Comment` model for this example will just contain one attribute called
@@ -65,10 +65,10 @@ test "adding all sorts of comments" do
   audio.comments.push(audio_comment)
 
   assert video.comments.include?(video_comment)
-  assert video.comments.size == 1
+  assert_equal video.comments.size, 1
 
   assert audio.comments.include?(audio_comment)
-  assert audio.comments.size == 1
+  assert_equal audio.comments.size, 1
 end
 
 
@@ -100,14 +100,8 @@ test "getting paged chunks of comments" do
 
   20.times { |i| video.comments.push(Comment.create(:body => "C#{i + 1}")) }
 
-  assert %w(C1 C2 C3 C4 C5)      ==  video.comments[0, 4].map(&:body)
-  assert %w(C6 C7 C8 C9 C10)     ==  video.comments[5, 9].map(&:body)
-
-  # ** Range style is also supported.
-  assert %w(C11 C12 C13 C14 C15) ==  video.comments[10..14].map(&:body)
-
-  # ** Also you can just pass in a single number.
-  assert "C16" == video.comments[15].body
+  assert_equal %w(C1 C2 C3 C4 C5),  video.comments.range(0, 4).map(&:body)
+  assert_equal %w(C6 C7 C8 C9 C10), video.comments.range(5, 9).map(&:body)
 end
 
 #### Caveats
@@ -121,4 +115,4 @@ end
 # `SORTED SET`, and to use the timestamp (or the negative of the timestamp) as
 # the score to maintain the desired order. Deleting a comment from a
 # `SORTED SET` would be a simple
-# [ZREM](http://code.google.com/p/redis/wiki/ZremCommand) call.
+# [ZREM](http://redis.io/commands/zrem) call.
