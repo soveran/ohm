@@ -156,11 +156,13 @@ class Post
 
   # For our scenario, we only need a `before_update` and `after_save`.
   # The idea for our `before_update` is to decrement the `total` of
-  # all existing tags. We use `read_remote(:tags)` to make sure that
-  # we actually get the original `tags` for a particular record.
+  # all existing tags. We use `get(:tags)` the original tags for the
+  # record and use assigned one on save.
 protected
   def before_update
-    tag(read_remote(:tags)).map(&Tag).each { |t| t.decr :total }
+    assigned_tags = tags
+    tag(get(:tags)).map(&Tag).each { |t| t.decr :total }
+    self.tags = assigned_tags
   end
 
   # And of course, we increment all new tags for a particular record
@@ -186,7 +188,8 @@ class Tag < Ohm::Model
   # though is that we need to encode the tag name, so special characters
   # and spaces won't produce an invalid key.
   def self.[](id)
-    super(encode(id)) || create(:id => encode(id))
+    encoded_id = id.encode
+    super(encoded_id) || create(:id => encoded_id)
   end
 end
 
