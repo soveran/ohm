@@ -528,6 +528,20 @@ module Ohm
       MultiSet.new(namespace, model, key).except(dict)
     end
 
+    # Perform an intersection between the existent set and
+    # the new set created by the union of the passed filters.
+    #
+    # Example:
+    #
+    #   set = User.find(:status => "active")
+    #   set.combine(:name => ["John", "Jane"])
+    #   
+    #   # The result will include all users with active status
+    #   # and with names "John" or "Jane".
+    def combine(dict)
+      MultiSet.new(namespace, model, key).combine(dict)
+    end
+
     # Do a union to the existing set using any number of filters.
     #
     # Example:
@@ -663,6 +677,22 @@ module Ohm
     def except(dict)
       MultiSet.new(
         namespace, model, Command[:sdiffstore, command, unioned(dict)]
+      )
+    end
+
+    # Perform an intersection between the existent set and
+    # the new set created by the union of the passed filters.
+    #
+    # Example:
+    #
+    #   set = User.find(:status => "active")
+    #   set.combine(:name => ["John", "Jane"])
+    #   
+    #   # The result will include all users with active status
+    #   # and with names "John" or "Jane".
+    def combine(dict)
+      MultiSet.new(
+        namespace, model, Command[:sinterstore, command, unioned(dict)]
       )
     end
 

@@ -111,6 +111,14 @@ test "#union" do |john, jane|
   assert res.any? { |e| e.status == "inactive" }
 end
 
+test "#combine" do |john, jane|
+  res = User.find(:status => "active").combine(fname: ["John", "Jane"])
+
+  assert_equal 2, res.size
+  assert res.include?(john)
+  assert res.include?(jane)
+end
+
 # book author thing via @myobie
 scope do
   class Book < Ohm::Model

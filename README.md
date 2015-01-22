@@ -446,8 +446,11 @@ User.find(username: "Albert")
 # Find all users from Argentina
 User.find(country: "Argentina")
 
-# Find all activated users from Argentina
-User.find(country: "Argentina", status: "activated")
+# Find all active users from Argentina
+User.find(country: "Argentina", status: "active")
+
+# Find all active users from Argentina and Uruguay
+User.find(status: "active").combine(country: ["Argentina", "Uruguay"])
 
 # Find all users from Argentina, except those with a suspended account.
 User.find(country: "Argentina").except(status: "suspended")
