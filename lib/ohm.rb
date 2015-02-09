@@ -1,10 +1,11 @@
 # encoding: UTF-8
 
+require "pp"
+
 require "msgpack"
 require "nido"
 require "redic"
-require "securerandom"
-require_relative "ohm/command"
+require "stal"
 
 module Ohm
   LUA_CACHE   = Hash.new { |h, k| h[k] = Hash.new }
@@ -76,7 +77,7 @@ module Ohm
       Hash[*arr]
     end
 
-    def self.sort(redis, key, options)
+    def self.sort_options(options)
       args = []
 
       args.concat(["BY", options[:by]]) if options[:by]
@@ -85,7 +86,7 @@ module Ohm
       args.concat(options[:order].split(" ")) if options[:order]
       args.concat(["STORE", options[:store]]) if options[:store]
 
-      redis.call("SORT", key, *args)
+      return args
     end
   end
 
@@ -285,6 +286,7 @@ module Ohm
     #   # => true
     #
     def delete(model)
+
       # LREM key 0 <id> means remove all elements matching <id>
       # @see http://redis.io/commands/lrem
       redis.call("LREM", key, 0, model.id)
@@ -321,27 +323,103 @@ module Ohm
     end
   end
 
-  # Defines most of the methods used by `Set` and `MultiSet`.
-  class BasicSet
+  class Set
     include Collection
 
-    # Allows you to sort by any attribute in the hash, this doesn't include
-    # the +id+. If you want to sort by ID, use #sort.
+    attr :key
+    attr :model
+    attr :namespace
+
+    def initialize(model, namespace, key)
+      @model = model
+      @namespace = namespace
+      @key = key
+    end
+
+    # Retrieve a specific element using an ID from this set.
+    #
+    # Example:
+    #
+    #   # Let's say we got the ID 1 from a request parameter.
+    #   id = 1
+    #
+    #   # Retrieve the post if it's included in the user's posts.
+    #   post = user.posts[id]
+    #
+    def [](id)
+      model[id] if exists?(id)
+    end
+
+    # Returns an array with all the ID's of the set.
+    #
+    #   class Post < Ohm::Model
+    #   end
     #
     #   class User < Ohm::Model
     #     attribute :name
+    #     index :name
+    #
+    #     set :posts, :Post
     #   end
     #
-    #   User.all.sort_by(:name, :order => "ALPHA")
-    #   User.all.sort_by(:name, :order => "ALPHA DESC")
-    #   User.all.sort_by(:name, :order => "ALPHA DESC", :limit => [0, 10])
+    #   User.create(name: "John")
+    #   User.create(name: "Jane")
     #
-    # Note: This is slower compared to just doing `sort`, specifically
-    # because Redis has to read each individual hash in order to sort
-    # them.
+    #   User.all.ids
+    #   # => ["1", "2"]
     #
-    def sort_by(att, options = {})
-      sort(options.merge(:by => to_key(att)))
+    #   User.find(name: "John").union(name: "Jane").ids
+    #   # => ["1", "2"]
+    #
+    def ids
+      if Array === key
+        Stal.solve(redis, key)
+      else
+        redis.call("SMEMBERS", key)
+      end
+    end
+
+    # Returns the total size of the set using SCARD.
+    def size
+      Stal.solve(redis, ["SCARD", key])
+    end
+
+    # Returns +true+ if +id+ is included in the set. Otherwise, returns +false+.
+    #
+    # Example:
+    #
+    #   class Post < Ohm::Model
+    #   end
+    #
+    #   class User < Ohm::Model
+    #     set :posts, :Post
+    #   end
+    #
+    #   user = User.create
+    #   post = Post.create
+    #   user.posts.add(post)
+    #
+    #   user.posts.exists?('nonexistent') # => false
+    #   user.posts.exists?(post.id)       # => true
+    #
+    def exists?(id)
+      Stal.solve(redis, ["SISMEMBER", key, id]) == 1
+    end
+
+    # Check if a model is included in this set.
+    #
+    # Example:
+    #
+    #   u = User.create
+    #
+    #   User.all.include?(u)
+    #   # => true
+    #
+    # Note: Ohm simply checks that the model's ID is included in the
+    # set. It doesn't do any form of type checking.
+    #
+    def include?(model)
+      exists?(model.id)
     end
 
     # Allows you to sort your models using their IDs. This is much
@@ -370,31 +448,30 @@ module Ohm
     def sort(options = {})
       if options.has_key?(:get)
         options[:get] = to_key(options[:get])
-        return execute { |key| Utils.sort(redis, key, options) }
+
+        Stal.solve(redis, ["SORT", key, *Utils.sort_options(options)])
+      else
+        fetch(Stal.solve(redis, ["SORT", key, *Utils.sort_options(options)]))
       end
-
-      fetch(execute { |key| Utils.sort(redis, key, options) })
     end
 
-    # Check if a model is included in this set.
+    # Allows you to sort by any attribute in the hash, this doesn't include
+    # the +id+. If you want to sort by ID, use #sort.
     #
-    # Example:
+    #   class User < Ohm::Model
+    #     attribute :name
+    #   end
     #
-    #   u = User.create
+    #   User.all.sort_by(:name, :order => "ALPHA")
+    #   User.all.sort_by(:name, :order => "ALPHA DESC")
+    #   User.all.sort_by(:name, :order => "ALPHA DESC", :limit => [0, 10])
     #
-    #   User.all.include?(u)
-    #   # => true
+    # Note: This is slower compared to just doing `sort`, specifically
+    # because Redis has to read each individual hash in order to sort
+    # them.
     #
-    # Note: Ohm simply checks that the model's ID is included in the
-    # set. It doesn't do any form of type checking.
-    #
-    def include?(model)
-      exists?(model.id)
-    end
-
-    # Returns the total size of the set using SCARD.
-    def size
-      execute { |key| redis.call("SCARD", key) }
+    def sort_by(att, options = {})
+      sort(options.merge(:by => to_key(att)))
     end
 
     # Syntactic sugar for `sort_by` or `sort` when you only need the
@@ -419,88 +496,6 @@ module Ohm
       end
     end
 
-    # Returns an array with all the ID's of the set.
-    #
-    #   class Post < Ohm::Model
-    #   end
-    #
-    #   class User < Ohm::Model
-    #     attribute :name
-    #     index :name
-    #
-    #     set :posts, :Post
-    #   end
-    #
-    #   User.create(name: "John")
-    #   User.create(name: "Jane")
-    #
-    #   User.all.ids
-    #   # => ["1", "2"]
-    #
-    #   User.find(name: "John").union(name: "Jane").ids
-    #   # => ["1", "2"]
-    #
-    def ids
-      execute { |key| redis.call("SMEMBERS", key) }
-    end
-
-    # Retrieve a specific element using an ID from this set.
-    #
-    # Example:
-    #
-    #   # Let's say we got the ID 1 from a request parameter.
-    #   id = 1
-    #
-    #   # Retrieve the post if it's included in the user's posts.
-    #   post = user.posts[id]
-    #
-    def [](id)
-      model[id] if exists?(id)
-    end
-
-    # Returns +true+ if +id+ is included in the set. Otherwise, returns +false+.
-    #
-    # Example:
-    #
-    #   class Post < Ohm::Model
-    #   end
-    #
-    #   class User < Ohm::Model
-    #     set :posts, :Post
-    #   end
-    #
-    #   user = User.create
-    #   post = Post.create
-    #   user.posts.add(post)
-    #
-    #   user.posts.exists?('nonexistent') # => false
-    #   user.posts.exists?(post.id)       # => true
-    #
-    def exists?(id)
-      execute { |key| redis.call("SISMEMBER", key, id) == 1 }
-    end
-
-  private
-    def to_key(att)
-      if model.counters.include?(att)
-        namespace["*:counters->%s" % att]
-      else
-        namespace["*->%s" % att]
-      end
-    end
-  end
-
-  class Set < BasicSet
-    attr :key
-    attr :namespace
-    attr :model
-
-    def initialize(key, namespace, model)
-      @key = key
-      @namespace = namespace
-      @model = model
-    end
-
     # Chain new fiters on an existing set.
     #
     # Example:
@@ -509,8 +504,8 @@ module Ohm
     #   set.find(:age => 30)
     #
     def find(dict)
-      MultiSet.new(
-        namespace, model, Command[:sinterstore, key, *model.filters(dict)]
+      Ohm::Set.new(
+        model, namespace, [:SINTER, key, *model.filters(dict)]
       )
     end
 
@@ -525,7 +520,9 @@ module Ohm
     #   User.find(:name => "John").except(:country => "US")
     #
     def except(dict)
-      MultiSet.new(namespace, model, key).except(dict)
+      Ohm::Set.new(
+        model, namespace, [:SDIFF, key, [:SUNION, *model.filters(dict)]]
+      )
     end
 
     # Perform an intersection between the existent set and
@@ -539,7 +536,9 @@ module Ohm
     #   # The result will include all users with active status
     #   # and with names "John" or "Jane".
     def combine(dict)
-      MultiSet.new(namespace, model, key).combine(dict)
+      Ohm::Set.new(
+        model, namespace, [:SINTER, key, [:SUNION, *model.filters(dict)]]
+      )
     end
 
     # Do a union to the existing set using any number of filters.
@@ -553,12 +552,18 @@ module Ohm
     #   User.find(:name => "John").union(:name => "Jane")
     #
     def union(dict)
-      MultiSet.new(namespace, model, key).union(dict)
+      Ohm::Set.new(
+        model, namespace, [:SUNION, key, [:SINTER, *model.filters(dict)]]
+      )
     end
 
   private
-    def execute
-      yield key
+    def to_key(att)
+      if model.counters.include?(att)
+        namespace["*:counters->%s" % att]
+      else
+        namespace["*->%s" % att]
+      end
     end
 
     def redis
@@ -567,6 +572,7 @@ module Ohm
   end
 
   class MutableSet < Set
+
     # Add a model directly to the set.
     #
     # Example:
@@ -620,128 +626,6 @@ module Ohm
         ids.each { |id| redis.queue("SADD", key, id) }
         redis.queue("EXEC")
         redis.commit
-      end
-    end
-  end
-
-  # Anytime you filter a set with more than one requirement, you
-  # internally use a `MultiSet`. `MultiSet` is a bit slower than just
-  # a `Set` because it has to `SINTERSTORE` all the keys prior to
-  # retrieving the members, size, etc.
-  #
-  # Example:
-  #
-  #   User.all.kind_of?(Ohm::Set)
-  #   # => true
-  #
-  #   User.find(:name => "John").kind_of?(Ohm::Set)
-  #   # => true
-  #
-  #   User.find(:name => "John", :age => 30).kind_of?(Ohm::MultiSet)
-  #   # => true
-  #
-  class MultiSet < BasicSet
-    attr :namespace
-    attr :model
-    attr :command
-
-    def initialize(namespace, model, command)
-      @namespace = namespace
-      @model = model
-      @command = command
-    end
-
-    # Chain new fiters on an existing set.
-    #
-    # Example:
-    #
-    #   set = User.find(:name => "John", :age => 30)
-    #   set.find(:status => 'pending')
-    #
-    def find(dict)
-      MultiSet.new(
-        namespace, model, Command[:sinterstore, command, intersected(dict)]
-      )
-    end
-
-    # Reduce the set using any number of filters.
-    #
-    # Example:
-    #
-    #   set = User.find(:name => "John")
-    #   set.except(:country => "US")
-    #
-    #   # You can also do it in one line.
-    #   User.find(:name => "John").except(:country => "US")
-    #
-    def except(dict)
-      MultiSet.new(
-        namespace, model, Command[:sdiffstore, command, unioned(dict)]
-      )
-    end
-
-    # Perform an intersection between the existent set and
-    # the new set created by the union of the passed filters.
-    #
-    # Example:
-    #
-    #   set = User.find(:status => "active")
-    #   set.combine(:name => ["John", "Jane"])
-    #   
-    #   # The result will include all users with active status
-    #   # and with names "John" or "Jane".
-    def combine(dict)
-      MultiSet.new(
-        namespace, model, Command[:sinterstore, command, unioned(dict)]
-      )
-    end
-
-    # Do a union to the existing set using any number of filters.
-    #
-    # Example:
-    #
-    #   set = User.find(:name => "John")
-    #   set.union(:name => "Jane")
-    #
-    #   # You can also do it in one line.
-    #   User.find(:name => "John").union(:name => "Jane")
-    #
-    def union(dict)
-      MultiSet.new(
-        namespace, model, Command[:sunionstore, command, intersected(dict)]
-      )
-    end
-
-  private
-    def redis
-      model.redis
-    end
-
-    def intersected(dict)
-      Command[:sinterstore, *model.filters(dict)]
-    end
-
-    def unioned(dict)
-      Command[:sunionstore, *model.filters(dict)]
-    end
-
-    def execute
-      # namespace[:tmp] is where all the temp keys should be stored in.
-      # redis will be where all the commands are executed against.
-      response = command.call(namespace[:tmp], redis)
-
-      begin
-
-        # At this point, we have the final aggregated set, which we yield
-        # to the caller. the caller can do all the normal set operations,
-        # i.e. SCARD, SMEMBERS, etc.
-        yield response
-
-      ensure
-
-        # We have to make sure we clean up the temporary keys to avoid
-        # memory leaks and the unintended explosion of memory usage.
-        command.clean
       end
     end
   end
@@ -927,9 +811,9 @@ module Ohm
       keys = filters(dict)
 
       if keys.size == 1
-        Ohm::Set.new(keys.first, key, self)
+        Ohm::Set.new(self, key, keys.first)
       else
-        Ohm::MultiSet.new(key, self, Command.new(:sinterstore, *keys))
+        Ohm::Set.new(self, key, [:SINTER, *keys])
       end
     end
 
@@ -980,7 +864,7 @@ module Ohm
       define_method name do
         model = Utils.const(self.class, model)
 
-        Ohm::MutableSet.new(key[name], model.key, model)
+        Ohm::MutableSet.new(model, model.key, key[name])
       end
     end
 
@@ -1190,7 +1074,7 @@ module Ohm
 
     # An Ohm::Set wrapper for Model.key[:all].
     def self.all
-      Set.new(key[:all], key, self)
+      Ohm::Set.new(self, key, key[:all])
     end
 
     # Syntactic sugar for Model.new(atts).save
