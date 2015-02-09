@@ -1,7 +1,5 @@
 # encoding: UTF-8
 
-require "pp"
-
 require "msgpack"
 require "nido"
 require "redic"
