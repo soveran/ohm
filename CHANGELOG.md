@@ -1,3 +1,11 @@
+## 2.2.0 (unreleased)
+
+- Use Stal for set operations
+
+## 2.1.0
+
+- Add `combine` filter
+
 ## 2.0.0
 
 - Lists now respond to range.
@@ -227,6 +235,10 @@
 [nido]: https://github.com/soveran/nido
 [scrivener]: https://github.com/soveran/scrivener
 [redic]: https://github.com/amakawa/redic
+
+## 1.4.0
+
+- Add `combine` filter
 
 ## 1.3.2
 
