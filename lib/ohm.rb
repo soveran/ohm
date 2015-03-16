@@ -1346,7 +1346,8 @@ module Ohm
     # Run lua scripts and cache the sha in order to improve
     # successive calls.
     def script(file, *args)
-      cache = LUA_CACHE[redis.url]
+      redis_uid = redis.call("INFO")["run_id"]
+      cache = LUA_CACHE[redis_uid]
 
       if cache.key?(file)
         sha = cache[file]
