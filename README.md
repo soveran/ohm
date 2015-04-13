@@ -37,6 +37,7 @@ Articles and Presentations
 * [Ohm (Redis ORM)](http://blog.s21g.com/articles/1717) (Japanese)
 * [Redis and Ohm](http://www.slideshare.net/awksedgreep/redis-and-ohm)
 * [Ruby off Rails](http://www.slideshare.net/cyx.ucron/ruby-off-rails)
+* [Data modeling with Redis and Ohm](http://www.sitepoint.com/semi-relational-data-modeling-redis-ohm/)
 
 Getting started
 ---------------
