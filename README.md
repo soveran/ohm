@@ -27,6 +27,7 @@ These are libraries in other languages that were inspired by Ohm.
 * [Nohm](https://github.com/maritz/nohm) for Node.js, created by maritz
 * [Redisco](https://github.com/iamteem/redisco) for Python, created by iamteem
 * [redis3m](https://github.com/luca3m/redis3m) for C++, created by luca3m
+* [Ohmoc](https://github.com/seppo0010/ohmoc) for Objective-C, created by seppo0010
 
 Articles and Presentations
 --------------------------
