@@ -1,3 +1,7 @@
+## 2.2.1
+
+- Lock msgpack version
+
 ## 2.2.0
 
 - Use Stal for set operations
