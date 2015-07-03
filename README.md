@@ -152,6 +152,10 @@ event.id
 event == Event[1]
 # => true
 
+# Update an event
+event.update :name => "Ohm Worldwide Conference 2032"
+# => #<Event:0x007fb4c35e2458 @attributes={:name=>"Ohm Worldwide Conference"}, @_memo={}, @id="1">
+
 # Trying to find a non existent event
 Event[2]
 # => nil
