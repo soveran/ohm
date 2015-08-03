@@ -39,6 +39,11 @@ module Ohm
   class IndexNotFound < Error; end
   class UniqueIndexViolation < Error; end
 
+  module ErrorPatterns
+    DUPLICATE = /(UniqueIndexViolation: (\w+))/.freeze
+    NOSCRIPT = /^NOSCRIPT/.freeze
+  end
+
   # Instead of monkey patching Kernel or trying to be clever, it's
   # best to confine all the helper methods in a Utils module.
   module Utils
@@ -1299,22 +1304,12 @@ module Ohm
         features["id"] = @id
       end
 
-      response = script(LUA_SAVE, 0,
+      @id = script(LUA_SAVE, 0,
         features.to_msgpack,
         _sanitized_attributes.to_msgpack,
         indices.to_msgpack,
         uniques.to_msgpack
       )
-
-      if response.is_a?(RuntimeError)
-        if response.message =~ /(UniqueIndexViolation: (\w+))/
-          raise UniqueIndexViolation, $1
-        else
-          raise response
-        end
-      end
-
-      @id = response
 
       return self
     end
@@ -1346,18 +1341,32 @@ module Ohm
     # Run lua scripts and cache the sha in order to improve
     # successive calls.
     def script(file, *args)
-      cache = LUA_CACHE[redis.url]
+      begin
+        cache = LUA_CACHE[redis.url]
 
-      if cache.key?(file)
-        sha = cache[file]
-      else
-        src = File.read(file)
-        sha = redis.call("SCRIPT", "LOAD", src)
+        if cache.key?(file)
+          sha = cache[file]
+        else
+          src = File.read(file)
+          sha = redis.call("SCRIPT", "LOAD", src)
 
-        cache[file] = sha
+          cache[file] = sha
+        end
+
+        redis.call!("EVALSHA", sha, *args)
+
+      rescue RuntimeError
+
+        case $!.message
+        when ErrorPatterns::NOSCRIPT
+          LUA_CACHE[redis.url].clear
+          retry
+        when ErrorPatterns::DUPLICATE
+          raise UniqueIndexViolation, $1
+        else
+          raise $!
+        end
       end
-
-      redis.call("EVALSHA", sha, *args)
     end
 
     # Update the model attributes and call save.

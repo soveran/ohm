@@ -787,3 +787,13 @@ test "poster-example for overriding writers" do
   a = Advertiser.new(:email => " FOO@BAR.COM ")
   assert_equal "foo@bar.com", a.email
 end
+
+test "scripts are flushed" do
+  m = Meetup.create(:name => "Foo")
+
+  Meetup.redis.call("SCRIPT", "FLUSH")
+
+  m.update(:name => "Bar")
+
+  assert_equal m.name, Meetup[m.id].name
+end
