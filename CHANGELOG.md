@@ -1,3 +1,8 @@
+## 2.3.0
+
+- Retry save and delete if scripts were flushed in the server.
+- Depend on Redic ~> 1.5.0 in order to use of `call!` instead of `call`.
+
 ## 2.2.1
 
 - Lock msgpack version
