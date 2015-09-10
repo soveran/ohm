@@ -15,7 +15,7 @@ Gem::Specification.new do |s|
   s.add_dependency "redic", "~> 1.5.0"
   s.add_dependency "nido"
   s.add_dependency "stal"
-  s.add_dependency "msgpack", "~> 0.5.0"
+  s.add_dependency "msgpack", "~> 0.5"
 
   s.add_development_dependency "cutest"
 end
