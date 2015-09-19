@@ -1205,6 +1205,9 @@ module Ohm
       incr(att, -count)
     end
 
+    alias_method(:increment, :incr)
+    alias_method(:decrement, :decr)
+
     # Return a value that allows the use of models as hash keys.
     #
     # Example:
