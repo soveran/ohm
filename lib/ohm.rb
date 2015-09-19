@@ -535,7 +535,7 @@ module Ohm
     #
     #   set = User.find(:status => "active")
     #   set.combine(:name => ["John", "Jane"])
-    #   
+    #
     #   # The result will include all users with active status
     #   # and with names "John" or "Jane".
     def combine(dict)
