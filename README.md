@@ -171,9 +171,9 @@ querying. Keep reading to find out what you can do with models.
 Attribute types
 ---------------
 
-Ohm::Model provides 4 attribute types: 
+Ohm::Model provides 4 attribute types:
 
-* {Ohm::Model.attribute attribute}, 
+* {Ohm::Model.attribute attribute},
 * {Ohm::Model.set set}
 * {Ohm::Model.list list}
 * {Ohm::Model.counter counter}
@@ -207,8 +207,8 @@ and for keeping elements in order.
 A `counter` is like a regular attribute, but the direct manipulation
 of the value is not allowed. You can retrieve, increase or decrease
 the value, but you can not assign it. In the example above, we used a
-counter attribute for tracking votes. As the incr and decr operations
-are atomic, you can rest assured a vote won't be counted twice.
+counter attribute for tracking votes. As the `increment` and `decrement`
+operations are atomic, you can rest assured a vote won't be counted twice.
 
 ### reference
 

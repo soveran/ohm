@@ -73,7 +73,7 @@ end
 
 test "counters are cleaned up during deletion" do
   e = Event.create(:name => "Foo")
-  e.incr :votes, 10
+  e.increment :votes, 10
 
   assert_equal 10, e.votes
 
@@ -286,7 +286,7 @@ end
 test "save counters" do
   event = Event.create(:name => "Foo")
 
-  event.incr(:votes)
+  event.increment(:votes)
   event.save
 
   assert_equal 1, Event[event.id].votes
@@ -561,7 +561,7 @@ setup do
   @event = Event.create(:name => "Ruby Tuesday")
   {'D' => 4, 'C' => 2, 'B' => 5, 'A' => 3}.each_pair do |name, logins|
     person = Person.create(:name => name)
-    person.incr :logins, logins
+    person.increment :logins, logins
     @event.attendees.add(person)
   end
 end
@@ -630,18 +630,18 @@ test "be zero if not initialized" do
 end
 
 test "be able to increment a counter" do
-  @event.incr(:votes)
+  @event.increment(:votes)
   assert 1 == @event.votes
 
-  @event.incr(:votes, 2)
+  @event.increment(:votes, 2)
   assert 3 == @event.votes
 end
 
 test "be able to decrement a counter" do
-  @event.decr(:votes)
+  @event.decrement(:votes)
   assert @event.votes == -1
 
-  @event.decr(:votes, 2)
+  @event.decrement(:votes, 2)
   assert @event.votes == -3
 end
 
@@ -739,7 +739,7 @@ end
 # Persistence
 test "persist attributes to a hash" do
   event = Event.create(:name => "Redis Meetup")
-  event.incr(:votes)
+  event.increment(:votes)
 
   assert "hash" == Ohm.redis.call("TYPE", "Event:1")
 

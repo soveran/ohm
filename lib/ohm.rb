@@ -538,6 +538,7 @@ module Ohm
     #
     #   # The result will include all users with active status
     #   # and with names "John" or "Jane".
+    #
     def combine(dict)
       Ohm::Set.new(
         model, namespace, [:SINTER, key, [:SUNION, *model.filters(dict)]]
@@ -652,7 +653,7 @@ module Ohm
   #   end
   #
   #   u = User.create(:name => "John", :email => "foo@bar.com")
-  #   u.incr :points
+  #   u.increment :points
   #   u.posts.add(Post.create)
   #
   # When you execute `User.create(...)`, you run the following Redis
@@ -1041,9 +1042,9 @@ module Ohm
 
     # Declare a counter. All the counters are internally stored in
     # a different Redis hash, independent from the one that stores
-    # the model attributes. Counters are updated with the `incr` and
-    # `decr` methods, which interact directly with Redis. Their value
-    # can't be assigned as with regular attributes.
+    # the model attributes. Counters are updated with the `increment`
+    # and `decrement` methods, which interact directly with Redis. Their
+    # value can't be assigned as with regular attributes.
     #
     # Example:
     #
@@ -1052,7 +1053,7 @@ module Ohm
     #   end
     #
     #   u = User.create
-    #   u.incr :points
+    #   u.increment :points
     #
     #   u.points
     #   # => 1
@@ -1196,17 +1197,17 @@ module Ohm
     end
 
     # Increment a counter atomically. Internally uses HINCRBY.
-    def incr(att, count = 1)
+    def increment(att, count = 1)
       redis.call("HINCRBY", key[:counters], att, count)
     end
 
     # Decrement a counter atomically. Internally uses HINCRBY.
-    def decr(att, count = 1)
-      incr(att, -count)
+    def decrement(att, count = 1)
+      increment(att, -count)
     end
 
-    alias_method(:increment, :incr)
-    alias_method(:decrement, :decr)
+    alias_method(:incr, :increment)
+    alias_method(:decr, :decrement)
 
     # Return a value that allows the use of models as hash keys.
     #

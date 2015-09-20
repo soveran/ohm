@@ -9,12 +9,12 @@ test "counters aren't overwritten by competing saves" do
   Ad.counter :hits
 
   instance1 = Ad.create
-  instance1.incr :hits
+  instance1.increment :hits
 
   instance2 = Ad[instance1.id]
 
-  instance1.incr :hits
-  instance1.incr :hits
+  instance1.increment :hits
+  instance1.increment :hits
 
   instance2.save
 
@@ -31,7 +31,7 @@ test "you can increment counters even when attributes is empty" do
   ex = nil
 
   begin
-    ad.incr :hits
+    ad.increment :hits
   rescue ArgumentError => e
     ex = e
   end
@@ -44,7 +44,7 @@ test "an attribute gets saved properly" do
   Ad.counter :hits
 
   ad = Ad.create(:name => "foo")
-  ad.incr :hits, 10
+  ad.increment :hits, 10
   assert_equal 10, ad.hits
 
   # Now let's just load and save it.
@@ -59,7 +59,7 @@ test "an attribute gets saved properly" do
   # If we load and save again while we incr behind the scenes,
   # the latest counter values should be respected.
   ad = Ad[ad.id]
-  ad.incr :hits, 5
+  ad.increment :hits, 5
   ad.save
 
   ad = Ad[ad.id]

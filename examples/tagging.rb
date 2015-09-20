@@ -161,14 +161,14 @@ class Post
 protected
   def before_update
     assigned_tags = tags
-    tag(get(:tags)).map(&Tag).each { |t| t.decr :total }
+    tag(get(:tags)).map(&Tag).each { |t| t.decrement :total }
     self.tags = assigned_tags
   end
 
   # And of course, we increment all new tags for a particular record
   # after successfully saving it.
   def after_save
-    tag.map(&Tag).each { |t| t.incr :total }
+    tag.map(&Tag).each { |t| t.increment :total }
   end
 end
 
