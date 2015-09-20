@@ -1192,16 +1192,43 @@ module Ohm
     #   u.save
     #   u.new?
     #   # => false
+    #
     def new?
       !defined?(@id)
     end
 
-    # Increment a counter atomically. Internally uses HINCRBY.
+    # Increments a counter atomically. Internally uses `HINCRBY`.
+    #
+    #   class Ad
+    #     counter :hits
+    #   end
+    #
+    #   ad = Ad.create
+    #
+    #   ad.increment(:hits)
+    #   ad.hits # => 1
+    #
+    #   ad.increment(:hits, 2)
+    #   ad.hits # => 3
+    #
     def increment(att, count = 1)
       redis.call("HINCRBY", key[:counters], att, count)
     end
 
-    # Decrement a counter atomically. Internally uses HINCRBY.
+    # Decrements a counter atomically. Internally uses `HINCRBY`.
+    #
+    #   class Post
+    #     counter :score
+    #   end
+    #
+    #   post = Post.create
+    #
+    #   post.decrement(:score)
+    #   post.score # => -1
+    #
+    #   post.decrement(:hits, 2)
+    #   post.score # => -3
+    #
     def decrement(att, count = 1)
       increment(att, -count)
     end
