@@ -477,16 +477,28 @@ module Ohm
       sort(options.merge(:by => to_key(att)))
     end
 
-    # Syntactic sugar for `sort_by` or `sort` when you only need the
-    # first element.
+    # Returns the first record of the set. Internally uses `sort` or
+    # `sort_by` if a `:by` option is given. Accepts all options supported
+    # by `sort`.
     #
-    # Example:
+    #   class User < Ohm::Model
+    #     attribute :name
+    #   end
     #
-    #   User.all.first ==
-    #     User.all.sort(:limit => [0, 1]).first
+    #   User.create(name: "alice")
+    #   User.create(name: "bob")
+    #   User.create(name: "eve")
     #
-    #   User.all.first(:by => :name, "ALPHA") ==
-    #     User.all.sort_by(:name, :order => "ALPHA", :limit => [0, 1]).first
+    #   User.all.first.name # => "alice"
+    #   User.all.first(by: :name).name # => "alice"
+    #
+    #   User.all.first(order: "ASC")  # => "alice"
+    #   User.all.first(order: "DESC") # => "eve"
+    #
+    # You can use the `:order` option to bring the last record:
+    #
+    #   User.all.first(order: "DESC").name             # => "eve"
+    #   User.all.first(by: :name, order: "ALPHA DESC") # => "eve"
     #
     def first(options = {})
       opts = options.dup
