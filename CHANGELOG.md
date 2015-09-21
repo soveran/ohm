@@ -1,3 +1,8 @@
+## Unreleased
+
+- Add `Ohm::Model#increment` and `Ohm::Model#decrement`. These methods
+  are aliases of `incr` and `decr` respectively.
+
 ## 2.3.0
 
 - Retry save and delete if scripts were flushed in the server.
