@@ -19,6 +19,6 @@ test "assign an ID and save the object" do
 end
 
 test "save the attributes in UTF8" do
- event = Event.create(name: "32° Kisei-sen")
- assert_equal "32° Kisei-sen", Event[event.id].name
+  event = Event.create(name: "32° Kisei-sen")
+  assert_equal "32° Kisei-sen", Event[event.id].name
 end
