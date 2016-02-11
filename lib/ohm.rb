@@ -1101,6 +1101,7 @@ module Ohm
     # Returns the namespace for the keys generated using this model.
     # Check `Ohm::Model.key` documentation for more details.
     def key
+      raise MissingID if not defined?(@id)
       model.key[id]
     end
 
@@ -1131,7 +1132,6 @@ module Ohm
     #   # => User:1
     #
     def id
-      raise MissingID if not defined?(@id)
       @id
     end
 
