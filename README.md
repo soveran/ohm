@@ -163,7 +163,7 @@ Event[2]
 
 # Finding all the events
 Event.all.to_a
-# => [<Event:1 name='Ohm Worldwide Conference 2031'>]
+# => [<Event:1 name='Ohm Worldwide Conference 2032'>]
 ```
 
 This example shows some basic features, like attribute declarations and
