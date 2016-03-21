@@ -1,6 +1,6 @@
 # encoding: UTF-8
 
-require "msgpack"
+require "json"
 require "nido"
 require "redic"
 require "stal"
@@ -1348,10 +1348,10 @@ module Ohm
       end
 
       @id = script(LUA_SAVE, 0,
-        features.to_msgpack,
-        _sanitized_attributes.to_msgpack,
-        indices.to_msgpack,
-        uniques.to_msgpack
+        features.to_json,
+        _sanitized_attributes.to_json,
+        indices.to_json,
+        uniques.to_json
       )
 
       return self
@@ -1373,9 +1373,9 @@ module Ohm
         { "name" => model.name,
           "id" => id,
           "key" => key
-        }.to_msgpack,
-        uniques.to_msgpack,
-        model.tracked.to_msgpack
+        }.to_json,
+        uniques.to_json,
+        model.tracked.to_json
       )
 
       return self
