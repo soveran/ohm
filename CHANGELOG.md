@@ -1,4 +1,34 @@
-## Unreleased
+## 3.0.0
+
+- Use JSON instead of msgpack for internal encoding.
+
+  When Ohm started using Lua internally for saving, updating and
+  deleting objects, it used msgpack for serializing. Redis supports
+  both msgpack and JSON, and we picked msgpack because it produces
+  a more compact representation. At some point, the Ruby msgpack
+  library and the internal msgpack support in Redis diverged, and
+  we were forced to lock the dependency to a specific gem version.
+  Recently, some people complained about encoding issues originating
+  from msgpack inside Redis, and once they tried a modified Ohm
+  that uses JSON instead of msgpack, all their issues disappeared.
+  That's why we think it's time for removing msgpack altogether and
+  use JSON instead.
+
+- Move the raise of MissingID to Ohm::Model#key.
+
+  In previous versions, trying to access an instance's `id` would
+  raise a `MissingID` error. The reason why raising that error is
+  convenient is because it allows Ohm to fail as early as possible
+  when you try to use an object that hasn't been saved yet. The
+  error can arise from comparisons, from direct calls to `id`, and
+  also from any call to methods that need `object.key` to return a
+  proper value, as `key` in turn calls the `id` method. But it turns
+  out that many form builders rely on the fact that sending the
+  `id` message to most ORMs results in either a valid ID or `nil`,
+  and here Ohm was the exception. By moving the check from `id` to
+  `key`, we can keep most of the previous behavior and we can return
+  `nil` when sending the `id` message to a new instance, thus making
+  Ohm compatible with most form builders.
 
 - Add `Ohm::Model#increment` and `Ohm::Model#decrement`. These methods
   are aliases of `incr` and `decr` respectively.
