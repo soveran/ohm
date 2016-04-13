@@ -10,11 +10,6 @@ class Event < Ohm::Model
 
   index :name
   index :location
-
-  def validate
-    assert_present :name
-    assert_present :location
-  end
 end
 
 class Sequence

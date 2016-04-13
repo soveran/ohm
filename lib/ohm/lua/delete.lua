@@ -1,5 +1,5 @@
 -- This script receives three parameters, all encoded with
--- MessagePack. The decoded values are used for deleting a model
+-- JSON. The decoded values are used for deleting a model
 -- instance in Redis and removing any reference to it in sets
 -- (indices) and hashes (unique indices).
 --
@@ -19,9 +19,9 @@
 -- Keys that share the lifecycle of this model instance, that
 -- should be removed as this object is deleted.
 --
-local model   = cmsgpack.unpack(ARGV[1])
-local uniques = cmsgpack.unpack(ARGV[2])
-local tracked = cmsgpack.unpack(ARGV[3])
+local model   = cjson.decode(ARGV[1])
+local uniques = cjson.decode(ARGV[2])
+local tracked = cjson.decode(ARGV[3])
 
 local function remove_indices(model)
 	local memo = model.key .. ":_indices"
