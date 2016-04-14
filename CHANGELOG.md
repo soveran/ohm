@@ -1,3 +1,7 @@
+## 3.0.1
+
+- Adapt Lua scripts to Redis unstable.
+
 ## 3.0.0
 
 - Use JSON instead of msgpack for internal encoding.
