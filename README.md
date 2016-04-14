@@ -222,6 +222,41 @@ containing the foreign key to another model.
 
 Provides an accessor to search for all models that `reference` the current model.
 
+Tracked keys
+------------
+
+Besides the provided attribute types, it is possible to instruct
+Ohm to track arbitrary keys and tie them to the object's lifecycle.
+
+For example:
+
+```ruby
+class Log < Ohm::Model
+  track :text
+  
+  def append(msg)
+    redis.call("APPEND", key[:text], msg)
+  end
+  
+  def tail(n = 100)
+    redis.call("GETRANGE", key[:text], -(n), -1)
+  end
+end
+
+log = Log.create
+log.append("hello\n")
+
+assert_equal "hello\n", log.tail
+
+log.append("world\n")
+
+assert_equal "world\n", log.tail(6)
+```
+
+When the `log` object is deleted, the `:text` key will be deleted
+too. Note that the key is scoped to that particular instance of
+`Log`, so if `log.id` is `42` then the key will be `Log:42:text`.
+
 Persistence strategy
 --------------------
 
