@@ -1334,10 +1334,10 @@ module Ohm
     #
     def save
       indices = {}
-      model.indices.each { |field| indices[field] = Array(send(field)) }
+      model.indices.each { |field| indices[field] = Array(send(field)).map(&:to_s) }
 
       uniques = {}
-      model.uniques.each { |field| uniques[field] = send(field) }
+      model.uniques.each { |field| uniques[field] = send(field).to_s }
 
       features = {
         "name" => model.name
