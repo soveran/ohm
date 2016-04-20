@@ -15,7 +15,7 @@ module Ohm
   #
   # MissingID:
   #
-  #   Comment.new.id # => Error
+  #   Comment.new.id # => nil
   #   Comment.new.key # => Error
   #
   #   Solution: you need to save your model first.
