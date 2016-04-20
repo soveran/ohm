@@ -124,4 +124,15 @@ scope do
 
     assert_equal nil, Node.with(:available, true)
   end
+  
+  test "float to string" do
+    u1 = User.create(:email => "foo", :update => 3.0)
+    u2 = User.create(:email => "bar", :update => 3)
+    
+    assert User.find(:update => 3.0).include?(u1)
+    assert User.find(:update => 3).include?(u2)
+    
+    assert !User.find(:update => 3.0).include?(u2)
+    assert !User.find(:update => 3).include?(u1)
+  end
 end

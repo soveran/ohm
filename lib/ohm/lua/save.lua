@@ -57,7 +57,7 @@ end
 local function index(model, indices)
 	for field, enum in pairs(indices) do
 		for _, val in ipairs(enum) do
-			local key = model.name .. ":indices:" .. field .. ":" .. tostring(val)
+			local key = model.name .. ":indices:" .. field .. ":" .. val
 
 			redis.call("SADD", model.key .. ":_indices", key)
 			redis.call("SADD", key, model.id)
@@ -78,7 +78,7 @@ end
 local function unique(model, uniques)
 	for field, value in pairs(uniques) do
 		local key = model.name .. ":uniques:" .. field
-		local val = tostring(value)
+		local val = value
 
 		redis.call("HSET", model.key .. ":_uniques", key, val)
 		redis.call("HSET", key, val, model.id)
@@ -99,7 +99,7 @@ local function verify(model, uniques)
 
 	for field, value in pairs(uniques) do
 		local key = model.name .. ":uniques:" .. field
-		local id = redis.call("HGET", key, tostring(value))
+		local id = redis.call("HGET", key, value)
 
 		if id and id ~= tostring(model.id) then
 			duplicates[#duplicates + 1] = field
