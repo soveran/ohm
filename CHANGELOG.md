@@ -1,3 +1,14 @@
+## 3.0.2
+
+- Fix bug created the wrong keys when indexing floats.
+
+  As reported by @slowernet, if an indexed attribute was assigned a
+  real value with 0 fractional part (eg. 3.0), the `tostring` function
+  in lua truncated the value to an integer. As a result, the index
+  was created with the wrong key (Model:indices:attribute:3, instead
+  of Model:indices:attribute:3.0). The fix is to convert all values
+  to strings before sending them to the Lua script.
+
 ## 3.0.1
 
 - Adapt Lua scripts to Redis unstable.
