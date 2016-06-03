@@ -8,11 +8,11 @@ require "ohm"
 
 def battleable
   attribute :name;       index :name
-  attribute :hp
-  attribute :mp
-  list :inventory, :Item
+  attribute :hp,         lambda { |x| x.to_i } # cast hp to integer
+  attribute :mp,         lambda { |x| x.to_i }
+  list      :inventory,  :Item
 
-  reference :equipment, :Loadout
+  reference :equipment,  :Loadout
 end
 
 
@@ -38,9 +38,9 @@ end
 
 class Item < Ohm::Model
   attribute :name
-  attribute :dmg
-  attribute :def
-  attribute :value
+  attribute :dmg,    lambda { |x| x.to_i }
+  attribute :def,    lambda { |x| x.to_i }
+  attribute :value,  lambda { |x| x.to_i }
 end
 
 
