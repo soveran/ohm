@@ -1,3 +1,10 @@
+## 3.0.3
+
+- Fix bug that gave false positives for unique indices.
+
+  Uniques were indexed for nil values as empty strings. This
+  release fixes that issue.
+
 ## 3.0.2
 
 - Fix bug created the wrong keys when indexing floats.
