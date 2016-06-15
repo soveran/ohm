@@ -1,0 +1,30 @@
+PATH
+  remote: .
+  specs:
+    ohm (3.0.2)
+      nido
+      redic (~> 1.5.0)
+      stal
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    clap (1.0.0)
+    cutest (1.2.3)
+      clap
+    hiredis (0.6.1)
+    nido (1.0.0)
+    redic (1.5.0)
+      hiredis
+    stal (0.1.0)
+      redic
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  cutest
+  ohm!
+
+BUNDLED WITH
+   1.12.4
