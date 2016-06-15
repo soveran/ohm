@@ -96,3 +96,13 @@ test "unique virtual attribute" do
     User.create(:email => "baz@yahoo.com")
   end
 end
+
+test "nil doesn't count for uniques" do
+  u1 = User.create
+  u2 = User.create
+  
+  assert u1.id
+  assert u2.id
+  
+  assert u1.id != u2.id
+end

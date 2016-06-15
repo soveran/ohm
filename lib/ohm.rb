@@ -1334,10 +1334,16 @@ module Ohm
     #
     def save
       indices = {}
-      model.indices.each { |field| indices[field] = Array(send(field)).map(&:to_s) }
+      model.indices.each do |field|
+        next unless (value = send(field))
+        indices[field] = Array(value).map(&:to_s)
+      end
 
       uniques = {}
-      model.uniques.each { |field| uniques[field] = send(field).to_s }
+      model.uniques.each do |field|
+        next unless (value = send(field))
+        uniques[field] = value.to_s
+      end
 
       features = {
         "name" => model.name
@@ -1367,7 +1373,10 @@ module Ohm
     #
     def delete
       uniques = {}
-      model.uniques.each { |field| uniques[field] = send(field) }
+      model.uniques.each do |field|
+        next unless (value = send(field))
+        uniques[field] = value.to_s
+      end
 
       script(LUA_DELETE, 0,
         { "name" => model.name,
