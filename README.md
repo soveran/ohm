@@ -460,6 +460,24 @@ Post.to_reference == :post
 # => true
 ```
 
+Modules
+-------
+
+If your models are defined inside a module, you will have to define
+the references and collections as in the following example:
+
+```ruby
+module SomeNamespace
+  class Foo < Ohm::Model
+    attribute :name
+  end
+  
+  class Bar < Ohm::Model
+    reference :foo, 'SomeNamespace::Foo'
+  end
+end
+```
+
 Indices
 -------
 
