@@ -174,15 +174,15 @@ Attribute types
 
 Ohm::Model provides 4 attribute types:
 
-* {Ohm::Model.attribute attribute},
-* {Ohm::Model.set set}
-* {Ohm::Model.list list}
-* {Ohm::Model.counter counter}
+* `Ohm::Model.attribute`,
+* `Ohm::Model.set`
+* `Ohm::Model.list`
+* `Ohm::Model.counter`
 
 and 2 meta types:
 
-* {Ohm::Model.reference reference}
-* {Ohm::Model.collection collection}.
+* `Ohm::Model.reference`
+* `Ohm::Model.collection`.
 
 ### attribute
 
@@ -304,9 +304,9 @@ end
 
 ## Sorting
 
-Since `attendees` is a {Ohm::Model::Set Set}, it exposes two sorting
-methods: {Ohm::Model::Collection#sort sort} returns the elements
-ordered by `id`, and {Ohm::Model::Collection#sort_by sort_by} receives
+Since `attendees` is a `Ohm::Model::Set`, it exposes two sorting
+methods: `Ohm::Model::Collection#sort` returns the elements
+ordered by `id`, and `Ohm::Model::Collection#sort_by` receives
 a parameter with an attribute name, which will determine the sorting
 order. Both methods receive an options hash which is explained below:
 
@@ -337,8 +337,8 @@ Example:
 ### :by
 
 Key or Hash key with which to sort by. An important distinction with
-using {Ohm::Model::Collection#sort sort} and
-{Ohm::Model::Collection#sort_by sort_by} is that `sort_by` automatically
+using `Ohm::Model::Collection#sort` and
+`Ohm::Model::Collection#sort_by` is that `sort_by` automatically
 converts the passed argument with the assumption that it is a hash key
 and it's within the current model you are sorting.
 
@@ -354,8 +354,8 @@ otherwise.
 ### :get
 
 A key pattern to return, e.g. `Post:*->title`. As is the case with
-the `:by` option, using {Ohm::Model::Collection#sort sort} and
-{Ohm::Model::Collection#sort_by sort_by} has distinct differences in
+the `:by` option, using `Ohm::Model::Collection#sort` and
+`Ohm::Model::Collection#sort_by` has distinct differences in
 that `sort_by` does much of the hand-coding for you.
 
 ```ruby
@@ -391,7 +391,7 @@ you can use `post.comments.ids`.
 
 ### References explained
 
-Doing a {Ohm::Model.reference reference} is actually just a shortcut for
+Doing a `Ohm::Model.reference` is actually just a shortcut for
 the following:
 
 ```ruby
@@ -423,10 +423,10 @@ Comment.find(post_id: 1)
 
 ### Collections explained
 
-The reason a {Ohm::Model.reference reference} and a
-{Ohm::Model.collection collection} go hand in hand, is that a collection is
+The reason a `Ohm::Model.reference` and a
+`Ohm::Model.collection` go hand in hand, is that a collection is
 just a macro that defines a finder for you, and we know that to find a model
-by a field requires an {Ohm::Model.index index} to be defined for the field
+by a field requires an `Ohm::Model.index` to be defined for the field
 you want to search.
 
 ```ruby
@@ -463,15 +463,15 @@ Post.to_reference == :post
 Indices
 -------
 
-An {Ohm::Model.index index} is a set that's handled automatically by Ohm. For
+An `Ohm::Model.index` is a set that's handled automatically by Ohm. For
 any index declared, Ohm maintains different sets of objects IDs for quick
 lookups.
 
 In the `Event` example, the index on the name attribute will
 allow for searches like `Event.find(name: "some value")`.
 
-Note that the methods {Ohm::Model::Set#find find} and
-{Ohm::Model::Set#except except} need a corresponding index in order to work.
+Note that the methods `Ohm::Model::Set#find` and
+`Ohm::Model::Set#except` need a corresponding index in order to work.
 
 ### Finding records
 
