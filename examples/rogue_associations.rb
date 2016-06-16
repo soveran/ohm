@@ -12,7 +12,6 @@ def battleable
   attribute :mp,         lambda { |x| x.to_i }
   list      :inventory,  :Item
 
-  attribute :equipment_id
   reference :equipment,  :Loadout
 end
 
@@ -36,21 +35,13 @@ class Monster < Ohm::Model
 end
 
 class Loadout < Ohm::Model
-  attribute :head_id
   reference :head,       :Item
-  attribute :right_hand_id
   reference :right_hand, :Item
-  attribute :left_hand_id
   reference :left_hand,  :Item
-  attribute :body_id
   reference :body,       :Item
-  attribute :legs_id
   reference :legs,       :Item
-  attribute :feet_id
   reference :feet,       :Item
-  attribute :wrist_id
   reference :wrist,      :Item
-  attribute :neck_id
   reference :neck,       :Item
 end
 
