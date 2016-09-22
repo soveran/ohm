@@ -6,6 +6,7 @@
 
 require "ohm"
 
+# We use this method as a sort of 'mixin' for the Rogue and Monster classes
 def battleable
   attribute :name;       index :name
   attribute :hp,         lambda { |x| x.to_i } # cast hp to integer
@@ -15,7 +16,7 @@ def battleable
   reference :equipment,  :Loadout
 end
 
-# We define both a `Video` and `Audio` model, with a `list` of *comments*.
+
 class Rogue < Ohm::Model
   battleable # give Rogues all the attributes required to conduct battle
 
@@ -30,8 +31,6 @@ end
 
 class Monster < Ohm::Model
   battleable # give monsters attributes required to conduct battle
-
-
 end
 
 class Loadout < Ohm::Model
@@ -83,5 +82,5 @@ end
 test "a rogue can sell her gear" do
   rogue = Rogue.spawn
 
-
+  # TODO: test for ability to sell gear
 end
