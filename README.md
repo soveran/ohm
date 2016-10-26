@@ -21,6 +21,7 @@ Related projects
 
 These are libraries in other languages that were inspired by Ohm.
 
+* [Ohm](https://github.com/soveran/ohm-crystal) for Crystal, created by soveran
 * [JOhm](https://github.com/xetorthio/johm) for Java, created by xetorthio
 * [Lohm](https://github.com/slact/lua-ohm) for Lua, created by slact
 * [ohm.lua](https://github.com/amakawa/ohm.lua) for Lua, created by amakawa
