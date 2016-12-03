@@ -1,7 +1,7 @@
 # encoding: UTF-8
 
 require "json"
-require "nido"
+require "nest"
 require "redic"
 require "stal"
 
@@ -173,17 +173,17 @@ module Ohm
 
     # Returns the total size of the list using LLEN.
     def size
-      redis.call("LLEN", key)
+      key.call("LLEN")
     end
 
     # Returns the first element of the list using LINDEX.
     def first
-      model[redis.call("LINDEX", key, 0)]
+      model[key.call("LINDEX", 0)]
     end
 
     # Returns the last element of the list using LINDEX.
     def last
-      model[redis.call("LINDEX", key, -1)]
+      model[key.call("LINDEX", -1)]
     end
 
     # Returns an array of elements from the list using LRANGE.
@@ -211,7 +211,7 @@ module Ohm
     #   [c1, c2] == post.comments.range(0, 1)
     #   # => true
     def range(start, stop)
-      fetch(redis.call("LRANGE", key, start, stop))
+      fetch(key.call("LRANGE", start, stop))
     end
 
     # Checks if the model is part of this List.
@@ -255,12 +255,12 @@ module Ohm
 
     # Pushes the model to the _end_ of the list using RPUSH.
     def push(model)
-      redis.call("RPUSH", key, model.id)
+      key.call("RPUSH", model.id)
     end
 
     # Pushes the model to the _beginning_ of the list using LPUSH.
     def unshift(model)
-      redis.call("LPUSH", key, model.id)
+      key.call("LPUSH", model.id)
     end
 
     # Delete a model from the list.
@@ -292,7 +292,7 @@ module Ohm
 
       # LREM key 0 <id> means remove all elements matching <id>
       # @see http://redis.io/commands/lrem
-      redis.call("LREM", key, 0, model.id)
+      key.call("LREM", 0, model.id)
     end
 
     # Returns an array with all the ID's of the list.
@@ -316,7 +316,7 @@ module Ohm
     #   # => ["1", "2", "3"]
     #
     def ids
-      redis.call("LRANGE", key, 0, -1)
+      key.call("LRANGE", 0, -1)
     end
 
   private
@@ -378,7 +378,7 @@ module Ohm
       if Array === key
         Stal.solve(redis, key)
       else
-        redis.call("SMEMBERS", key)
+        key.call("SMEMBERS")
       end
     end
 
@@ -599,7 +599,7 @@ module Ohm
     #   user.posts.add(post)
     #
     def add(model)
-      redis.call("SADD", key, model.id)
+      key.call("SADD", model.id)
     end
 
     alias_method :<<, :add
@@ -614,7 +614,7 @@ module Ohm
     #   user.posts.delete(post)
     #
     def delete(model)
-      redis.call("SREM", key, model.id)
+      key.call("SREM", model.id)
     end
 
     # Replace all the existing elements of a set with a different
@@ -723,14 +723,14 @@ module Ohm
     #   User.key.kind_of?(String)
     #   # => true
     #
-    #   User.key.kind_of?(Nido)
+    #   User.key.kind_of?(Nest)
     #   # => true
     #
-    # To find out more about Nido, see:
-    #   http://github.com/soveran/nido
+    # To find out more about Nest, see:
+    #   http://github.com/soveran/nest
     #
     def self.key
-      @key ||= Nido.new(self.name)
+      @key ||= Nest.new(self.name, redis)
     end
 
     # Retrieve a record by ID.
@@ -763,7 +763,7 @@ module Ohm
 
     # Check if the ID exists within <Model>:all.
     def self.exists?(id)
-      redis.call("SISMEMBER", key[:all], id) == 1
+      key[:all].call("SISMEMBER", id) == 1
     end
 
     # Find values in `unique` indices.
@@ -781,7 +781,7 @@ module Ohm
     def self.with(att, val)
       raise IndexNotFound unless uniques.include?(att)
 
-      id = redis.call("HGET", key[:uniques][att], val)
+      id = key[:uniques][att].call("HGET", val)
       new(:id => id).load! if id
     end
 
@@ -1079,7 +1079,7 @@ module Ohm
       define_method(name) do
         return 0 if new?
 
-        redis.call("HGET", key[:counters], name).to_i
+        key[:counters].call("HGET", name).to_i
       end
     end
 
@@ -1141,7 +1141,7 @@ module Ohm
     # 2. That they represent the same Redis key.
     #
     def ==(other)
-      other.kind_of?(model) && other.key == key
+      other.kind_of?(model) && other.key.to_s == key.to_s
     rescue MissingID
       false
     end
@@ -1149,7 +1149,7 @@ module Ohm
     # Preload all the attributes of this model from Redis. Used
     # internally by `Model::[]`.
     def load!
-      update_attributes(Utils.dict(redis.call("HGETALL", key))) unless new?
+      update_attributes(Utils.dict(key.call("HGETALL"))) unless new?
       return self
     end
 
@@ -1170,7 +1170,7 @@ module Ohm
     #                 |    u.get(:name) == "B"
     #
     def get(att)
-      @attributes[att] = redis.call("HGET", key, att)
+      @attributes[att] = key.call("HGET", att)
     end
 
     # Update an attribute value atomically. The best usecase for this
@@ -1181,9 +1181,9 @@ module Ohm
     #
     def set(att, val)
       if val.to_s.empty?
-        redis.call("HDEL", key, att)
+        key.call("HDEL", att)
       else
-        redis.call("HSET", key, att, val)
+        key.call("HSET", att, val)
       end
 
       @attributes[att] = val
@@ -1224,7 +1224,7 @@ module Ohm
     #   ad.hits # => 3
     #
     def increment(att, count = 1)
-      redis.call("HINCRBY", key[:counters], att, count)
+      key[:counters].call("HINCRBY", att, count)
     end
 
     # Decrements a counter atomically. Internally uses `HINCRBY`.

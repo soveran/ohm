@@ -51,7 +51,7 @@ test "raise an error if the parameter supplied is not a hash" do
 end
 
 test "avoid intersections with the all collection" do
-  assert_equal "User:indices:email:foo", User.find(:email => "foo").key
+  assert_equal "User:indices:email:foo", User.find(:email => "foo").key.to_s
 end
 
 test "allow multiple chained finds" do
