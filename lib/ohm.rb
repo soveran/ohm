@@ -719,10 +719,6 @@ module Ohm
     #   class User < Ohm::Model
     #   end
     #
-    #   User.key == "User"
-    #   User.key.kind_of?(String)
-    #   # => true
-    #
     #   User.key.kind_of?(Nest)
     #   # => true
     #
