@@ -1141,9 +1141,7 @@ module Ohm
     # 2. That they represent the same Redis key.
     #
     def ==(other)
-      other.kind_of?(model) && other.key.to_s == key.to_s
-    rescue MissingID
-      false
+      other.kind_of?(model) && other.hash == hash
     end
 
     # Preload all the attributes of this model from Redis. Used
