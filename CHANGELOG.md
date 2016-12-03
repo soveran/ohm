@@ -1,3 +1,15 @@
+## 3.1.0
+
+- Use Nest instead of Nido
+
+  A new release of Nest (3.0.0) simplified the interaction
+  with Redis.
+
+- Use Model#hash for equality
+
+  This change just removes some slight redundancy in the code.
+  The external behavior remains unchanged.
+
 ## 3.0.3
 
 - Fix bug that gave false positives for unique indices.
