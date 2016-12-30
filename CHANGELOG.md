@@ -1,3 +1,9 @@
+## 3.1.1
+
+- Serialize keys as strings when using JSON.
+
+- Reset attributes when calling `load!`.
+
 ## 3.1.0
 
 - Use Nest instead of Nido
