@@ -1375,7 +1375,7 @@ module Ohm
       script(LUA_DELETE, 0,
         { "name" => model.name,
           "id" => id,
-          "key" => key
+          "key" => key.to_s
         }.to_json,
         uniques.to_json,
         model.tracked.to_json
