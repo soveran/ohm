@@ -123,6 +123,26 @@ test "updates attributes" do
   assert "Ruby Meetup" == event.name
 end
 
+test "reload attributes" do
+  event1 = Meetup.create(:name => "Foo", :location => "Bar")
+  event2 = Meetup[event1.id]
+
+  assert_equal "Foo", event1.name
+  assert_equal "Bar", event1.location
+
+  assert_equal "Foo", event2.name
+  assert_equal "Bar", event2.location
+
+  event1.update(:name => nil)
+  event2.load!
+
+  assert_equal nil, event1.name
+  assert_equal "Bar", event1.location
+
+  assert_equal nil, event2.name
+  assert_equal "Bar", event2.location
+end
+
 test "save the attributes in UTF8" do
  event = Meetup.create(:name => "32° Kisei-sen")
  assert "32° Kisei-sen" == Meetup[event.id].name

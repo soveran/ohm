@@ -1108,9 +1108,7 @@ module Ohm
     #   u = User.new(:name => "John")
     #
     def initialize(atts = {})
-      @attributes = {}
-      @_memo = {}
-      update_attributes(atts)
+      reload_attributes(atts)
     end
 
     # Access the ID used to store this model. The ID is used together
@@ -1143,8 +1141,15 @@ module Ohm
     # Preload all the attributes of this model from Redis. Used
     # internally by `Model::[]`.
     def load!
-      update_attributes(Utils.dict(key.call("HGETALL"))) unless new?
+      reload_attributes(Utils.dict(key.call("HGETALL"))) unless new?
       return self
+    end
+
+    # Reset the attributes table and load the passed values.
+    def reload_attributes(atts = {})
+      @attributes = {}
+      @_memo = {}
+      update_attributes(atts)
     end
 
     # Read an attribute remotely from Redis. Useful if you want to get
