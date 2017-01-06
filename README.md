@@ -70,7 +70,7 @@ Now, in an irb session you can test the Redis adapter directly:
 ## Connecting to a Redis database
 
 Ohm uses a lightweight Redis client called [Redic][redic]. To connect
-to a Redis database, you will need to set an instance of `Redic`, with
+to a Redis database, you will need to set an instance of `Redis`, with
 an URL of the form `redis://:<passwd>@<host>:<port>/<db>`, through the
 `Ohm.redis=` method, e.g.
 
