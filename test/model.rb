@@ -420,6 +420,18 @@ test "return the first element sorted by name if first receives a sorting option
   assert "A" == Person.all.first(:by => :name, :order => "ALPHA").name
 end
 
+test "return the last element sorted by id when using last" do
+  Person.create :name => "A"
+  Person.create :name => "B"
+  assert "B" == Person.all.last.name
+end
+
+test "return the last element sorted by name if first receives a sorting option" do
+  Person.create :name => "B"
+  Person.create :name => "A"
+  assert "B" == Person.all.last(:by => :name, :order => "ALPHA").name
+end
+
 test "return attribute values when the get parameter is specified" do
   Person.create :name => "B"
   Person.create :name => "A"

@@ -511,6 +511,25 @@ module Ohm
       end
     end
 
+    # Example:
+    #
+    #   User.all.last ==
+    #     User.all.sort(:limit => [0, -1]).last
+    #
+    #   User.all.last(:by => :name, "ALPHA") ==
+    #     User.all.sort_by(:name, :order => "ALPHA", :limit => [0, -1]).last
+    #
+    def last(options = {})
+      opts = options.dup
+      opts.merge!(:limit => [0, -1])
+
+      if opts[:by]
+        sort_by(opts.delete(:by), opts).last
+      else
+        sort(opts).last
+      end
+    end
+
     # Chain new fiters on an existing set.
     #
     # Example:
