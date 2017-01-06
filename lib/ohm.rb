@@ -38,6 +38,22 @@ module Ohm
   class MissingID < Error; end
   class IndexNotFound < Error; end
   class UniqueIndexViolation < Error; end
+  class DetailedError < RuntimeError
+    attr_reader :data
+    attr_reader :nested_exception
+
+    def initialize(nested_exception, data)
+      @nested_exception = nested_exception
+      @data = data
+    end
+
+    def message
+      [
+        "Nested: [#{nested_exception.message}]",
+        "Data: ================\n#{data.inspect}\n==================="
+      ].join("\n")
+    end
+  end
 
   module ErrorPatterns
     DUPLICATE = /(UniqueIndexViolation: (\w+))/.freeze
@@ -155,6 +171,9 @@ module Ohm
           result << model.new(Utils.dict(atts).update(:id => ids[idx]))
         end
       end
+
+    rescue => e
+      raise DetailedError.new(e, ids: ids, namespace: namespace, class: self.class.name, data: data)
     end
   end
 
