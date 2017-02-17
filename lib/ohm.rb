@@ -573,6 +573,37 @@ module Ohm
       )
     end
 
+    # Intersect the set with a sorted set defined by :att and return
+    # the result of calling `to_a` on the new set.
+    #
+    # Example:
+    #
+    #   class Country < Ohm::Model
+    #     attribute :name
+    #     attribute :continent
+    #     attribute :population
+    #
+    #     index :continent
+    #     unique :name
+    #     rank :population
+    #   end
+    #
+    #   ...
+    #
+    #   # Fetch from element 0 to element 10 (inclusive).
+    #   Country.all.rank(:population, 0, 10)
+    #
+    #   # It can be appended at the end of any query.
+    #   Country.find(continent: "Asia").rank(:population, 0, 5)
+    #
+    def rank(att, start, stop)
+      ranking = sprintf("%s:_rankings:%s", model.name, att)
+
+      Ohm::Set.new(
+        model, namespace, [:ZRANGE, [:ZINTER, 2, ranking, key], start, stop]
+      ).to_a
+    end
+
   private
     def to_key(att)
       if model.counters.include?(att)
@@ -853,6 +884,11 @@ module Ohm
     #
     def self.unique(attribute)
       uniques << attribute unless uniques.include?(attribute)
+    end
+
+    # Create a sorted set with the value of :attribute as the score.
+    def self.rank(attribute)
+      rankings << attribute
     end
 
     # Declare an Ohm::Set with the given name.
@@ -1344,6 +1380,12 @@ module Ohm
         uniques[field] = value.to_s
       end
 
+      rankings = {}
+      model.rankings.each do |field|
+        next unless (value = send(field))
+        rankings[field] = value.to_s
+      end
+
       features = {
         "name" => model.name
       }
@@ -1356,7 +1398,8 @@ module Ohm
         features.to_json,
         _sanitized_attributes.to_json,
         indices.to_json,
-        uniques.to_json
+        uniques.to_json,
+        rankings.to_json
       )
 
       return self
@@ -1368,7 +1411,8 @@ module Ohm
     # - <Model>:<id>:counters
     # - <Model>:<id>:<set name>
     #
-    # If the model has uniques or indices, they're also cleaned up.
+    # If the model has uniques, indices, or rankings,
+    # they're also cleaned up.
     #
     def delete
       uniques = {}
@@ -1377,13 +1421,20 @@ module Ohm
         uniques[field] = value.to_s
       end
 
+      rankings = {}
+      model.rankings.each do |field|
+        next unless (value = send(field))
+        rankings[field] = value.to_s
+      end
+
       script(LUA_DELETE, 0,
         { "name" => model.name,
           "id" => id,
           "key" => key.to_s
         }.to_json,
         uniques.to_json,
-        model.tracked.to_json
+        model.tracked.to_json,
+        rankings.to_json
       )
 
       return self
@@ -1456,6 +1507,10 @@ module Ohm
 
     def self.uniques
       @uniques ||= []
+    end
+
+    def self.rankings
+      @rankings ||= []
     end
 
     def self.counters

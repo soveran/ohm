@@ -1,7 +1,8 @@
--- This script receives three parameters, all encoded with
+-- This script receives four parameters, all encoded with
 -- JSON. The decoded values are used for deleting a model
 -- instance in Redis and removing any reference to it in sets
--- (indices) and hashes (unique indices).
+-- (indices), hashes (unique indices) and sorted sets (rankings),
+-- along with all tracked keys.
 --
 -- # model
 --
@@ -19,9 +20,14 @@
 -- Keys that share the lifecycle of this model instance, that
 -- should be removed as this object is deleted.
 --
-local model   = cjson.decode(ARGV[1])
-local uniques = cjson.decode(ARGV[2])
-local tracked = cjson.decode(ARGV[3])
+-- # rankings
+--
+-- Fields and values to be removed from sorted sets.
+--
+local model    = cjson.decode(ARGV[1])
+local uniques  = cjson.decode(ARGV[2])
+local tracked  = cjson.decode(ARGV[3])
+local rankings = cjson.decode(ARGV[4])
 
 local function remove_indices(model)
 	local memo = model.key .. ":_indices"
@@ -41,6 +47,16 @@ local function remove_uniques(model, uniques)
 
 		redis.call("HDEL", key, redis.call("HGET", memo, key))
 		redis.call("HDEL", memo, key)
+	end
+end
+
+local function remove_rankings(model, rankings)
+	local ns = model.name .. ":_rankings"
+
+	for member, score in pairs(rankings) do
+		local key = ns .. ":" .. member
+
+		redis.call("ZREM", key, member)
 	end
 end
 
@@ -67,6 +83,7 @@ end
 remove_indices(model)
 remove_uniques(model, uniques)
 remove_tracked(model, tracked)
+remove_rankings(model, tracked)
 delete(model)
 
 return model.id

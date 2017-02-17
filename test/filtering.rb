@@ -183,3 +183,38 @@ scope do
     assert_equal 2, res.size
   end
 end
+
+scope do
+  class Player < Ohm::Model
+    attribute :sport
+    attribute :score
+
+    rank :score
+
+    index :sport
+  end
+
+  setup do
+    Player.create(sport: "foo", score: "1")
+    Player.create(sport: "foo", score: "3")
+    Player.create(sport: "foo", score: "2")
+    Player.create(sport: "bar", score: "2")
+  end
+
+  test "rank all items" do
+    list = Player.all.rank(:score, 0, 10)
+
+    assert_equal Player[1], list[0]
+    assert_equal Player[3], list[1]
+    assert_equal Player[4], list[2]
+    assert_equal Player[2], list[3]
+  end
+
+  test "rank selected items" do
+    list = Player.find(sport: "foo").rank(:score, 0, 10)
+
+    assert_equal Player[1], list[0]
+    assert_equal Player[3], list[1]
+    assert_equal Player[2], list[2]
+  end
+end

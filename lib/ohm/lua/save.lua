@@ -1,8 +1,8 @@
--- This script receives four parameters, all encoded with
+-- This script receives five parameters, all encoded with
 -- JSON. The decoded values are used for saving a model
 -- instance in Redis, creating or updating a hash as needed and
--- updating zero or more sets (indices) and zero or more hashes
--- (unique indices).
+-- updating zero or more sets (indices), zero or more hashes
+-- (unique indices), and zero or more sorted sets (rankings).
 --
 -- # model
 --
@@ -30,10 +30,15 @@
 -- value), an error is returned with the UniqueIndexViolation
 -- message and the field that triggered the error.
 --
-local model   = cjson.decode(ARGV[1])
-local attrs   = cjson.decode(ARGV[2])
-local indices = cjson.decode(ARGV[3])
-local uniques = cjson.decode(ARGV[4])
+-- # rankings
+--
+-- Fields and values to be added to a sorted set.
+--
+local model    = cjson.decode(ARGV[1])
+local attrs    = cjson.decode(ARGV[2])
+local indices  = cjson.decode(ARGV[3])
+local uniques  = cjson.decode(ARGV[4])
+local rankings = cjson.decode(ARGV[5])
 
 local function save(model, attrs)
 	if model.id == nil then
@@ -94,6 +99,16 @@ local function remove_uniques(model)
 	end
 end
 
+local function rank(model, rankings)
+	local ns = model.name .. ":_rankings"
+
+	for member, score in pairs(rankings) do
+		local key = ns .. ":" .. member
+
+		redis.call("ZADD", key, score, model.id)
+	end
+end
+
 local function verify(model, uniques)
 	local duplicates = {}
 
@@ -122,5 +137,7 @@ index(model, indices)
 
 remove_uniques(model, uniques)
 unique(model, uniques)
+
+rank(model, rankings)
 
 return tostring(model.id)
