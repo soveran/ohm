@@ -632,10 +632,8 @@ module Ohm
     end
 
   private
-
     def ranking(att)
-      zset = sprintf("%s:_rankings:%s", model.name, att)
-      return [:ZINTER, 2, zset, key, "AGGREGATE", "max"]
+      [:ZINTER, 2, namespace[:_rankings][att], key, "WEIGHTS", "1", "0"]
     end
 
     def to_key(att)
