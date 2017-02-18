@@ -600,7 +600,7 @@ module Ohm
       ranking = sprintf("%s:_rankings:%s", model.name, att)
 
       Ohm::Set.new(
-        model, namespace, [:ZRANGE, [:ZINTER, 2, ranking, key], start, stop]
+        model, namespace, [:ZRANGEBYSCORE, [:ZINTER, 2, ranking, key], start, stop]
       ).to_a
     end
 
