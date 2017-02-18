@@ -217,4 +217,12 @@ scope do
     assert_equal Player[3], list[1]
     assert_equal Player[2], list[2]
   end
+
+  test "range" do
+    list = Player.all.range(:score, 2, 3)
+
+    assert_equal Player[3], list[0]
+    assert_equal Player[4], list[1]
+    assert_equal Player[2], list[2]
+  end
 end

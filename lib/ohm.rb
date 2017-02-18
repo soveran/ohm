@@ -597,14 +597,47 @@ module Ohm
     #   Country.find(continent: "Asia").rank(:population, 0, 5)
     #
     def rank(att, start, stop)
-      ranking = sprintf("%s:_rankings:%s", model.name, att)
-
       Ohm::Set.new(
-        model, namespace, [:ZRANGE, [:ZINTER, 2, ranking, key], start, stop]
+        model, namespace, [:ZRANGE, ranking(att), start, stop]
+      ).to_a
+    end
+
+    # Intersect the set with a sorted set defined by :att and return
+    # the result of calling `to_a` on the new set.
+    #
+    # Example:
+    #
+    #   class Player < Ohm::Model
+    #     attribute :name
+    #     attribute :sport
+    #     attribute :score
+    #
+    #     unique :name
+    #     index :sport
+    #     rank :score
+    #   end
+    #
+    #   ...
+    #
+    #   # Fetch elements with score between 100 and 200.
+    #   Player.all.range(:score, 100, 200)
+    #
+    #   # It can be appended at the end of any query.
+    #   Player.find(sport: "Archery").rank(:score, 100, 200)
+    #
+    def range(att, min, max)
+      Ohm::Set.new(
+        model, namespace, [:ZRANGEBYSCORE, ranking(att), min, max]
       ).to_a
     end
 
   private
+
+    def ranking(att)
+      zset = sprintf("%s:_rankings:%s", model.name, att)
+      return [:ZINTER, 2, zset, key, "AGGREGATE", "max"]
+    end
+
     def to_key(att)
       if model.counters.include?(att)
         namespace["*:counters->%s" % att]
