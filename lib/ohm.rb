@@ -573,7 +573,7 @@ module Ohm
       )
     end
 
-    # Intersect the set with a sorted set defined by :att and return
+    # Intersect the set with a sorted set defined by :by and return
     # the result of calling `to_a` on the new set.
     #
     # Example:
@@ -591,18 +591,18 @@ module Ohm
     #   ...
     #
     #   # Fetch from element 0 to element 10 (inclusive).
-    #   Country.all.rank(:population, 0, 10)
+    #   Country.all.rank(by: :population, start: 0, stop: 10)
     #
     #   # It can be appended at the end of any query.
-    #   Country.find(continent: "Asia").rank(:population, 0, 5)
+    #   Country.find(continent: "Asia").rank(by: :population, start: 0, stop: 5)
     #
-    def rank(att, start, stop)
+    def rank(by:, start:, stop:)
       Ohm::Set.new(
-        model, namespace, [:ZRANGE, ranking(att), start, stop]
+        model, namespace, [:ZRANGE, ranking(by), start, stop]
       ).to_a
     end
 
-    # Intersect the set with a sorted set defined by :att and return
+    # Intersect the set with a sorted set defined by :by and return
     # the result of calling `to_a` on the new set.
     #
     # Example:
@@ -620,14 +620,14 @@ module Ohm
     #   ...
     #
     #   # Fetch elements with score between 100 and 200.
-    #   Player.all.range(:score, 100, 200)
+    #   Player.all.range(by: :score, min: 100, max: 200)
     #
     #   # It can be appended at the end of any query.
-    #   Player.find(sport: "Archery").rank(:score, 100, 200)
+    #   Player.find(sport: "Archery").rank(by: :score, min: 100, max: 200)
     #
-    def range(att, min, max)
+    def range(by:, min:, max:)
       Ohm::Set.new(
-        model, namespace, [:ZRANGEBYSCORE, ranking(att), min, max]
+        model, namespace, [:ZRANGEBYSCORE, ranking(by), min, max]
       ).to_a
     end
 
