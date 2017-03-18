@@ -1031,6 +1031,11 @@ module Ohm
     # to see more examples about the typecasting feature.
     #
     def self.attribute(name, cast = nil)
+      if self.method_defined?(name)
+        raise ArgumentError,
+          "'#{name}' is an instance method of #{self} and can't be used as an attribute name"
+      end
+
       attributes << name unless attributes.include?(name)
 
       if cast
