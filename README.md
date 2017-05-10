@@ -67,6 +67,13 @@ Now, in an irb session you can test the Redis adapter directly:
     >> Ohm.redis.call "GET", "Foo"
     => "Bar"
 
+Note that the install instructions from above are for our release candidate, *not* for the current rubygems release (which is 1.3.2). If you want to use the current rubygems release just do a
+
+
+    $ [sudo] gem install ohm
+
+and from then on follow the instructions for [this release](https://github.com/soveran/ohm/tree/1.3.2/README.md).
+
 ## Connecting to a Redis database
 
 Ohm uses a lightweight Redis client called [Redic][redic]. To connect
