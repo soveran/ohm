@@ -14,9 +14,16 @@ body {
 
 header, section {
   width: 960px;
-  padding-top: 30px;
   margin: auto;
   text-align: center;
+}
+
+header {
+  padding-top: 2em;
+}
+
+section {
+  padding-top: 1em;
 }
 
 header h1 {
@@ -48,4 +55,13 @@ section p code {
 section a {
   text-decoration: none;
   color: olive;
+}
+
+section p.sponsor a {
+  color: #333;
+}
+
+img#tynd {
+  height: 3em;
+  vertical-align: middle;
 }
