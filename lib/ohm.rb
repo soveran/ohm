@@ -1188,7 +1188,8 @@ module Ohm
       @attributes[att] = val
     end
 
-    # Returns +true+ if the model is not persisted. Otherwise, returns +false+.
+    # Returns +true+ if the model has never been persisted. Otherwise, returns
+    # +false+.
     #
     # Example:
     #
@@ -1206,6 +1207,36 @@ module Ohm
     #
     def new?
       !defined?(@id)
+    end
+
+    # Returns +true+ if the model is persisted. Otherwise, returns +false+.
+    #
+    # Example:
+    #
+    #   class User < Ohm::Model
+    #     attribute :name
+    #   end
+    #
+    #   u = User.new(:name => "John")
+    #   u.new?
+    #   # => true
+    #   u.exists?
+    #   # => false
+    #
+    #   u.save
+    #   u.new?
+    #   # => false
+    #   u.exists?
+    #   # => true
+    #
+    #   u.delete
+    #   u.new?
+    #   # => false
+    #   u.exists?
+    #   # => false
+    #
+    def exists?
+      !new? && self.class.exists?(id)
     end
 
     # Increments a counter atomically. Internally uses `HINCRBY`.
