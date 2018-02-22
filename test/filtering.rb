@@ -202,7 +202,7 @@ scope do
   end
 
   test "rank all items" do
-    list = Player.all.rank(by: :score, start: 0, stop: 10)
+    list = Player.all.rank_by(:score, start: 0, stop: 10)
 
     assert_equal Player[1], list[0]
     assert_equal Player[3], list[1]
@@ -211,7 +211,7 @@ scope do
   end
 
   test "rank selected items" do
-    list = Player.find(sport: "foo").rank(by: :score, start: 0, stop: 10)
+    list = Player.find(sport: "foo").rank_by(:score, start: 0, stop: 10)
 
     assert_equal Player[1], list[0]
     assert_equal Player[3], list[1]
@@ -219,7 +219,7 @@ scope do
   end
 
   test "range" do
-    list = Player.all.range(by: :score, min: 2, max: 4)
+    list = Player.all.range_by(:score, min: 2, max: 4)
 
     assert_equal Player[3], list[0]
     assert_equal Player[4], list[1]

@@ -596,9 +596,9 @@ module Ohm
     #   # It can be appended at the end of any query.
     #   Country.find(continent: "Asia").rank(by: :population, start: 0, stop: 5)
     #
-    def rank(by:, start:, stop:)
+    def rank_by(att, start:, stop:)
       Ohm::Set.new(
-        model, namespace, [:ZRANGE, ranking(by), start, stop]
+        model, namespace, [:ZRANGE, ranking(att), start, stop]
       ).to_a
     end
 
@@ -625,9 +625,9 @@ module Ohm
     #   # It can be appended at the end of any query.
     #   Player.find(sport: "Archery").rank(by: :score, min: 100, max: 200)
     #
-    def range(by:, min:, max:)
+    def range_by(att, min:, max:)
       Ohm::Set.new(
-        model, namespace, [:ZRANGEBYSCORE, ranking(by), min, max]
+        model, namespace, [:ZRANGEBYSCORE, ranking(att), min, max]
       ).to_a
     end
 
