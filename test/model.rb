@@ -280,6 +280,23 @@ test "assign a new id to the event" do
   assert_equal "2", event2.id
 end
 
+test "event shows the correct states" do
+  event = Event.new
+
+  assert event.new?
+  assert !event.exists?
+
+  event.save
+
+  assert !event.new?
+  assert event.exists?
+
+  event.delete
+
+  assert !event.new?
+  assert !event.exists?
+end
+
 # Saving a model
 test "create the model if it is new" do
   event = Event.new(:name => "Foo").save
