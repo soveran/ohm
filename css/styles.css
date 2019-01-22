@@ -56,12 +56,3 @@ section a {
   text-decoration: none;
   color: olive;
 }
-
-section p.sponsor a {
-  color: #333;
-}
-
-img#tynd {
-  height: 3em;
-  vertical-align: middle;
-}
