@@ -1,0 +1,31 @@
+PATH
+  remote: .
+  specs:
+    ohm (3.1.1)
+      nest (~> 3)
+      redic (~> 1.5.0)
+      stal
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    clap (1.0.0)
+    cutest (1.2.3)
+      clap
+    hiredis (0.6.3)
+    nest (3.1.2)
+      redic
+    redic (1.5.1)
+      hiredis
+    stal (0.3.0)
+      redic (~> 1.5)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  cutest
+  ohm!
+
+BUNDLED WITH
+   1.16.1
