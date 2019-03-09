@@ -12,9 +12,11 @@ Gem::Specification.new do |s|
 
   s.rubyforge_project = "ohm"
 
-  s.add_dependency "redic", "~> 1.5.0"
+  s.add_dependency "redic", "~> 1.6.0"
   s.add_dependency "nest", "~> 3"
   s.add_dependency "stal"
 
   s.add_development_dependency "cutest"
+  s.add_development_dependency "spirit_hands", "~> 2.1"
 end
+

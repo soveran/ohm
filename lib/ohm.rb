@@ -178,6 +178,7 @@ module Ohm
 
     # Returns the first element of the list using LINDEX.
     def first
+      binding.pry
       model[key.call("LINDEX", 0)]
     end
 
@@ -1383,11 +1384,11 @@ module Ohm
         features["id"] = @id
       end
 
-      @id = script(LUA_SAVE, 0,
-        features.to_json,
-        _sanitized_attributes.to_json,
-        indices.to_json,
-        uniques.to_json
+      @id = script(LUA_SAVE,
+                   features.to_json,
+                   _sanitized_attributes.to_json,
+                   indices.to_json,
+                    uniques.to_json
       )
 
       return self
@@ -1408,7 +1409,7 @@ module Ohm
         uniques[field] = value.to_s
       end
 
-      script(LUA_DELETE, 0,
+      script(LUA_DELETE, [],
         { "name" => model.name,
           "id" => id,
           "key" => key.to_s
@@ -1435,7 +1436,7 @@ module Ohm
           cache[file] = sha
         end
 
-        redis.call!("EVALSHA", sha, *args)
+        redis.call!("EVALSHA", sha, [], args)
 
       rescue RuntimeError
 

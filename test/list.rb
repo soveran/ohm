@@ -2,13 +2,14 @@ require_relative "helper"
 
 class Post < Ohm::Model
   list :comments, :Comment
+  attribute :test
 end
 
 class Comment < Ohm::Model
 end
 
 setup do
-  post = Post.create
+  post = Post.create(test: 'working?')
 
   post.comments.push(c1 = Comment.create)
   post.comments.push(c2 = Comment.create)

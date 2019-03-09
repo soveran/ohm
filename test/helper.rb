@@ -4,6 +4,7 @@ rescue LoadError
 end
 
 require "cutest"
+require "pry"
 
 def silence_warnings
   original_verbose, $VERBOSE = $VERBOSE, nil
