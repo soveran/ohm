@@ -178,7 +178,6 @@ module Ohm
 
     # Returns the first element of the list using LINDEX.
     def first
-      binding.pry
       model[key.call("LINDEX", 0)]
     end
 
@@ -760,7 +759,7 @@ module Ohm
 
     # Check if the ID exists within <Model>:all.
     def self.exists?(id)
-      key[:all].call("SISMEMBER", id) == 1
+      key[:all].call("SISMEMBER", id) == true
     end
 
     # Find values in `unique` indices.
@@ -1409,7 +1408,7 @@ module Ohm
         uniques[field] = value.to_s
       end
 
-      script(LUA_DELETE, [],
+      script(LUA_DELETE,
         { "name" => model.name,
           "id" => id,
           "key" => key.to_s

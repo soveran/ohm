@@ -64,9 +64,10 @@ test "delete" do |p, c1, c2, c3|
 end
 
 test "deleting main model cleans up the collection" do |p, _, _, _|
+  assert_equal true, Ohm.redis.call("EXISTS", p.key[:comments])
   p.delete
 
-  assert_equal 0, Ohm.redis.call("EXISTS", p.key[:comments])
+  assert_equal false, Ohm.redis.call("EXISTS", p.key[:comments])
 end
 
 test "#ids returns an array with the ids" do |post, *comments|
