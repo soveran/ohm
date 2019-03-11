@@ -1,9 +1,8 @@
 # encoding: UTF-8
 
 require "json"
-require "nest"
 require "redic"
-require "stal"
+require File.expand_path("../nest.rb",   __FILE__)
 require File.expand_path("../stal.rb",   __FILE__)
 
 module Ohm
