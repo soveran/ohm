@@ -406,7 +406,12 @@ module Ohm
     #   user.posts.exists?(post.id)       # => true
     #
     def exists?(id)
-      Stal.solve(redis, ["SISMEMBER", key, id]) == 1
+      #Stal.solve(redis, ["SISMEMBER", key, id]) == 1
+      nest[:all].call("SISMEMBER", id)
+    end
+
+    def nest
+      Nest.new(model.name, redis)
     end
 
     # Check if a model is included in this set.
@@ -1141,7 +1146,8 @@ module Ohm
     # Preload all the attributes of this model from Redis. Used
     # internally by `Model::[]`.
     def load!
-      reload_attributes(Utils.dict(key.call("HGETALL"))) unless new?
+      #reload_attributes(Utils.dict(key.call("HGETALL"))) unless new?
+      reload_attributes(key.call("HGETALL")) unless new?
       return self
     end
 
