@@ -77,7 +77,8 @@ module Ohm
     end
 
     def self.dict(arr)
-      Hash[*arr]
+      Hash[*arr] if arr.is_a? Array
+      arr
     end
 
     def self.sort_options(options)
@@ -384,7 +385,8 @@ module Ohm
 
     # Returns the total size of the set using SCARD.
     def size
-      Stal.solve(redis, ["SCARD", key])
+      nest[:all].call("SCARD")
+      #Stal.solve(redis, ["SCARD", key])
     end
 
     # Returns +true+ if +id+ is included in the set. Otherwise, returns +false+.
