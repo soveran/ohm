@@ -78,7 +78,7 @@ test "counters are cleaned up during deletion" do
   assert_equal 10, e.votes
 
   e.delete
-  assert_equal 0, Event.redis.call("EXISTS", e.key[:counters])
+  assert_equal false, Event.redis.call("EXISTS", e.key[:counters])
 end
 
 test "get" do
@@ -101,7 +101,7 @@ test "set" do
   # Deletes when value is nil.
   m.set :name, nil
   m = Meetup[m.id]
-  assert_equal 0, Meetup.redis.call("HEXISTS", m.key, :name)
+  assert_equal false, Meetup.redis.call("HEXISTS", m.key, :name)
 end
 
 test "assign attributes from the hash" do
