@@ -4,6 +4,7 @@ require "json"
 require "nest"
 require "redic"
 require "stal"
+require File.expand_path("../stal.rb",   __FILE__)
 
 module Ohm
   LUA_CACHE   = Hash.new { |h, k| h[k] = Hash.new }
@@ -385,8 +386,9 @@ module Ohm
 
     # Returns the total size of the set using SCARD.
     def size
-      nest[:all].call("SCARD")
-      #Stal.solve(redis, ["SCARD", key])
+      #redis.call("SINTER", *key).count
+      #nest[:all].call("SCARD")
+      Stal.solve(redis, ["SCARD", key])
     end
 
     # Returns +true+ if +id+ is included in the set. Otherwise, returns +false+.
@@ -408,13 +410,13 @@ module Ohm
     #   user.posts.exists?(post.id)       # => true
     #
     def exists?(id)
-      #Stal.solve(redis, ["SISMEMBER", key, id]) == 1
-      nest[:all].call("SISMEMBER", id)
+      Stal.solve(redis, ["SISMEMBER", key, id]) == 1
+      #nest[:all].call("SISMEMBER", id)
     end
 
-    def nest
-      Nest.new(model.name, redis)
-    end
+    #def nest
+    #  Nest.new(model.name, redis)
+    #end
 
     # Check if a model is included in this set.
     #
@@ -832,6 +834,7 @@ module Ohm
       if keys.size == 1
         Ohm::Set.new(self, key, keys.first)
       else
+        #Ohm::Set.new(self, key, keys)
         Ohm::Set.new(self, key, [:SINTER, *keys])
       end
     end
