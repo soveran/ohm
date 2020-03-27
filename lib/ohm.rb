@@ -703,13 +703,15 @@ module Ohm
     def self.redis
       defined?(@redis) ? @redis : Ohm.redis
     end
-
+    
+    @mutex = Mutex.new
+    
     def self.mutex
-      @@mutex ||= Mutex.new
+      @mutex
     end
 
     def self.synchronize(&block)
-      mutex.synchronize(&block)
+      @mutex.synchronize(&block)
     end
 
     # Returns the namespace for all the keys generated using this model.
