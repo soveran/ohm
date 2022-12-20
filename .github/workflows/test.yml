@@ -1,0 +1,29 @@
+name: Test
+on:
+  pull_request:
+  push: { branches: master }
+
+jobs:
+  test:
+    name: Ruby ${{ matrix.ruby }}
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix: { ruby: ['2.7', '3.0', '3.1', 'head'] }
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup Ruby
+      uses: ruby/setup-ruby@v1
+      with: 
+        ruby-version: '${{ matrix.ruby }}'
+        bundler-cache: true
+
+    - name: Run primary tests
+      run: make test
+
+    - name: Run example tests
+      run: make examples

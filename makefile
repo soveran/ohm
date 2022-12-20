@@ -3,7 +3,7 @@
 all: test
 
 test:
-	cutest -r ./test/helper.rb ./test/*.rb
+	bundle exec cutest -r ./test/helper.rb ./test/*.rb
 
 examples:
-	RUBYLIB="./lib" cutest ./examples/*.rb
+	RUBYLIB="./lib" bundle exec cutest ./examples/*.rb

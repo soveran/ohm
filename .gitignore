@@ -1,3 +1,4 @@
+/.gs
 /.yardoc
 /doc
-/.gs
+/Gemfile.lock

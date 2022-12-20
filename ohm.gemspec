@@ -15,6 +15,4 @@ Gem::Specification.new do |s|
   s.add_dependency "redic", "~> 1.5.0"
   s.add_dependency "nest", "~> 3"
   s.add_dependency "stal"
-
-  s.add_development_dependency "cutest"
 end
