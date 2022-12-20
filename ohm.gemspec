@@ -7,14 +7,15 @@ Gem::Specification.new do |s|
   s.email = ["michel@soveran.com", "djanowski@dimaion.com", "me@cyrildavid.com"]
   s.homepage = "http://soveran.github.io/ohm/"
   s.license = "MIT"
+  s.required_ruby_version = '>= 2.7.0'
 
   s.files = `git ls-files`.split("\n")
 
   s.rubyforge_project = "ohm"
 
-  s.add_dependency "redic", "~> 1.5.0"
   s.add_dependency "nest", "~> 3"
+  s.add_dependency "redic", "~> 1.5.0"
   s.add_dependency "stal"
 
-  s.add_development_dependency "cutest"
+  s.metadata['rubygems_mfa_required'] = 'true'
 end
